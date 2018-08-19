@@ -1,0 +1,19 @@
+{
+  "observers": [
+    {
+      "target": "pageview",
+      "loadScript": "https://use.fontawesome.com/releases/v5.0.2/js/all.js",
+      "attributes": {
+        "defer": "defer"
+      }
+    },
+    {
+      "target": "pageview",
+      "tag": "<b>hello</b><a href=\"https://example.com\">World</a>"
+    },
+    {
+      "target": "pageview",
+      "func": "(function() { console.log(\"dynamic function\") })"
+    }
+  ]
+}
