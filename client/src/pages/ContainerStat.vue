@@ -6,13 +6,21 @@
           Select report
         </div>
       </div>
-      <div v-if="node" class="node-info">
-        <div>Node Info</div>
-        <div>Event: {{node.name}}</div>
-        <div>URL: {{ node.url }}</div>
-        <div>Label: {{ node.label }}</div>
-        <div>XPath: {{node.xpath}}</div>
+      <div class="node-info" v-if="graphData">
+        <div v-if="node" class="detail">
+          <h3>Node Info</h3>
+          <div><span class="label">Event:</span> {{node.name}}</div>
+          <div><span class="label">URL:</span> {{ node.url }}</div>
+          <div><span class="label">Label:</span> {{ node.label }}</div>
+          <div><span class="label">XPath:</span> {{node.xpath}}</div>
+        </div>
+
+        <b-form-group label="Enabled Statuses" class="status-filter">
+          <b-form-checkbox-group id="enabled-statuses" v-model="enabledStatues"
+                                 :options="statuses" @input="r"></b-form-checkbox-group>
+        </b-form-group>
       </div>
+
       <div v-if="graphData" class="graph-operation">
         <button class="wide-button btn btn-primary" @click="expand">
           <fa-icon icon="expand"></fa-icon>
@@ -20,11 +28,6 @@
       </div>
     </div>
     <div class="container py-2">
-      <b-form-group label="Enabled Statuses">
-        <b-form-checkbox-group id="enabled-statuses" v-model="enabledStatues"
-                               :options="statuses" @input="r"></b-form-checkbox-group>
-      </b-form-group>
-
       <div v-if="stats">
         <form @submit="makeReport" ref="form">
           <div class="d-flex align-items-center">
@@ -190,7 +193,17 @@
         timezone: 'UTC',
         timezones: moment.tz.names(),
         statuses: _.keys(statusPatterns),
-        enabledStatues: _.difference(_.keys(statusPatterns), ['timer', 'scroll'])
+        enabledStatues: _.difference(_.keys(statusPatterns), ['timer', 'scroll']),
+        isExpanded: false
+      }
+    },
+    computed: {
+      svgHeight () {
+        if (this.isExpanded) {
+          return window.innerHeight - 60
+        } else {
+          return 400
+        }
       }
     },
     async created () {
@@ -226,17 +239,14 @@
       async renderGraph (stat) {
         const data = await axios.get(stat.url)
         this.rawGraphData = data.data.result
+        this.node = null
         this.render()
       },
       expand () {
-        const height = window.innerHeight - 60
         const cl = d3.select('#graph')
         const svg = cl.select('#graph svg')
-        if (svg.attr('height') === '400') {
-          svg.attr('height', height)
-        } else {
-          svg.attr('height', 400)
-        }
+        this.isExpanded = !this.isExpanded
+        svg.attr('height', this.svgHeight)
       },
       render () {
         console.log('render')
@@ -247,7 +257,7 @@
 
         const cl = d3.select('#graph')
         const width = cl.node().clientWidth
-        const height = 400
+        const height = this.svgHeight
         cl.selectAll('*').remove()
         const svg = cl.append('svg').attr('width', width).attr('height', height)
         const inner = svg.append('g')
@@ -258,6 +268,8 @@
         const nodesData = []
         const linksData = []
         const urls = []
+
+        const color = d3.scaleOrdinal(d3.schemeCategory20)
 
         const strimwidth = function (text, size) {
           if (!text) {
@@ -299,7 +311,7 @@
         })
 
         urls.forEach(function (url, idx) {
-          g.setNode(`url-${idx}`, {label: url, clusterLabelPos: 'top'})
+          g.setNode(`url-${idx}`, {label: url, clusterLabelPos: 'top', style: 'fill: ' + color(url)})
         })
 
         nodesData.forEach(function (node, idx) {
@@ -393,7 +405,17 @@
     bottom: 0;
     padding: 5px;
     background: #fff;
+    max-width: 50vw;
     opacity: 0.8;
+  }
+
+  .graph-container .node-info .detail {
+    max-height: 200px;
+    overflow: auto;
+  }
+
+  .graph-container .node-info .detail .label {
+    font-weight: bold;
   }
 
   .graph-container .graph-operation {
