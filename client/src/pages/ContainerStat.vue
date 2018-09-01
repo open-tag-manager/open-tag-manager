@@ -167,6 +167,10 @@
             let newEdge = {}
             newEdge[sourceFieldName] = e[sourceFieldName]
             newEdge[targetFieldName] = d[targetFieldName]
+            newEdge.url = d.url
+            newEdge.title = d.title
+            newEdge.label = d.label
+            newEdge.xpath = d.xpath
             newEdge[countFieldName] = count
             cData.push(newEdge)
           }
