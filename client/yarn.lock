@@ -7452,6 +7452,10 @@ svgo@^0.7.0:
     sax "~1.2.1"
     whet.extend "~0.9.9"
 
+swagger-paths@^1.0.3:
+  version "1.0.3"
+  resolved "https://registry.yarnpkg.com/swagger-paths/-/swagger-paths-1.0.3.tgz#cd801e87f64f4c7b78d016bab3bb6652a9bd6b9e"
+
 symbol-tree@^3.2.2:
   version "3.2.2"
   resolved "https://registry.yarnpkg.com/symbol-tree/-/symbol-tree-3.2.2.tgz#ae27db38f660a7ae2e1c3b7d1bc290819b8519e6"

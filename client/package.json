@@ -25,6 +25,7 @@
     "lodash": "^4.17.4",
     "moment": "^2.20.1",
     "moment-timezone": "^0.5.20",
+    "swagger-paths": "^1.0.3",
     "uuid": "^3.2.1",
     "vue": "^2.5.2",
     "vue-cookie": "^1.1.4",

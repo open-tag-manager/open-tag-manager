@@ -29,6 +29,13 @@
     </div>
     <div class="container py-2">
       <div v-if="stats">
+        <div>
+          <div class="form-group">
+            <label for="swagger-doc">Swagger Doc (JSON)</label>
+            <textarea id="swagger-doc" class="form-control" v-model="swaggerDoc" rows="10"></textarea>
+          </div>
+        </div>
+
         <form @submit="makeReport" ref="form">
           <div class="d-flex align-items-center">
             <div class="form-group">
@@ -84,8 +91,10 @@
   import * as d3 from 'd3'
   import * as DagreD3 from 'dagre-d3'
   import _ from 'lodash'
+  import url from 'url'
   import moment from 'moment-timezone'
   import flatPickr from 'vue-flatpickr-component'
+  import swaggerPaths from 'swagger-paths'
 
   const sourceFieldName = 'p_state'
   const targetFieldName = 'state'
@@ -182,6 +191,35 @@
     return _.reject(_.reject(cData, 'sourceSkip'), 'targetSkip')
   }
 
+  const convertUrl = (data, swaggerDoc) => {
+    if (!swaggerDoc) {
+      return data
+    }
+    const paths = new swaggerPaths(JSON.parse(swaggerDoc).paths)
+    for (let d of data) {
+      const parsedUrl = url.parse(d.url)
+      if (!parsedUrl.path) {
+        continue
+      }
+
+      let path = parsedUrl.path
+      if (parsedUrl.hash) {
+        const match = parsedUrl.hash.match(/^#!(\/.*)/)
+        if (match) {
+          const hashUrl = url.parse(match[1])
+          path = hashUrl.path
+        }
+      }
+
+      const matched = paths.match(path)
+      if (matched) {
+        d.url = matched.path.path
+      }
+    }
+
+    return data
+  }
+
   export default {
     components: {flatPickr},
     data () {
@@ -198,7 +236,8 @@
         timezones: moment.tz.names(),
         statuses: _.keys(statusPatterns),
         enabledStatues: _.difference(_.keys(statusPatterns), ['timer', 'scroll']),
-        isExpanded: false
+        isExpanded: false,
+        swaggerDoc: ''
       }
     },
     computed: {
@@ -258,6 +297,7 @@
 
         this.graphData = _.cloneDeep(this.rawGraphData)
         this.graphData = skipData(this.graphData, _.values(_.pick(statusPatterns, _.difference(this.statuses, this.enabledStatues))))
+        this.graphData = convertUrl(this.graphData, this.swaggerDoc)
 
         const cl = d3.select('#graph')
         const width = cl.node().clientWidth
