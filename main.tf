@@ -207,6 +207,19 @@ resource "aws_cloudfront_distribution" "otm_client_distribution" {
   }
 }
 
+resource "aws_s3_bucket" "otm_config" {
+  bucket = "${var.aws_s3_bucket_prefix}-otm-config"
+  acl = "private"
+}
+
+resource "aws_s3_bucket_object" "gc_key" {
+  bucket = "${aws_s3_bucket.otm_config.id}"
+  key = "account.json"
+  source = "account.json"
+  acl = "private"
+  server_side_encryption = "AES256"
+}
+
 resource "aws_dynamodb_table" "otm_session" {
   name = "otm_session"
   read_capacity = 1
@@ -272,6 +285,21 @@ resource "aws_iam_role_policy_attachment" "aws_batch_service_role" {
 
 resource "aws_security_group" "batch" {
   name = "otm_batch_compute_environment_security_group"
+  vpc_id = "${aws_vpc.otm.id}"
+  ingress {
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
+    self = true
+  }
+
+  egress {
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
 }
 
 resource "aws_vpc" "otm" {
@@ -297,6 +325,7 @@ resource "aws_route_table" "r" {
 resource "aws_subnet" "otm" {
   vpc_id = "${aws_vpc.otm.id}"
   cidr_block = "10.1.1.0/24"
+  map_public_ip_on_launch = true
 }
 
 resource "aws_route_table_association" "route_table_a" {
@@ -309,7 +338,7 @@ resource "aws_ecr_repository" "otm_data_retriever" {
 }
 
 resource "aws_batch_compute_environment" "compute_environment" {
-  compute_environment_name = "otm"
+  compute_environment_name = "otm-compute-env"
   compute_resources {
     instance_role = "${aws_iam_instance_profile.ecs_instance_role.arn}"
     instance_type = [
