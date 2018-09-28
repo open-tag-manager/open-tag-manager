@@ -7,6 +7,7 @@ import os
 from getpass import getpass
 
 def main():
+    # 1. deploy infra
     subprocess.call(['npm', 'run', 'build'], env={'NODE_ENV': 'production', 'PATH': os.environ.get('PATH')})
     subprocess.call(['terraform', 'apply'])
 
@@ -44,6 +45,7 @@ def main():
     shutil.copy('./athena2bigquery/config/sample.yml', './athena2bigquery/config/athena2bigquery-config.yml')
     shutil.copy('./athena2bigquery/trigger/config/sample.yml', './athena2bigquery/trigger/config/dev.yml')
 
+    # 2. deploy client API
     with open('./client_apis/.chalice/config.json', 'r') as f:
         config = json.load(f)
         env = config['environment_variables']
@@ -66,15 +68,6 @@ def main():
         env['STATS_BQ_DATASET'] = bq_dataset
         env['STATS_BQ_TABLE_PREFIX'] = 'otm'
 
-    repository_url = tfresource['aws_ecr_repository.otm_data_retriever']['primary']['attributes']['repository_url']
-
-    p = subprocess.Popen(['aws', 'ecr', 'get-login', '--no-include-email'], stdout=subprocess.PIPE)
-    p.wait()
-    subprocess.call(p.stdout.readlines()[0].decode('utf-8').split())
-    subprocess.call(['docker', 'build', '-t', 'otm-data-retriever', '.'], cwd='./data_retriever')
-    subprocess.call(['docker', 'tag', 'otm-data-retriever:latest', '%s:latest' % repository_url], cwd='./data_retriever')
-    subprocess.call(['docker', 'push', '%s:latest' % repository_url], cwd='./data_retriever')
-
     with open('./client_apis/.chalice/config.json', 'w') as f:
         json.dump(config, f, indent=4)
 
@@ -89,9 +82,19 @@ def main():
 
     subprocess.call(['chalice', 'deploy', '--no-autogen-policy'], cwd='./client_apis')
 
+    # 3. deploy data_retriever
+    repository_url = tfresource['aws_ecr_repository.otm_data_retriever']['primary']['attributes']['repository_url']
+
+    p = subprocess.Popen(['aws', 'ecr', 'get-login', '--no-include-email'], stdout=subprocess.PIPE)
+    p.wait()
+    subprocess.call(p.stdout.readlines()[0].decode('utf-8').split())
+    subprocess.call(['docker', 'build', '-t', 'otm-data-retriever', '.'], cwd='./data_retriever')
+    subprocess.call(['docker', 'tag', 'otm-data-retriever:latest', '%s:latest' % repository_url], cwd='./data_retriever')
+    subprocess.call(['docker', 'push', '%s:latest' % repository_url], cwd='./data_retriever')
+
+    # 4. deploy client frontend
     with open('./client_apis/.chalice/deployed/dev.json', 'r') as f:
         api_resource = json.load(f)
-
 
     subprocess.call(['yarn', 'install'], cwd='./client')
     subprocess.call(['npm', 'run', 'build'], env={
@@ -103,8 +106,8 @@ def main():
     }, cwd='./client')
     subprocess.call(['aws', 's3', 'sync', './client/dist/', 's3://%s/' % client_bucket, '--acl=public-read'])
 
+    # 5. deploy s3weblog2athena
     with open('./s3weblog2athena/config/dev.yml', 'r') as f:
-
         config = yaml.load(f)
         config['TO_S3_BUCKET'] = collect_log_bucket
         config['TO_S3_PREFIX'] = 'cflog_transformed/'
@@ -118,6 +121,7 @@ def main():
     subprocess.call(['yarn', 'install'], cwd='./s3weblog2athena')
     subprocess.call(['sls', 'deploy', '--stage=dev', '--region=%s' % os.environ.get('AWS_DEFAULT_REGION')], cwd='./s3weblog2athena')
 
+    # 6. deploy athena2bigquery
     with open('./athena2bigquery/config/athena2bigquery-config.yml', 'r') as f:
         config = yaml.load(f)
         config['gcloud']['projectId'] = gc_project_id
