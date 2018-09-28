@@ -446,3 +446,13 @@ resource "google_bigquery_dataset" "dataset" {
   description = "open tag manager dataset"
   location = "${var.google_bigquery_dataset_location}"
 }
+
+resource "aws_s3_bucket" "otm_athena" {
+  bucket = "${var.aws_s3_bucket_prefix}-otm-athena"
+  acl = "private"
+}
+
+resource "aws_athena_database" "otm" {
+  name = "otm_a2bq"
+  bucket = "${aws_s3_bucket.otm_athena.bucket}"
+}

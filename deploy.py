@@ -14,6 +14,30 @@ def main():
         tfstate = json.load(f)
         tfresource = tfstate['modules'][0]['resources']
 
+    script_bucket = tfresource['aws_s3_bucket.otm_script']['primary']['id']
+    client_bucket = tfresource['aws_s3_bucket.otm_client']['primary']['id']
+    stat_bucket = tfresource['aws_s3_bucket.otm_stats']['primary']['id']
+    config_bucket = tfresource['aws_s3_bucket.otm_config']['primary']['id']
+    athena_bucket = tfresource['aws_s3_bucket.otm_athena']['primary']['id']
+    collect_log_bucket = tfresource['aws_s3_bucket.otm_collect_log']['primary']['id']
+
+    script_domain = tfresource['aws_cloudfront_distribution.otm_script_distribution']['primary']['attributes']['domain_name']
+    collect_domain = tfresource['aws_cloudfront_distribution.otm_collect_distribution']['primary']['attributes']['domain_name']
+    client_domain = tfresource['aws_cloudfront_distribution.otm_client_distribution']['primary']['attributes']['domain_name']
+
+    dynamo_db_table = tfresource['aws_dynamodb_table.otm_session']['primary']['id']
+    dynamo_db_table_arn = tfresource['aws_dynamodb_table.otm_session']['primary']['attributes']['arn']
+
+    job_queue = tfresource['aws_batch_job_queue.otm']['primary']['id']
+    job_definition = tfresource['aws_batch_job_definition.otm_data_retriever']['primary']['id']
+
+    gc_project_id = tfresource['google_bigquery_dataset.dataset']['primary']['attributes']['project']
+    bq_dataset = tfresource['google_bigquery_dataset.dataset']['primary']['attributes']['dataset_id']
+
+    sns_arn = tfresource['aws_sns_topic.otm_collect_log_topic']['primary']['id']
+
+    athena_database = tfresource['aws_athena_database.otm']['primary']['id']
+
     shutil.copy('./client_apis/.chalice/config.json.sample', './client_apis/.chalice/config.json')
     shutil.copy('./client_apis/.chalice/policy-sample.json', './client_apis/.chalice/policy-dev.json')
     shutil.copy('./s3weblog2athena/config/sample.yml', './s3weblog2athena/config/dev.yml')
@@ -29,16 +53,6 @@ def main():
             hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
             env['ROOT_PASSWORD_HASH'] = hashed_password.decode('utf-8')
 
-        script_bucket = tfresource['aws_s3_bucket.otm_script']['primary']['id']
-        script_domain = tfresource['aws_cloudfront_distribution.otm_script_distribution']['primary']['attributes']['domain_name']
-        collect_domain = tfresource['aws_cloudfront_distribution.otm_collect_distribution']['primary']['attributes']['domain_name']
-        dynamo_db_table = tfresource['aws_dynamodb_table.otm_session']['primary']['id']
-        stat_bucket = tfresource['aws_s3_bucket.otm_stats']['primary']['id']
-        config_bucket = tfresource['aws_s3_bucket.otm_config']['primary']['id']
-        job_queue = tfresource['aws_batch_job_queue.otm']['primary']['id']
-        job_definition = tfresource['aws_batch_job_definition.otm_data_retriever']['primary']['id']
-        bq_dataset = tfresource['google_bigquery_dataset.dataset']['primary']['attributes']['dataset_id']
-
         env['OTM_BUCKET'] = script_bucket
         env['OTM_URL'] = 'https://%s/otm.js' % script_domain
         env['COLLECT_URL'] = 'https://%s/collect.html' % collect_domain
@@ -51,7 +65,6 @@ def main():
         env['STATS_GCLOUD_KEY_NAME'] = 'account.json'
         env['STATS_BQ_DATASET'] = bq_dataset
         env['STATS_BQ_TABLE_PREFIX'] = 'otm'
-
 
     repository_url = tfresource['aws_ecr_repository.otm_data_retriever']['primary']['attributes']['repository_url']
 
@@ -67,7 +80,6 @@ def main():
 
     with open('./client_apis/.chalice/policy-dev.json', 'r') as f:
         config = json.load(f)
-        dynamo_db_table_arn = tfresource['aws_dynamodb_table.otm_session']['primary']['attributes']['arn']
         config['Statement'][1]['Resource'][0] = "arn:aws:s3:::%s/*" % script_bucket
         config['Statement'][1]['Resource'][1] = "arn:aws:s3:::%s" % script_bucket
         config['Statement'][2]['Resource'][0] = dynamo_db_table_arn
@@ -80,8 +92,7 @@ def main():
     with open('./client_apis/.chalice/deployed/dev.json', 'r') as f:
         api_resource = json.load(f)
 
-    client_bucket = tfresource['aws_s3_bucket.otm_client']['primary']['id']
-    client_domain = tfresource['aws_cloudfront_distribution.otm_client_distribution']['primary']['attributes']['domain_name']
+
     subprocess.call(['yarn', 'install'], cwd='./client')
     subprocess.call(['npm', 'run', 'build'], env={
         'NODE_ENV': 'production',
@@ -93,8 +104,7 @@ def main():
     subprocess.call(['aws', 's3', 'sync', './client/dist/', 's3://%s/' % client_bucket, '--acl=public-read'])
 
     with open('./s3weblog2athena/config/dev.yml', 'r') as f:
-        collect_log_bucket = tfresource['aws_s3_bucket.otm_collect_log']['primary']['id']
-        sns_arn = tfresource['aws_sns_topic.otm_collect_log_topic']['primary']['id']
+
         config = yaml.load(f)
         config['TO_S3_BUCKET'] = collect_log_bucket
         config['TO_S3_PREFIX'] = 'cflog_transformed/'
@@ -109,20 +119,18 @@ def main():
     subprocess.call(['sls', 'deploy', '--stage=dev', '--region=%s' % os.environ.get('AWS_DEFAULT_REGION')], cwd='./s3weblog2athena')
 
     with open('./athena2bigquery/config/athena2bigquery-config.yml', 'r') as f:
-        gc_project_id = tfresource['google_bigquery_dataset.dataset']['primary']['attributes']['project']
-
         config = yaml.load(f)
         config['gcloud']['projectId'] = gc_project_id
         config['gcloud']['bigquery']['dataset'] = bq_dataset
         config['gcloud']['bigquery']['tableNamePrefix'] = 'otm'
         config['gcloud']['storage']['bucket'] = 'hoge'
-        config['aws']['s3']['athena_result_bucket'] = config_bucket
-        config['aws']['s3']['athena_result_prefix'] = 'athena/'
+        config['aws']['s3']['athena_result_bucket'] = athena_bucket
+        config['aws']['s3']['athena_result_prefix'] = ''
         config['aws']['s3']['schema_bucket'] = config_bucket
         config['aws']['s3']['schema_object'] = 'athena2bigquery-schema.json'
-        config['aws']['athena']['database'] = ''
-        config['aws']['athena']['table'] = ''
-        config['aws']['athena']['region'] = ''
+        config['aws']['athena']['database'] = athena_database
+        config['aws']['athena']['table'] = 'otm_collect'
+        config['aws']['athena']['region'] = os.environ.get('AWS_DEFAULT_REGION')
         config['partition'] = ''
         config['parser'] = {}
 
@@ -147,8 +155,8 @@ def main():
     # with open('./athena2bigquery/trigger/config/dev.yml', 'w') as f:
     #     f.write(yaml.dump(config, default_flow_style=False))
 
-    subprocess.call(['yarn', 'install'], cwd='./athena2bigquery/trigger')
-    subprocess.call(['sls', 'deploy', '--stage=dev', '--region=%s' % os.environ.get('AWS_DEFAULT_REGION')], cwd='./athena2bigquery/trigger')
+    # subprocess.call(['yarn', 'install'], cwd='./athena2bigquery/trigger')
+    # subprocess.call(['sls', 'deploy', '--stage=dev', '--region=%s' % os.environ.get('AWS_DEFAULT_REGION')], cwd='./athena2bigquery/trigger')
 
     print("Deployed: https://%s/" % client_domain)
 
