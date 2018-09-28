@@ -94,6 +94,35 @@ resource "aws_cloudfront_distribution" "otm_collect_distribution" {
   }
 }
 
+resource "aws_sns_topic"  "otm_collect_log_topic" {
+  name = "otm-collect-log-topic"
+
+  policy = <<POLICY
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {"AWS": "*"},
+    "Action": "SNS:Publish",
+    "Resource": "arn:aws:sns:*:*:otm-collect-log-topic",
+    "Condition": {
+      "ArnLike": {"aws:SourceArn":"${aws_s3_bucket.otm_collect_log.arn}"}
+    }
+  }]
+}
+POLICY
+}
+
+resource "aws_s3_bucket_notification" "otm_collect_log_notification" {
+  bucket = "${aws_s3_bucket.otm_collect_log.id}"
+
+  topic = {
+    topic_arn = "${aws_sns_topic.otm_collect_log_topic.arn}"
+    events    = ["s3:ObjectCreated:*"],
+    filter_prefix = "cflog/"
+  }
+}
+
 resource "aws_s3_bucket" "otm_script" {
   bucket = "${var.aws_s3_bucket_prefix}-otm-script"
   acl = "private"
@@ -337,6 +366,10 @@ resource "aws_ecr_repository" "otm_data_retriever" {
   name = "otm-data-retriever"
 }
 
+resource "aws_ecr_repository" "otm_athena2bigquery" {
+  name = "otm-athena2bigquery"
+}
+
 resource "aws_batch_compute_environment" "compute_environment" {
   compute_environment_name = "otm-compute-env"
   compute_resources {
@@ -371,6 +404,27 @@ resource "aws_batch_job_definition" "otm_data_retriever" {
   "vcpus": 2,
   "volumes": [],
   "environment": [],
+  "mountPoints": [],
+  "ulimits": []
+}
+CONTAINER_PROPERTIES
+}
+
+resource "aws_batch_job_definition" "otm_athena2bigquery" {
+  name = "otm_athena2bigquery_job_definition"
+  type = "container"
+  container_properties = <<CONTAINER_PROPERTIES
+{
+  "command": [],
+  "image": "${aws_ecr_repository.otm_athena2bigquery.repository_url}:latest",
+  "memory": 2000,
+  "vcpus": 2,
+  "volumes": [],
+  "environment": [
+    {"name": "CONFIG_BUCKET", "value": "${aws_s3_bucket.otm_config.id}"},
+    {"name": "CONFIG_KEY", "value": "athena2bigquery-config.yml"},
+    {"name": "GCLOUD_KEY", "value": "${aws_s3_bucket_object.gc_key.key}"}
+  ],
   "mountPoints": [],
   "ulimits": []
 }
