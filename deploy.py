@@ -149,6 +149,58 @@ def main():
     subprocess.call(['docker', 'tag', 'otm-athena2bigquery:latest', '%s:latest' % repository_url], cwd='./athena2bigquery')
     subprocess.call(['docker', 'push', '%s:latest' % repository_url], cwd='./athena2bigquery')
 
+
+    athena_query = '''
+CREATE EXTERNAL TABLE IF NOT EXISTS %s.otm_collect (
+  `date` string,
+  `time` string,
+  `x_edge_location` string,
+  `sc_bytes` string,
+  `c_ip` string,
+  `cs_method` string,
+  `cs_host` string,
+  `cs_uri_stem` string,
+  `cs_status` string,
+  `cs_referer` string,
+  `cs_user_agent` string,
+  `cs_uri-query` string,
+  `cs_cookie` string,
+  `cs_x_edge_result_type` string,
+  `cs_x_edge_request_id` string,
+  `x_host_header` string,
+  `cs_protocol` string,
+  `cs_bytes` string,
+  `time_taken` string,
+  `x_forwarded_for` string,
+  `ssl_protocol` string,
+  `ssl_cipher` string,
+  `x_edge_response_result_type` string,
+  `cs_protocol_version` string,
+  `fle_status` string,
+  `fle_encrypted_fields` string
+) PARTITIONED BY (
+  year int,
+  month int,
+  day int
+)
+ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe'
+WITH SERDEPROPERTIES (
+  'serialization.format' = '	',
+  'field.delim' = '	'
+) LOCATION 's3://%s/cflog_transformed/'
+TBLPROPERTIES ('has_encrypted_data'='false');
+''' % (athena_database, collect_log_bucket)
+
+    subprocess.call([
+        'aws',
+        'athena',
+        'start-query-execution',
+        '--query-string',
+        athena_query,
+        '--result-configuration',
+        'OutputLocation=s3://%s/deploy' % athena_bucket
+    ])
+
     # with open('./athena2bigquery/trigger/config/dev.yml', 'r') as f:
     #     job_definition = tfresource['aws_batch_job_definition.otm_athena2bigquery']['primary']['id']
     #     config = yaml.load(f)
