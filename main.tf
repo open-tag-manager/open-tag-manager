@@ -440,11 +440,71 @@ resource "aws_batch_job_queue" "otm" {
   ]
 }
 
+resource "aws_iam_role" "scheduled_batch" {
+  name = "otm-scheduled-batch"
+  assume_role_policy = <<DOC
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "events.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+DOC
+}
+
+resource "aws_iam_role_policy" "scheduled_batch" {
+  name = "otm-scheduled-batch-policy"
+  role = "${aws_iam_role.scheduled_batch.id}"
+  policy = <<DOC
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "batch:SubmitJob"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+DOC
+}
+
+resource "aws_cloudwatch_event_rule" "athena2bigquery" {
+  name = "ExecuteAthena2BigQuery"
+  description = "Execute Athen2BigQuery"
+  schedule_expression = "cron(0 2 * * ? *)"
+  is_enabled = false
+}
+
+resource "aws_cloudwatch_event_target" "athena2bigquery" {
+  rule = "${aws_cloudwatch_event_rule.athena2bigquery.name}"
+  arn = "${aws_batch_job_queue.otm.arn}"
+  role_arn = "${aws_iam_role.scheduled_batch.arn}"
+  batch_target = {
+    job_definition = "${aws_batch_job_definition.otm_athena2bigquery.arn}"
+    job_name = "athena2bigquery-daily"
+  }
+}
+
 resource "google_bigquery_dataset" "dataset" {
   dataset_id = "open_tag_manager"
   friendly_name = "open_tag_manager"
   description = "open tag manager dataset"
   location = "${var.google_bigquery_dataset_location}"
+}
+
+resource "google_storage_bucket" "bucket" {
+  name = "${var.aws_s3_bucket_prefix}-open-tag-manager"
+  location = "${var.google_storage_location}"
 }
 
 resource "aws_s3_bucket" "otm_athena" {

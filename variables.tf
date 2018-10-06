@@ -8,3 +8,4 @@ variable "google_region" {}
 variable "aws_s3_bucket_prefix" {}
 
 variable "google_bigquery_dataset_location" {}
+variable "google_storage_location" {}

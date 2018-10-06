@@ -34,6 +34,7 @@ def main():
 
     gc_project_id = tfresource['google_bigquery_dataset.dataset']['primary']['attributes']['project']
     bq_dataset = tfresource['google_bigquery_dataset.dataset']['primary']['attributes']['dataset_id']
+    gc_storage = tfresource['google_storage_bucket.bucket']['primary']['attributes']['id']
 
     sns_arn = tfresource['aws_sns_topic.otm_collect_log_topic']['primary']['id']
 
@@ -127,7 +128,7 @@ def main():
         config['gcloud']['projectId'] = gc_project_id
         config['gcloud']['bigquery']['dataset'] = bq_dataset
         config['gcloud']['bigquery']['tableNamePrefix'] = 'otm'
-        config['gcloud']['storage']['bucket'] = 'hoge'
+        config['gcloud']['storage']['bucket'] = gc_storage
         config['aws']['s3']['athena_result_bucket'] = athena_bucket
         config['aws']['s3']['athena_result_prefix'] = ''
         config['aws']['s3']['schema_bucket'] = config_bucket
@@ -135,20 +136,26 @@ def main():
         config['aws']['athena']['database'] = athena_database
         config['aws']['athena']['table'] = 'otm_collect'
         config['aws']['athena']['region'] = os.environ.get('AWS_DEFAULT_REGION')
+        config['log_type'] = 'cloudfront'
         config['partition'] = ''
-        config['parser'] = {}
+        config['parser'] = {
+            'queryToJson': {
+                'qs_json': {
+                    'target': 'cs_uri_query'
+                }
+            }
+        }
 
     with open('./athena2bigquery/config/athena2bigquery-config.yml', 'w') as f:
         f.write(yaml.dump(config, default_flow_style=False))
 
     subprocess.call(['aws', 's3', 'cp', './athena2bigquery/config/athena2bigquery-config.yml', 's3://%s/athena2bigquery-config.yml' % config_bucket, '--sse'])
-    subprocess.call(['aws', 's3', 'cp', './athena2bigquery/config/schema.json', 's3://%s/athena2bigquery-schema.json' % config_bucket, '--sse'])
+    subprocess.call(['aws', 's3', 'cp', './athena2bigquery/config/schema_cf.json', 's3://%s/athena2bigquery-schema.json' % config_bucket, '--sse'])
 
     repository_url = tfresource['aws_ecr_repository.otm_athena2bigquery']['primary']['attributes']['repository_url']
     subprocess.call(['docker', 'build', '-t', 'otm-athena2bigquery', '.'], cwd='./athena2bigquery')
     subprocess.call(['docker', 'tag', 'otm-athena2bigquery:latest', '%s:latest' % repository_url], cwd='./athena2bigquery')
     subprocess.call(['docker', 'push', '%s:latest' % repository_url], cwd='./athena2bigquery')
-
 
     athena_query = '''
 CREATE EXTERNAL TABLE IF NOT EXISTS %s.otm_collect (
@@ -163,7 +170,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS %s.otm_collect (
   `cs_status` string,
   `cs_referer` string,
   `cs_user_agent` string,
-  `cs_uri-query` string,
+  `cs_uri_query` string,
   `cs_cookie` string,
   `cs_x_edge_result_type` string,
   `cs_x_edge_request_id` string,
@@ -200,19 +207,6 @@ TBLPROPERTIES ('has_encrypted_data'='false');
         '--result-configuration',
         'OutputLocation=s3://%s/deploy' % athena_bucket
     ])
-
-    # with open('./athena2bigquery/trigger/config/dev.yml', 'r') as f:
-    #     job_definition = tfresource['aws_batch_job_definition.otm_athena2bigquery']['primary']['id']
-    #     config = yaml.load(f)
-    #     config['JOB_NAME_BASE'] = 'otm-athena2bigquery'
-    #     config['JOB_QUEUE'] = job_queue
-    #     config['JOB_DEFINITION'] = job_definition
-
-    # with open('./athena2bigquery/trigger/config/dev.yml', 'w') as f:
-    #     f.write(yaml.dump(config, default_flow_style=False))
-
-    # subprocess.call(['yarn', 'install'], cwd='./athena2bigquery/trigger')
-    # subprocess.call(['sls', 'deploy', '--stage=dev', '--region=%s' % os.environ.get('AWS_DEFAULT_REGION')], cwd='./athena2bigquery/trigger')
 
     print("Deployed: https://%s/" % client_domain)
 
