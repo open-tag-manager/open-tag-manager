@@ -7,7 +7,7 @@ import os
 from getpass import getpass
 
 def main():
-    # 1. deploy infra
+    print('1. deploy infra')
     subprocess.call(['npm', 'run', 'build'], env={'NODE_ENV': 'production', 'PATH': os.environ.get('PATH')})
     subprocess.call(['terraform', 'apply'])
 
@@ -46,7 +46,7 @@ def main():
     shutil.copy('./athena2bigquery/config/sample.yml', './athena2bigquery/config/athena2bigquery-config.yml')
     shutil.copy('./athena2bigquery/trigger/config/sample.yml', './athena2bigquery/trigger/config/dev.yml')
 
-    # 2. deploy client API
+    print('2. deploy client API')
     with open('./client_apis/.chalice/config.json', 'r') as f:
         config = json.load(f)
         env = config['environment_variables']
@@ -81,11 +81,11 @@ def main():
     with open('./client_apis/.chalice/policy-dev.json', 'w') as f:
         json.dump(config, f, indent=4)
 
+    subprocess.call(['pip', 'install', '-r', 'requirements.txt'], cwd='./client_apis')
     subprocess.call(['chalice', 'deploy', '--no-autogen-policy'], cwd='./client_apis')
 
-    # 3. deploy data_retriever
+    print('3. deploy data_retriever')
     repository_url = tfresource['aws_ecr_repository.otm_data_retriever']['primary']['attributes']['repository_url']
-
     p = subprocess.Popen(['aws', 'ecr', 'get-login', '--no-include-email'], stdout=subprocess.PIPE)
     p.wait()
     subprocess.call(p.stdout.readlines()[0].decode('utf-8').split())
@@ -93,7 +93,7 @@ def main():
     subprocess.call(['docker', 'tag', 'otm-data-retriever:latest', '%s:latest' % repository_url], cwd='./data_retriever')
     subprocess.call(['docker', 'push', '%s:latest' % repository_url], cwd='./data_retriever')
 
-    # 4. deploy client frontend
+    print('4. deploy client frontend')
     with open('./client_apis/.chalice/deployed/dev.json', 'r') as f:
         api_resource = json.load(f)
 
