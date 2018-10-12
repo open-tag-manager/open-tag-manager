@@ -389,7 +389,8 @@
           g.setEdge(sourceIdx, targetIdx, {
             label: o[countFieldName],
             style: `stroke-width: ${width}px;`,
-            arrowheadClass: 'arrowhead'
+            arrowheadClass: 'arrowhead',
+            curve: d3.curveBasis
           })
         })
 
