@@ -213,11 +213,19 @@
 
       const matched = paths.match(path)
       if (matched) {
+        const e = _.find(data, {url: d.url, p_state: d.p_state, state: d.state})
+        if (e) {
+          e.count += d.count
+          d.url = null
+        }
+
         d.url = matched.path.path
       }
     }
 
-    return data
+    return _.reject(data, (d) => {
+      return d.url === null
+    })
   }
 
   export default {
