@@ -9,6 +9,8 @@ from getpass import getpass
 def main():
     print('1. deploy infra')
     subprocess.call(['npm', 'run', 'build'], env={'NODE_ENV': 'production', 'PATH': os.environ.get('PATH')})
+
+    subprocess.call(['terraform', 'init'])
     subprocess.call(['terraform', 'apply'])
 
     with open('./terraform.tfstate') as f:
@@ -107,7 +109,7 @@ def main():
     }, cwd='./client')
     subprocess.call(['aws', 's3', 'sync', './client/dist/', 's3://%s/' % client_bucket, '--acl=public-read'])
 
-    # 5. deploy s3weblog2athena
+    print('5. deploy s3weblog2athena')
     with open('./s3weblog2athena/config/dev.yml', 'r') as f:
         config = yaml.load(f)
         config['TO_S3_BUCKET'] = collect_log_bucket
@@ -122,7 +124,7 @@ def main():
     subprocess.call(['yarn', 'install'], cwd='./s3weblog2athena')
     subprocess.call(['sls', 'deploy', '--stage=dev', '--region=%s' % os.environ.get('AWS_DEFAULT_REGION')], cwd='./s3weblog2athena')
 
-    # 6. deploy athena2bigquery
+    print('6. deploy athena2bigquery')
     with open('./athena2bigquery/config/athena2bigquery-config.yml', 'r') as f:
         config = yaml.load(f)
         config['gcloud']['projectId'] = gc_project_id
