@@ -1,4 +1,4 @@
-FROM python:stretch
+FROM python:3.6.6-stretch
 
 
 RUN apt-get update; apt-get -y install unzip apt-transport-https \
