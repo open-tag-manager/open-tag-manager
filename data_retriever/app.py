@@ -24,7 +24,7 @@ class DataRetriever:
         client = bigquery.Client(project=credential.project_id, credentials=credential)
 
         q = ''
-        q += ' AND JSON_EXTRACT_SCALAR(qs_json, "$.tid") = "%s"' % self.options['query_tid']
+        q += 'JSON_EXTRACT_SCALAR(qs_json, "$.tid") = "%s"' % self.options['query_tid']
         q += ' AND datetime >= MSEC_TO_TIMESTAMP(%s)' % self.options['query_stime']
         q += ' AND datetime < MSEC_TO_TIMESTAMP(%s)' % self.options['query_etime']
 
@@ -37,8 +37,7 @@ JSON_EXTRACT_SCALAR(qs_json, "$.el") AS label,
 JSON_EXTRACT_SCALAR(qs_json, "$.o_xpath") AS xpath,
 COUNT(qs_json) AS c
 FROM TABLE_DATE_RANGE([%s.%s_], TIMESTAMP('%s'), TIMESTAMP('%s'))
-WHERE operation = "REST.GET.OBJECT"
-%s
+WHERE %s
 GROUP BY url, title, state, p_state, label, xpath
 """ % (self.options['bq_dataset'],
        self.options['bq_table_prefix'],

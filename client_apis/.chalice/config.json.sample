@@ -3,7 +3,7 @@
   "app_name": "open_tag_manager",
   "api_gateway_stage": "api",
   "environment_variables": {
-    "ROOT_PASSWORD_HASH": "ROOT_PASSWORD_HASH",
+    "ROOT_PASSWORD_HASH": "",
     "OTM_BUCKET": "OTM_BUCKETt",
     "OTM_URL": "https://s3.amazonaws.com/OTM_BUCKET/otm.js",
     "COLLECT_URL": "https://s3.amazonaws.com/OTM_BUCKET_COLLECT/collect.html",

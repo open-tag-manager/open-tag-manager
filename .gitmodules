@@ -1,0 +1,6 @@
+[submodule "athena2bigquery"]
+	path = athena2bigquery
+	url = https://github.com/open-tag-manager/athena2bigquery
+[submodule "s3weblog2athena"]
+	path = s3weblog2athena
+	url = https://github.com/open-tag-manager/s3weblog2athena

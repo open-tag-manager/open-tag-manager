@@ -1,4 +1,8 @@
 node_modules/
 .idea/
 dist/
-
+terraform.tfstate
+terraform.tfstate.backup
+account.json
+.terraform/
+terraform.tfvars
