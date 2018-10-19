@@ -188,6 +188,8 @@ def put_container(name):
     uploader.upload_script(name + '.js', script)
 
     data['script'] = uploader.script_url()
+    if os.environ.get('OTM_SCRIPT_CDN'):
+        data['script'] = uploader.script_url_cdn(os.environ.get('OTM_SCRIPT_CDN'))
 
     put_config_data(config)
     put_container_data(name, data)

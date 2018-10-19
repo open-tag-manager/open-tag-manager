@@ -64,6 +64,7 @@ def main():
         env['OTM_SESSION_DYNAMODB_TABLE'] = dynamo_db_table
         env['OTM_STATS_BUCKET'] = stat_bucket
         env['OTM_STATS_PREFIX'] = 'stats/'
+        env['OTM_SCRIPT_CDN'] = 'https://%s' % script_domain
         env['STATS_BATCH_JOB_QUEUE'] = job_queue
         env['STATS_BATCH_JOB_DEFINITION'] = job_definition
         env['STATS_CONFIG_BUCKET'] = config_bucket

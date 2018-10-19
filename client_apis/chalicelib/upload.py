@@ -50,6 +50,9 @@ class S3Uploader:
             self._script_bucket,
             self._script_name)
 
+    def script_url_cdn(self, cdn):
+        return '%s/%s' % (cdn, self._script_name)
+
 
 def main():
     parser = argparse.ArgumentParser(description='Upload scripts to S3')
