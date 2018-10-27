@@ -184,6 +184,15 @@ resource "aws_cloudfront_distribution" "otm_script_distribution" {
 resource "aws_s3_bucket" "otm_stats" {
   bucket = "${var.aws_s3_bucket_prefix}-otm-stats"
   acl = "private"
+
+  cors_rule = {
+    allowed_headers = []
+    allowed_methods = [
+      "GET"]
+    allowed_origins = [
+      "*"]
+    expose_headers = []
+  }
 }
 
 resource "aws_s3_bucket" "otm_client" {
