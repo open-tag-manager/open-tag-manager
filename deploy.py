@@ -77,8 +77,11 @@ def main():
 
     with open('./client_apis/.chalice/policy-dev.json', 'r') as f:
         config = json.load(f)
-        config['Statement'][1]['Resource'][0] = "arn:aws:s3:::%s/*" % script_bucket
-        config['Statement'][1]['Resource'][1] = "arn:aws:s3:::%s" % script_bucket
+        config['Statement'][1]['Resource'] = []
+        config['Statement'][1]['Resource'].append('arn:aws:s3:::%s/*' % script_bucket)
+        config['Statement'][1]['Resource'].append('arn:aws:s3:::%s' % script_bucket)
+        config['Statement'][1]['Resource'].append('arn:aws:s3::%s/*' % stat_bucket)
+        config['Statement'][1]['Resource'].append('arn:aws:s3::%s' % stat_bucket)
         config['Statement'][2]['Resource'][0] = dynamo_db_table_arn
 
     with open('./client_apis/.chalice/policy-dev.json', 'w') as f:
