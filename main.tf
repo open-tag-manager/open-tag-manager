@@ -288,9 +288,89 @@ resource "aws_iam_role" "ecs_instance_role" {
 EOF
 }
 
+resource "aws_iam_policy" "log_stat_s3_access_policy" {
+  name        = "otm_log_stat_s3_access_policy"
+  description = "Open Tag Manager S3 Policy"
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+        "Effect": "Allow",
+        "Action": [
+            "athena:*"
+        ],
+        "Resource": [
+            "*"
+        ]
+    },
+    {
+        "Effect": "Allow",
+        "Action": [
+            "glue:CreateDatabase",
+            "glue:DeleteDatabase",
+            "glue:GetDatabase",
+            "glue:GetDatabases",
+            "glue:UpdateDatabase",
+            "glue:CreateTable",
+            "glue:DeleteTable",
+            "glue:BatchDeleteTable",
+            "glue:UpdateTable",
+            "glue:GetTable",
+            "glue:GetTables",
+            "glue:BatchCreatePartition",
+            "glue:CreatePartition",
+            "glue:DeletePartition",
+            "glue:BatchDeletePartition",
+            "glue:UpdatePartition",
+            "glue:GetPartition",
+            "glue:GetPartitions",
+            "glue:BatchGetPartition"
+        ],
+        "Resource": [
+            "*"
+        ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+          "s3:DeleteObject",
+          "s3:GetObject",
+          "s3:GetObjectVersion",
+          "s3:GetObjectTagging",
+          "s3:GetObjectVersionTagging",
+          "s3:PutObject",
+          "s3:PutObjectAcl",
+          "s3:PutObjectTagging",
+          "s3:PutObjectVersionTagging",
+          "s3:ListBucket",
+          "s3:ListBucketVersions",
+          "s3:GetBucketLocation"
+      ],
+      "Resource": [
+        "${aws_s3_bucket.otm_collect_log.arn}/*",
+        "${aws_s3_bucket.otm_collect_log.arn}",
+        "${aws_s3_bucket.otm_stats.arn}/*",
+        "${aws_s3_bucket.otm_stats.arn}",
+        "${aws_s3_bucket.otm_config.arn}/*",
+        "${aws_s3_bucket.otm_config.arn}",
+        "${aws_s3_bucket.otm_athena.arn}/*",
+        "${aws_s3_bucket.otm_athena.arn}"
+      ]
+    }
+  ]
+}
+EOF
+}
+
 resource "aws_iam_role_policy_attachment" "ecs_instance_role" {
   role = "${aws_iam_role.ecs_instance_role.name}"
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_instance_role_s3" {
+  role = "${aws_iam_role.ecs_instance_role.name}"
+  policy_arn = "${aws_iam_policy.log_stat_s3_access_policy.arn}"
 }
 
 resource "aws_iam_instance_profile" "ecs_instance_role" {
