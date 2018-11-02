@@ -15,6 +15,8 @@
           <div><span class="label">XPath:</span> {{node.xpath}}</div>
         </div>
 
+        <b-form-select v-model="url" :options="urls" @change="r"></b-form-select>
+
         <b-form-group label="Enabled Statuses" class="status-filter">
           <b-form-checkbox-group id="enabled-statuses" v-model="enabledStatues"
                                  :options="statuses" @input="r"></b-form-checkbox-group>
@@ -140,6 +142,22 @@
     return results
   }
 
+  const getUrls = (data) => {
+    const urls = []
+    for (let d of data) {
+      if (d.url && !_.includes(urls, d.url)) {
+        urls.push(d.url)
+      }
+    }
+    return urls
+  }
+
+  const filterByUrl = (data, url) => {
+    return _.filter(data, (d) => {
+      return d.url === url
+    })
+  }
+
   const skipData = (data, skipStatePatterns = []) => {
     const cData = _.cloneDeep(data)
     // Mark as skip
@@ -245,7 +263,9 @@
         statuses: _.keys(statusPatterns),
         enabledStatues: _.difference(_.keys(statusPatterns), ['timer', 'scroll']),
         isExpanded: false,
-        swaggerDoc: ''
+        swaggerDoc: '',
+        urls: [],
+        url: null
       }
     },
     computed: {
@@ -291,6 +311,11 @@
         const data = await axios.get(stat.url)
         this.rawGraphData = data.data.result
         this.node = null
+        this.urls = getUrls(this.rawGraphData)
+        if (this.urls.length === 0) {
+          return
+        }
+        this.url = this.urls[0]
         this.render()
       },
       expand () {
@@ -304,6 +329,8 @@
         const self = this
 
         this.graphData = _.cloneDeep(this.rawGraphData)
+        this.graphData = filterByUrl(this.graphData, this.url)
+        console.log(this.graphData)
         this.graphData = skipData(this.graphData, _.values(_.pick(statusPatterns, _.difference(this.statuses, this.enabledStatues))))
         this.graphData = convertUrl(this.graphData, this.swaggerDoc)
 
