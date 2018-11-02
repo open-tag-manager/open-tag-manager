@@ -15,7 +15,7 @@
           <div><span class="label">XPath:</span> {{node.xpath}}</div>
         </div>
 
-        <b-form-select v-model="url" :options="urls" @change="r"></b-form-select>
+        <b-form-select v-model="url" :options="urls" @input="r"></b-form-select>
 
         <b-form-group label="Enabled Statuses" class="status-filter">
           <b-form-checkbox-group id="enabled-statuses" v-model="enabledStatues"
@@ -153,9 +153,29 @@
   }
 
   const filterByUrl = (data, url) => {
-    return _.filter(data, (d) => {
-      return d.url === url
+    const relatedNodesS = []
+    const relatedNodesT = []
+    const newData = _.filter(data, (d) => {
+      if (d.url === url) {
+        relatedNodesS.push(d[sourceFieldName])
+        relatedNodesT.push(d[targetFieldName])
+        return true
+      }
+
+      return false
     })
+
+    _.each(data, (d) => {
+      if (d.url === url) {
+        return
+      }
+
+      if (_.includes(relatedNodesT, d[sourceFieldName]) || _.includes(relatedNodesS, d[targetFieldName])) {
+        newData.push(d)
+      }
+    })
+
+    return newData
   }
 
   const skipData = (data, skipStatePatterns = []) => {
@@ -261,7 +281,7 @@
         timezone: 'UTC',
         timezones: moment.tz.names(),
         statuses: _.keys(statusPatterns),
-        enabledStatues: _.difference(_.keys(statusPatterns), ['timer', 'scroll']),
+        enabledStatues: _.difference(_.keys(statusPatterns), ['click_trivial', 'timer', 'scroll']),
         isExpanded: false,
         swaggerDoc: '',
         urls: [],
@@ -330,9 +350,14 @@
 
         this.graphData = _.cloneDeep(this.rawGraphData)
         this.graphData = filterByUrl(this.graphData, this.url)
-        console.log(this.graphData)
         this.graphData = skipData(this.graphData, _.values(_.pick(statusPatterns, _.difference(this.statuses, this.enabledStatues))))
         this.graphData = convertUrl(this.graphData, this.swaggerDoc)
+
+        if (this.graphData.length === 0) {
+          console.log('no data to render')
+          return
+        }
+        console.log(this.graphData.length)
 
         const cl = d3.select('#graph')
         const width = cl.node().clientWidth
