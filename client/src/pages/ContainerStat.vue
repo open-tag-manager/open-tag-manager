@@ -15,6 +15,8 @@
           <div><span class="label">XPath:</span> {{node.xpath}}</div>
         </div>
 
+        <b-form-select v-model="url" :options="urls" @input="r"></b-form-select>
+
         <b-form-group label="Enabled Statuses" class="status-filter">
           <b-form-checkbox-group id="enabled-statuses" v-model="enabledStatues"
                                  :options="statuses" @input="r"></b-form-checkbox-group>
@@ -140,6 +142,42 @@
     return results
   }
 
+  const getUrls = (data) => {
+    const urls = []
+    for (let d of data) {
+      if (d.url && !_.includes(urls, d.url)) {
+        urls.push(d.url)
+      }
+    }
+    return urls
+  }
+
+  const filterByUrl = (data, url) => {
+    const relatedNodesS = []
+    const relatedNodesT = []
+    const newData = _.filter(data, (d) => {
+      if (d.url === url) {
+        relatedNodesS.push(d[sourceFieldName])
+        relatedNodesT.push(d[targetFieldName])
+        return true
+      }
+
+      return false
+    })
+
+    _.each(data, (d) => {
+      if (d.url === url) {
+        return
+      }
+
+      if (_.includes(relatedNodesT, d[sourceFieldName]) || _.includes(relatedNodesS, d[targetFieldName])) {
+        newData.push(d)
+      }
+    })
+
+    return newData
+  }
+
   const skipData = (data, skipStatePatterns = []) => {
     const cData = _.cloneDeep(data)
     // Mark as skip
@@ -243,9 +281,11 @@
         timezone: 'UTC',
         timezones: moment.tz.names(),
         statuses: _.keys(statusPatterns),
-        enabledStatues: _.difference(_.keys(statusPatterns), ['timer', 'scroll']),
+        enabledStatues: _.difference(_.keys(statusPatterns), ['click_trivial', 'timer', 'scroll']),
         isExpanded: false,
-        swaggerDoc: ''
+        swaggerDoc: '',
+        urls: [],
+        url: null
       }
     },
     computed: {
@@ -291,6 +331,11 @@
         const data = await axios.get(stat.url)
         this.rawGraphData = data.data.result
         this.node = null
+        this.urls = getUrls(this.rawGraphData)
+        if (this.urls.length === 0) {
+          return
+        }
+        this.url = this.urls[0]
         this.render()
       },
       expand () {
@@ -304,8 +349,15 @@
         const self = this
 
         this.graphData = _.cloneDeep(this.rawGraphData)
+        this.graphData = filterByUrl(this.graphData, this.url)
         this.graphData = skipData(this.graphData, _.values(_.pick(statusPatterns, _.difference(this.statuses, this.enabledStatues))))
         this.graphData = convertUrl(this.graphData, this.swaggerDoc)
+
+        if (this.graphData.length === 0) {
+          console.log('no data to render')
+          return
+        }
+        console.log(this.graphData.length)
 
         const cl = d3.select('#graph')
         const width = cl.node().clientWidth
