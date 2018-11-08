@@ -1,10 +1,15 @@
+variable "prefix" {
+  default = ""
+}
 variable "aws_access_key" {}
 variable "aws_secret_key" {}
 variable "aws_region" {}
 variable "aws_batch_timeout" {
   default = 1800
 }
-
+variable "aws_cloudwatch_schedule_enabled" {
+  default = false
+}
 variable "google_project_id" {}
 variable "google_region" {}
 

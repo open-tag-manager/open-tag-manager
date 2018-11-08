@@ -95,7 +95,7 @@ resource "aws_cloudfront_distribution" "otm_collect_distribution" {
 }
 
 resource "aws_sns_topic"  "otm_collect_log_topic" {
-  name = "otm-collect-log-topic"
+  name = "${var.prefix}otm-collect-log-topic"
 
   policy = <<POLICY
 {
@@ -259,7 +259,7 @@ resource "aws_s3_bucket_object" "gc_key" {
 }
 
 resource "aws_dynamodb_table" "otm_session" {
-  name = "otm_session"
+  name = "${var.prefix}otm_session"
   read_capacity = 1
   write_capacity = 1
   hash_key = "session_id"
@@ -271,7 +271,7 @@ resource "aws_dynamodb_table" "otm_session" {
 }
 
 resource "aws_iam_role" "ecs_instance_role" {
-  name = "otm_ecs_instance_role"
+  name = "${var.prefix}otm_ecs_instance_role"
   assume_role_policy = <<EOF
 {
     "Version": "2012-10-17",
@@ -289,7 +289,7 @@ EOF
 }
 
 resource "aws_iam_policy" "log_stat_s3_access_policy" {
-  name        = "otm_log_stat_s3_access_policy"
+  name        = "${var.prefix}otm_log_stat_s3_access_policy"
   description = "Open Tag Manager S3 Policy"
   policy = <<EOF
 {
@@ -374,12 +374,12 @@ resource "aws_iam_role_policy_attachment" "ecs_instance_role_s3" {
 }
 
 resource "aws_iam_instance_profile" "ecs_instance_role" {
-  name = "otm_ecs_instance_role"
+  name = "${var.prefix}otm_ecs_instance_role"
   role = "${aws_iam_role.ecs_instance_role.name}"
 }
 
 resource "aws_iam_role" "aws_batch_service_role" {
-  name = "otm_aws_batch_service_role"
+  name = "${var.prefix}otm_aws_batch_service_role"
   assume_role_policy = <<EOF
 {
     "Version": "2012-10-17",
@@ -402,7 +402,7 @@ resource "aws_iam_role_policy_attachment" "aws_batch_service_role" {
 }
 
 resource "aws_security_group" "batch" {
-  name = "otm_batch_compute_environment_security_group"
+  name = "${var.prefix}otm_batch_compute_environment_security_group"
   vpc_id = "${aws_vpc.otm.id}"
   ingress {
     from_port = 0
@@ -452,15 +452,15 @@ resource "aws_route_table_association" "route_table_a" {
 }
 
 resource "aws_ecr_repository" "otm_data_retriever" {
-  name = "otm-data-retriever"
+  name = "${var.prefix}otm-data-retriever"
 }
 
 resource "aws_ecr_repository" "otm_athena2bigquery" {
-  name = "otm-athena2bigquery"
+  name = "${var.prefix}otm-athena2bigquery"
 }
 
 resource "aws_batch_compute_environment" "compute_environment" {
-  compute_environment_name = "otm-compute-env"
+  compute_environment_name = "${var.prefix}otm-compute-env"
   compute_resources {
     instance_role = "${aws_iam_instance_profile.ecs_instance_role.arn}"
     instance_type = [
@@ -483,7 +483,7 @@ resource "aws_batch_compute_environment" "compute_environment" {
 }
 
 resource "aws_batch_job_definition" "otm_data_retriever" {
-  name = "otm_data_retriever_job_definition"
+  name = "${var.prefix}otm_data_retriever_job_definition"
   type = "container"
   timeout = {
     attempt_duration_seconds = "${var.aws_batch_timeout}"
@@ -503,7 +503,7 @@ CONTAINER_PROPERTIES
 }
 
 resource "aws_batch_job_definition" "otm_athena2bigquery" {
-  name = "otm_athena2bigquery_job_definition"
+  name = "${var.prefix}otm_athena2bigquery_job_definition"
   type = "container"
   timeout = {
     attempt_duration_seconds = "${var.aws_batch_timeout}"
@@ -527,7 +527,7 @@ CONTAINER_PROPERTIES
 }
 
 resource "aws_batch_job_queue" "otm" {
-  name = "otm"
+  name = "${var.prefix}otm"
   state = "ENABLED"
   priority = 1
   compute_environments = [
@@ -536,7 +536,7 @@ resource "aws_batch_job_queue" "otm" {
 }
 
 resource "aws_iam_role" "scheduled_batch" {
-  name = "otm-scheduled-batch"
+  name = "${var.prefix}otm-scheduled-batch"
   assume_role_policy = <<DOC
 {
   "Version": "2012-10-17",
@@ -555,7 +555,7 @@ DOC
 }
 
 resource "aws_iam_role_policy" "scheduled_batch" {
-  name = "otm-scheduled-batch-policy"
+  name = "${var.prefix}otm-scheduled-batch-policy"
   role = "${aws_iam_role.scheduled_batch.id}"
   policy = <<DOC
 {
@@ -574,10 +574,10 @@ DOC
 }
 
 resource "aws_cloudwatch_event_rule" "athena2bigquery" {
-  name = "ExecuteAthena2BigQuery"
+  name = "${var.prefix}ExecuteAthena2BigQuery"
   description = "Execute Athen2BigQuery"
   schedule_expression = "cron(0 2 * * ? *)"
-  is_enabled = false
+  is_enabled = "${var.aws_cloudwatch_schedule_enabled}"
 }
 
 resource "aws_cloudwatch_event_target" "athena2bigquery" {
@@ -591,8 +591,8 @@ resource "aws_cloudwatch_event_target" "athena2bigquery" {
 }
 
 resource "google_bigquery_dataset" "dataset" {
-  dataset_id = "open_tag_manager"
-  friendly_name = "open_tag_manager"
+  dataset_id = "${var.prefix}open_tag_manager"
+  friendly_name = "${var.prefix}open_tag_manager"
   description = "open tag manager dataset"
   location = "${var.google_bigquery_dataset_location}"
 }
@@ -608,6 +608,6 @@ resource "aws_s3_bucket" "otm_athena" {
 }
 
 resource "aws_athena_database" "otm" {
-  name = "otm_a2bq"
+  name = "${var.prefix}otm_a2bq"
   bucket = "${aws_s3_bucket.otm_athena.bucket}"
 }
