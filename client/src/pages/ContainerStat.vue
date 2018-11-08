@@ -13,6 +13,8 @@
           <div><span class="label">URL:</span> {{ node.url }}</div>
           <div><span class="label">Label:</span> {{ node.label }}</div>
           <div><span class="label">XPath:</span> {{node.xpath}}</div>
+          <div><span class="label">ID:</span> {{node.a_id}}</div>
+          <div><span class="label">Class:</span> {{node.class}}</div>
         </div>
 
         <b-form-select v-model="url" :options="urls" @input="r"></b-form-select>
@@ -218,6 +220,8 @@
             newEdge.title = d.title
             newEdge.label = d.label
             newEdge.xpath = d.xpath
+            newEdge.a_id = d.a_id
+            newEdge.class = d.class
             newEdge[countFieldName] = count
             cData.push(newEdge)
           }
@@ -349,9 +353,9 @@
         const self = this
 
         this.graphData = _.cloneDeep(this.rawGraphData)
-        this.graphData = filterByUrl(this.graphData, this.url)
         this.graphData = skipData(this.graphData, _.values(_.pick(statusPatterns, _.difference(this.statuses, this.enabledStatues))))
         this.graphData = convertUrl(this.graphData, this.swaggerDoc)
+        this.graphData = filterByUrl(this.graphData, this.url)
 
         if (this.graphData.length === 0) {
           console.log('no data to render')
@@ -412,6 +416,8 @@
           nodesData[targetIdx].title = o.title
           nodesData[targetIdx].label = o.label
           nodesData[targetIdx].xpath = o.xpath
+          nodesData[targetIdx].a_id = o.a_id
+          nodesData[targetIdx].class = o.class
         })
 
         urls.forEach(function (url, idx) {

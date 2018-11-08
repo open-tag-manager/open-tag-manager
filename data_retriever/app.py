@@ -35,6 +35,8 @@ JSON_EXTRACT_SCALAR(qs_json, "$.o_s") AS state,
 JSON_EXTRACT_SCALAR(qs_json, "$.o_ps") AS p_state,
 JSON_EXTRACT_SCALAR(qs_json, "$.el") AS label,
 JSON_EXTRACT_SCALAR(qs_json, "$.o_xpath") AS xpath,
+JSON_EXTRACT_SCALAR(qs_json, "$.o_a_id") AS a_id,
+JSON_EXTRACT_SCALAR(qs_json, "$.o_a_class") AS class,
 COUNT(qs_json) AS c
 FROM TABLE_DATE_RANGE([%s.%s_], TIMESTAMP('%s'), TIMESTAMP('%s'))
 WHERE %s
@@ -53,7 +55,8 @@ GROUP BY url, title, state, p_state, label, xpath
         result = []
         for row in query_job:
             result.append({'url': row['url'], 'title': row['title'], 'state': row['state'], 'p_state': row['p_state'],
-                           'label': row['label'], 'xpath': row['xpath'], 'count': row['c']})
+                           'label': row['label'], 'xpath': row['xpath'], 'a_id': row['a_id'], 'class': row['class'],
+                           'count': row['c']})
 
         s3 = boto3.resource('s3')
         target = s3.Object(self.options['target_bucket'], self.options['target_name'])

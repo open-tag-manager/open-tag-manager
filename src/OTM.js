@@ -272,7 +272,7 @@ class OTM {
         stateSuffix += '_id=' + params.o_a_id
       }
       const shaObj = new JsSHA('SHA-1', 'TEXT')
-      shaObj.update(params.o_xpath + '_' + JSON.stringify(params))
+      shaObj.update(this.url + '_' + params.o_xpath + '_' + JSON.stringify(params))
       stateSuffix += '_hash=' + shaObj.getHash('HEX')
       params.stateSuffix = stateSuffix
 
