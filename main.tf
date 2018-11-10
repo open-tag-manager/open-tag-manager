@@ -288,6 +288,24 @@ resource "aws_iam_role" "ecs_instance_role" {
 EOF
 }
 
+resource "aws_iam_role" "ecs_task_role" {
+  name = "${var.prefix}otm_ecs_task_role"
+  assume_role_policy = <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [
+    {
+        "Action": "sts:AssumeRole",
+        "Effect": "Allow",
+        "Principal": {
+        "Service": "ecs-tasks.amazonaws.com"
+        }
+    }
+    ]
+}
+EOF
+}
+
 resource "aws_iam_policy" "log_stat_s3_access_policy" {
   name        = "${var.prefix}otm_log_stat_s3_access_policy"
   description = "Open Tag Manager S3 Policy"
@@ -368,8 +386,13 @@ resource "aws_iam_role_policy_attachment" "ecs_instance_role" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
 }
 
-resource "aws_iam_role_policy_attachment" "ecs_instance_role_s3" {
-  role = "${aws_iam_role.ecs_instance_role.name}"
+resource "aws_iam_role_policy_attachment" "esc_task_role" {
+  role = "${aws_iam_role.ecs_task_role.name}"
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_task_role_s3" {
+  role = "${aws_iam_role.ecs_task_role.name}"
   policy_arn = "${aws_iam_policy.log_stat_s3_access_policy.arn}"
 }
 
@@ -492,6 +515,7 @@ resource "aws_batch_job_definition" "otm_data_retriever" {
 {
   "command": [],
   "image": "${aws_ecr_repository.otm_data_retriever.repository_url}:latest",
+  "jobRoleArn": "${aws_iam_role.ecs_task_role.arn}",
   "memory": 2000,
   "vcpus": 2,
   "volumes": [],
@@ -512,6 +536,7 @@ resource "aws_batch_job_definition" "otm_athena2bigquery" {
 {
   "command": [],
   "image": "${aws_ecr_repository.otm_athena2bigquery.repository_url}:latest",
+  "jobRoleArn": "${aws_iam_role.ecs_task_role.arn}",
   "memory": 2000,
   "vcpus": 2,
   "volumes": [],
