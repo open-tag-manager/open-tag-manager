@@ -382,6 +382,27 @@ resource "aws_ecr_repository" "otm_athena2bigquery" {
   name = "${terraform.env}_otm-athena2bigquery"
 }
 
+resource "aws_batch_job_definition" "otm_data_retriever" {
+  name = "${terraform.env}_otm_data_retriever_job_definition"
+  type = "container"
+  timeout = {
+    attempt_duration_seconds = "${var.aws_batch_timeout}"
+  }
+  container_properties = <<CONTAINER_PROPERTIES
+{
+  "command": [],
+  "image": "${aws_ecr_repository.otm_data_retriever.repository_url}:latest",
+  "jobRoleArn": "${aws_iam_role.ecs_task_role.arn}",
+  "memory": 2000,
+  "vcpus": 2,
+  "volumes": [],
+  "environment": [],
+  "mountPoints": [],
+  "ulimits": []
+}
+CONTAINER_PROPERTIES
+}
+
 resource "aws_batch_job_definition" "otm_athena2bigquery" {
   name = "${terraform.env}_otm_athena2bigquery_job_definition"
   type = "container"

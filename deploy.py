@@ -7,6 +7,8 @@ import os
 from getpass import getpass
 
 def main():
+    environment = os.environ.get('ENV') or 'dev'
+
     print('1. deploy infra')
     subprocess.call(['npm', 'run', 'build'], env={'NODE_ENV': 'production', 'PATH': os.environ.get('PATH')})
 
@@ -14,6 +16,7 @@ def main():
     subprocess.call(['terraform', 'init'], cwd='./infra/aws-batch')
     if not os.path.exists('./infra/aws-batch/terraform.tfstate.d/shared'):
         subprocess.call(['terraform', 'woskspace', 'new', 'shared'], cwd='./infra/aws-batch')
+    subprocess.call(['terraform', 'workspace', 'select', 'shared'], cwd='./infra/aws-batch')
     subprocess.call(['terraform', 'apply', '-var-file=../../terraform.tfvars'], cwd='./infra/aws-batch')
 
     print('1.2. deploy infra')
@@ -22,15 +25,18 @@ def main():
         tfstate = json.load(f)
         tfresource = tfstate['modules'][0]['resources']
 
+    job_queue = tfresource['aws_batch_job_queue.otm']['primary']['id']
+
     subprocess.call(['terraform', 'init'], cwd='./infra/common')
-    if not os.path.exists('./infra/aws-batch/terraform.tfstate.d/' + os.environ.get('ENV')):
-        subprocess.call(['terraform', 'woskspace', 'new', os.environ.get('ENV')], cwd='./infra/common')
+    if not os.path.exists('./infra/common/terraform.tfstate.d/' + environment):
+        subprocess.call(['terraform', 'woskspace', 'new', environment], cwd='./infra/common')
+    subprocess.call(['terraform', 'workspace', 'select', environment], cwd='./infra/common')
     subprocess.call(
         ['terraform', 'apply', '-var-file=../../terraform.tfvars',
-         '-var="aws_batch_job_queue_arn=%s"' % tfresource['aws_batch_job_queue.otm']['primary']['id']],
+         '-var=aws_batch_job_queue_arn=%s' % job_queue],
         cwd='./infra/common')
 
-    with open('./infra/common/terraform.tfstate.d/%s/terraform.tfstate' % os.environ.get('ENV')) as f:
+    with open('./infra/common/terraform.tfstate.d/%s/terraform.tfstate' % environment) as f:
         tfstate = json.load(f)
         tfresource = tfstate['modules'][0]['resources']
 
@@ -48,7 +54,6 @@ def main():
     dynamo_db_table = tfresource['aws_dynamodb_table.otm_session']['primary']['id']
     dynamo_db_table_arn = tfresource['aws_dynamodb_table.otm_session']['primary']['attributes']['arn']
 
-    job_queue = tfresource['aws_batch_job_queue.otm']['primary']['id']
     job_definition = tfresource['aws_batch_job_definition.otm_data_retriever']['primary']['id']
 
     gc_project_id = tfresource['google_bigquery_dataset.dataset']['primary']['attributes']['project']
@@ -92,7 +97,7 @@ def main():
     with open('./client_apis/.chalice/config.json', 'w') as f:
         json.dump(config, f, indent=4)
 
-    with open('./client_apis/.chalice/policy-dev.json', 'r') as f:
+    with open('./client_apis/.chalice/policy-sample.json', 'r') as f:
         config = json.load(f)
         config['Statement'][1]['Resource'] = []
         config['Statement'][1]['Resource'].append('arn:aws:s3:::%s/*' % script_bucket)
@@ -101,11 +106,11 @@ def main():
         config['Statement'][1]['Resource'].append('arn:aws:s3:::%s' % stat_bucket)
         config['Statement'][2]['Resource'][0] = dynamo_db_table_arn
 
-    with open('./client_apis/.chalice/policy-dev.json', 'w') as f:
+    with open('./client_apis/.chalice/policy-%s.json' % environment, 'w') as f:
         json.dump(config, f, indent=4)
 
     subprocess.call(['pip', 'install', '-r', 'requirements.txt'], cwd='./client_apis')
-    subprocess.call(['chalice', 'deploy', '--no-autogen-policy'], cwd='./client_apis')
+    subprocess.call(['chalice', 'deploy', '--no-autogen-policy', '--stage=%s' % environment], cwd='./client_apis')
 
     print('3. deploy data_retriever')
     repository_url = tfresource['aws_ecr_repository.otm_data_retriever']['primary']['attributes']['repository_url']
@@ -117,7 +122,7 @@ def main():
     subprocess.call(['docker', 'push', '%s:latest' % repository_url], cwd='./data_retriever')
 
     print('4. deploy client frontend')
-    with open('./client_apis/.chalice/deployed/dev.json', 'r') as f:
+    with open('./client_apis/.chalice/deployed/%s.json' % environment, 'r') as f:
         api_resource = json.load(f)
 
     subprocess.call(['yarn', 'install'], cwd='./client')
@@ -131,7 +136,7 @@ def main():
     subprocess.call(['aws', 's3', 'sync', './client/dist/', 's3://%s/' % client_bucket, '--acl=public-read'])
 
     print('5. deploy s3weblog2athena')
-    with open('./s3weblog2athena/config/dev.yml', 'r') as f:
+    with open('./s3weblog2athena/config/sample.yml', 'r') as f:
         config = yaml.load(f)
         config['TO_S3_BUCKET'] = collect_log_bucket
         config['TO_S3_PREFIX'] = 'cflog_transformed/'
@@ -139,11 +144,11 @@ def main():
         config['SNS_ARN'] = sns_arn
         config['MODE'] = 'cloudfront'
 
-    with open('./s3weblog2athena/config/dev.yml', 'w') as f:
+    with open('./s3weblog2athena/config/%s.yml' % environment, 'w') as f:
         f.write(yaml.dump(config, default_flow_style=False))
 
     subprocess.call(['yarn', 'install'], cwd='./s3weblog2athena')
-    subprocess.call(['sls', 'deploy', '--stage=dev', '--region=%s' % os.environ.get('AWS_DEFAULT_REGION')], cwd='./s3weblog2athena')
+    subprocess.call(['sls', 'deploy', '--stage=%s' % environment, '--region=%s' % os.environ.get('AWS_DEFAULT_REGION')], cwd='./s3weblog2athena')
 
     print('6. deploy athena2bigquery')
     with open('./athena2bigquery/config/athena2bigquery-config.yml', 'r') as f:
