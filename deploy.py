@@ -15,7 +15,7 @@ def main():
     print('1.1. deploy shared infra')
     subprocess.call(['terraform', 'init'], cwd='./infra/aws-batch')
     if not os.path.exists('./infra/aws-batch/terraform.tfstate.d/shared'):
-        subprocess.call(['terraform', 'woskspace', 'new', 'shared'], cwd='./infra/aws-batch')
+        subprocess.call(['terraform', 'workspace', 'new', 'shared'], cwd='./infra/aws-batch')
     subprocess.call(['terraform', 'workspace', 'select', 'shared'], cwd='./infra/aws-batch')
     subprocess.call(['terraform', 'apply', '-var-file=../../terraform.tfvars'], cwd='./infra/aws-batch')
 
@@ -29,7 +29,7 @@ def main():
 
     subprocess.call(['terraform', 'init'], cwd='./infra/common')
     if not os.path.exists('./infra/common/terraform.tfstate.d/' + environment):
-        subprocess.call(['terraform', 'woskspace', 'new', environment], cwd='./infra/common')
+        subprocess.call(['terraform', 'workspace', 'new', environment], cwd='./infra/common')
     subprocess.call(['terraform', 'workspace', 'select', environment], cwd='./infra/common')
     subprocess.call(
         ['terraform', 'apply', '-var-file=../../terraform.tfvars',
