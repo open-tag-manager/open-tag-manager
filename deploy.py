@@ -10,10 +10,27 @@ def main():
     print('1. deploy infra')
     subprocess.call(['npm', 'run', 'build'], env={'NODE_ENV': 'production', 'PATH': os.environ.get('PATH')})
 
-    subprocess.call(['terraform', 'init'])
-    subprocess.call(['terraform', 'apply'])
+    print('1.1. deploy shared infra')
+    subprocess.call(['terraform', 'init'], cwd='./infra/aws-batch')
+    if not os.path.exists('./infra/aws-batch/terraform.tfstate.d/shared'):
+        subprocess.call(['terraform', 'woskspace', 'new', 'shared'], cwd='./infra/aws-batch')
+    subprocess.call(['terraform', 'apply', '-var-file=../../terraform.tfvars'], cwd='./infra/aws-batch')
 
-    with open('./terraform.tfstate') as f:
+    print('1.2. deploy infra')
+
+    with open('./infra/aws-batch/terraform.tfstate.d/shared/terraform.tfstate') as f:
+        tfstate = json.load(f)
+        tfresource = tfstate['modules'][0]['resources']
+
+    subprocess.call(['terraform', 'init'], cwd='./infra/common')
+    if not os.path.exists('./infra/aws-batch/terraform.tfstate.d/' + os.environ.get('ENV')):
+        subprocess.call(['terraform', 'woskspace', 'new', os.environ.get('ENV')], cwd='./infra/common')
+    subprocess.call(
+        ['terraform', 'apply', '-var-file=../../terraform.tfvars',
+         '-var="aws_batch_job_queue_arn=%s"' % tfresource['aws_batch_job_queue.otm']['primary']['id']],
+        cwd='./infra/common')
+
+    with open('./infra/common/terraform.tfstate.d/%s/terraform.tfstate' % os.environ.get('ENV')) as f:
         tfstate = json.load(f)
         tfresource = tfstate['modules'][0]['resources']
 
