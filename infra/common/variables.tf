@@ -8,7 +8,34 @@ variable "aws_batch_job_queue_arn" {}
 variable "aws_cloudwatch_schedule_enabled" {
   default = false
 }
-
+variable "aws_cloudfront_collect_domain" {
+  type = "list"
+  default = []
+}
+variable "aws_cloudfront_collect_acm_certificate_arn" {
+  type = "string"
+  default = ""
+}
+variable "aws_cloudfront_otm_domain" {
+  type = "list"
+  default = []
+}
+variable "aws_cloudfront_otm_acm_certificate_arn" {
+  type = "string"
+  default = ""
+}
+variable "aws_cloudfront_client_domain" {
+  type = "list"
+  default = []
+}
+variable "aws_cloudfront_client_acm_certificate_arn" {
+  type = "string"
+  default = ""
+}
+variable "aws_route53_zone_id" {
+  type = "string"
+  default = ""
+}
 variable "google_project_id" {}
 variable "google_region" {}
 

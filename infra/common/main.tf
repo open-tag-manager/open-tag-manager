@@ -49,6 +49,13 @@ resource "aws_cloudfront_distribution" "otm_collect_distribution" {
     origin_id = "${local.s3_collect_origin_id}"
   }
 
+  aliases = "${var.aws_cloudfront_collect_domain}"
+  viewer_certificate = {
+    acm_certificate_arn = "${var.aws_cloudfront_collect_acm_certificate_arn}"
+    cloudfront_default_certificate = "${var.aws_cloudfront_collect_acm_certificate_arn == "" ? true : false}"
+    ssl_support_method = "sni-only"
+  }
+
   enabled = true
   is_ipv6_enabled = true
   comment = "otm collect distribution"
@@ -87,10 +94,6 @@ resource "aws_cloudfront_distribution" "otm_collect_distribution" {
     geo_restriction {
       restriction_type = "none"
     }
-  }
-
-  viewer_certificate {
-    cloudfront_default_certificate = true
   }
 }
 
@@ -143,6 +146,13 @@ resource "aws_cloudfront_distribution" "otm_script_distribution" {
     origin_id = "${local.s3_script_origin_id}"
   }
 
+  aliases = "${var.aws_cloudfront_otm_domain}"
+  viewer_certificate = {
+    acm_certificate_arn = "${var.aws_cloudfront_otm_acm_certificate_arn}"
+    cloudfront_default_certificate = "${var.aws_cloudfront_otm_acm_certificate_arn == "" ? true : false}"
+    ssl_support_method = "sni-only"
+  }
+
   enabled = true
   is_ipv6_enabled = true
   comment = "otm script distribution"
@@ -176,10 +186,6 @@ resource "aws_cloudfront_distribution" "otm_script_distribution" {
       restriction_type = "none"
     }
   }
-
-  viewer_certificate {
-    cloudfront_default_certificate = true
-  }
 }
 
 resource "aws_s3_bucket" "otm_stats" {
@@ -207,6 +213,12 @@ resource "aws_cloudfront_distribution" "otm_client_distribution" {
     origin_id = "${local.s3_client_origin_id}"
   }
 
+  aliases = "${var.aws_cloudfront_client_domain}"
+  viewer_certificate = {
+    acm_certificate_arn = "${var.aws_cloudfront_client_acm_certificate_arn}"
+    cloudfront_default_certificate = "${var.aws_cloudfront_client_acm_certificate_arn == "" ? true : false}"
+    ssl_support_method = "sni-only"
+  }
   enabled = true
   is_ipv6_enabled = true
   comment = "otm client distribution"
@@ -239,10 +251,6 @@ resource "aws_cloudfront_distribution" "otm_client_distribution" {
     geo_restriction {
       restriction_type = "none"
     }
-  }
-
-  viewer_certificate {
-    cloudfront_default_certificate = true
   }
 }
 
@@ -503,4 +511,43 @@ resource "aws_s3_bucket" "otm_athena" {
 resource "aws_athena_database" "otm" {
   name = "${terraform.env}_${terraform.env}_otm_a2bq"
   bucket = "${aws_s3_bucket.otm_athena.bucket}"
+}
+
+resource "aws_route53_record" "collect" {
+  count = "${length(var.aws_cloudfront_collect_domain) > 0 ? 1 : 0}"
+  zone_id = "${var.aws_route53_zone_id}"
+  name = "${var.aws_cloudfront_collect_domain[0]}"
+  type = "A"
+
+  alias = {
+    name = "${aws_cloudfront_distribution.otm_collect_distribution.domain_name}"
+    zone_id = "${aws_cloudfront_distribution.otm_collect_distribution.hosted_zone_id}"
+    evaluate_target_health = false
+  }
+}
+
+resource "aws_route53_record" "otm" {
+  count = "${length(var.aws_cloudfront_otm_domain) > 0 ? 1 : 0}"
+  zone_id = "${var.aws_route53_zone_id}"
+  name = "${var.aws_cloudfront_otm_domain[0]}"
+  type = "A"
+
+  alias = {
+    name = "${aws_cloudfront_distribution.otm_script_distribution.domain_name}"
+    zone_id = "${aws_cloudfront_distribution.otm_script_distribution.hosted_zone_id}"
+    evaluate_target_health = false
+  }
+}
+
+resource "aws_route53_record" "client" {
+  count = "${length(var.aws_cloudfront_client_domain) > 0 ? 1 : 0}"
+  zone_id = "${var.aws_route53_zone_id}"
+  name = "${var.aws_cloudfront_client_domain[0]}"
+  type = "A"
+
+  alias = {
+    name = "${aws_cloudfront_distribution.otm_client_distribution.domain_name}"
+    zone_id = "${aws_cloudfront_distribution.otm_client_distribution.hosted_zone_id}"
+    evaluate_target_health = false
+  }
 }
