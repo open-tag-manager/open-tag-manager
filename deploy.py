@@ -31,10 +31,11 @@ def main():
     if not os.path.exists('./infra/common/terraform.tfstate.d/' + environment):
         subprocess.call(['terraform', 'workspace', 'new', environment], cwd='./infra/common')
     subprocess.call(['terraform', 'workspace', 'select', environment], cwd='./infra/common')
-    subprocess.call(
-        ['terraform', 'apply', '-var-file=../../terraform.tfvars',
-         '-var=aws_batch_job_queue_arn=%s' % job_queue],
-        cwd='./infra/common')
+    vars = ['terraform', 'apply', '-var-file=../../terraform.tfvars',
+            '-var=aws_batch_job_queue_arn=%s' % job_queue]
+    if os.path.exists('%s-terraform.tfvars' % environment):
+        vars.append('-var-file=../../%s-terraform.tfvars' % environment)
+    subprocess.call(vars, cwd='./infra/common')
 
     with open('./infra/common/terraform.tfstate.d/%s/terraform.tfstate' % environment) as f:
         tfstate = json.load(f)
@@ -48,8 +49,16 @@ def main():
     collect_log_bucket = tfresource['aws_s3_bucket.otm_collect_log']['primary']['id']
 
     script_domain = tfresource['aws_cloudfront_distribution.otm_script_distribution']['primary']['attributes']['domain_name']
+    if 'aws_route53_record.otm' in tfresource:
+        script_domain = tfresource['aws_route53_record.otm']['primary']['attributes']['name']
+
     collect_domain = tfresource['aws_cloudfront_distribution.otm_collect_distribution']['primary']['attributes']['domain_name']
+    if 'aws_route53_record.collect' in tfresource:
+        collect_domain = tfresource['aws_route53_record.collect']['primary']['attributes']['name']
+
     client_domain = tfresource['aws_cloudfront_distribution.otm_client_distribution']['primary']['attributes']['domain_name']
+    if 'aws_route53_record.client' in tfresource:
+        client_domain = tfresource['aws_route53_record.client']['primary']['attributes']['name']
 
     dynamo_db_table = tfresource['aws_dynamodb_table.otm_session']['primary']['id']
     dynamo_db_table_arn = tfresource['aws_dynamodb_table.otm_session']['primary']['attributes']['arn']

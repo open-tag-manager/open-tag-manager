@@ -515,7 +515,7 @@ resource "aws_athena_database" "otm" {
 
 resource "aws_route53_record" "collect" {
   count = "${length(var.aws_cloudfront_collect_domain) > 0 ? 1 : 0}"
-  zone_id = "${var.aws_route53_zone_id}"
+  zone_id = "${var.aws_route53_collect_zone_id}"
   name = "${var.aws_cloudfront_collect_domain[0]}"
   type = "A"
 
@@ -528,7 +528,7 @@ resource "aws_route53_record" "collect" {
 
 resource "aws_route53_record" "otm" {
   count = "${length(var.aws_cloudfront_otm_domain) > 0 ? 1 : 0}"
-  zone_id = "${var.aws_route53_zone_id}"
+  zone_id = "${var.aws_route53_otm_zone_id}"
   name = "${var.aws_cloudfront_otm_domain[0]}"
   type = "A"
 
@@ -541,7 +541,7 @@ resource "aws_route53_record" "otm" {
 
 resource "aws_route53_record" "client" {
   count = "${length(var.aws_cloudfront_client_domain) > 0 ? 1 : 0}"
-  zone_id = "${var.aws_route53_zone_id}"
+  zone_id = "${var.aws_route53_client_zone_id}"
   name = "${var.aws_cloudfront_client_domain[0]}"
   type = "A"
 

@@ -32,7 +32,15 @@ variable "aws_cloudfront_client_acm_certificate_arn" {
   type = "string"
   default = ""
 }
-variable "aws_route53_zone_id" {
+variable "aws_route53_collect_zone_id" {
+  type = "string"
+  default = ""
+}
+variable "aws_route53_otm_zone_id" {
+  type = "string"
+  default = ""
+}
+variable "aws_route53_client_zone_id" {
   type = "string"
   default = ""
 }
