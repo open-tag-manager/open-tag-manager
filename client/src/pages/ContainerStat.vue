@@ -355,6 +355,7 @@
         this.graphData = _.cloneDeep(this.rawGraphData)
         this.graphData = skipData(this.graphData, _.values(_.pick(statusPatterns, _.difference(this.statuses, this.enabledStatues))))
         this.graphData = convertUrl(this.graphData, this.swaggerDoc)
+        this.urls = getUrls(this.graphData)
         this.graphData = filterByUrl(this.graphData, this.url)
 
         if (this.graphData.length === 0) {
