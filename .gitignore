@@ -5,4 +5,5 @@ terraform.tfstate
 terraform.tfstate.backup
 account.json
 .terraform/
+*-terraform.tfvars
 terraform.tfvars

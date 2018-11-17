@@ -5,13 +5,13 @@ provider "aws" {
 }
 
 provider "google" {
-  credentials = "${file("account.json")}"
+  credentials = "${file("../../account.json")}"
   project = "${var.google_project_id}"
   region = "${var.google_region}"
 }
 
 resource "aws_s3_bucket" "otm_collect" {
-  bucket = "${var.aws_s3_bucket_prefix}-otm-collect"
+  bucket = "${terraform.env}-${var.aws_s3_bucket_prefix}-otm-collect"
   acl = "public-read"
 
   cors_rule = {
@@ -27,13 +27,13 @@ resource "aws_s3_bucket" "otm_collect" {
 resource "aws_s3_bucket_object" "otm_collect" {
   bucket = "${aws_s3_bucket.otm_collect.id}"
   key = "collect.html"
-  source = "collect.html"
+  source = "../../collect.html"
   acl = "public-read"
   content_type = "text/html"
 }
 
 resource "aws_s3_bucket" "otm_collect_log" {
-  bucket = "${var.aws_s3_bucket_prefix}-otm-collect-log"
+  bucket = "${terraform.env}-${var.aws_s3_bucket_prefix}-otm-collect-log"
   acl = "private"
 }
 
@@ -47,6 +47,13 @@ resource "aws_cloudfront_distribution" "otm_collect_distribution" {
   origin {
     domain_name = "${aws_s3_bucket.otm_collect.bucket_regional_domain_name}"
     origin_id = "${local.s3_collect_origin_id}"
+  }
+
+  aliases = "${var.aws_cloudfront_collect_domain}"
+  viewer_certificate = {
+    acm_certificate_arn = "${var.aws_cloudfront_collect_acm_certificate_arn}"
+    cloudfront_default_certificate = "${var.aws_cloudfront_collect_acm_certificate_arn == "" ? true : false}"
+    ssl_support_method = "sni-only"
   }
 
   enabled = true
@@ -88,14 +95,10 @@ resource "aws_cloudfront_distribution" "otm_collect_distribution" {
       restriction_type = "none"
     }
   }
-
-  viewer_certificate {
-    cloudfront_default_certificate = true
-  }
 }
 
-resource "aws_sns_topic"  "otm_collect_log_topic" {
-  name = "${var.prefix}otm-collect-log-topic"
+resource "aws_sns_topic" "otm_collect_log_topic" {
+  name = "${terraform.env}-otm-collect-log-topic"
 
   policy = <<POLICY
 {
@@ -104,7 +107,7 @@ resource "aws_sns_topic"  "otm_collect_log_topic" {
     "Effect": "Allow",
     "Principal": {"AWS": "*"},
     "Action": "SNS:Publish",
-    "Resource": "arn:aws:sns:*:*:otm-collect-log-topic",
+    "Resource": "arn:aws:sns:*:*:${terraform.env}-otm-collect-log-topic",
     "Condition": {
       "ArnLike": {"aws:SourceArn":"${aws_s3_bucket.otm_collect_log.arn}"}
     }
@@ -118,20 +121,21 @@ resource "aws_s3_bucket_notification" "otm_collect_log_notification" {
 
   topic = {
     topic_arn = "${aws_sns_topic.otm_collect_log_topic.arn}"
-    events    = ["s3:ObjectCreated:*"],
+    events = [
+      "s3:ObjectCreated:*"],
     filter_prefix = "cflog/"
   }
 }
 
 resource "aws_s3_bucket" "otm_script" {
-  bucket = "${var.aws_s3_bucket_prefix}-otm-script"
+  bucket = "${terraform.env}-${var.aws_s3_bucket_prefix}-otm-script"
   acl = "private"
 }
 
 resource "aws_s3_bucket_object" "otm_otm" {
   bucket = "${aws_s3_bucket.otm_script.id}"
   key = "otm.js"
-  source = "dist/otm.js"
+  source = "../../dist/otm.js"
   acl = "public-read"
   content_type = "text/javascript"
 }
@@ -140,6 +144,13 @@ resource "aws_cloudfront_distribution" "otm_script_distribution" {
   origin {
     domain_name = "${aws_s3_bucket.otm_script.bucket_regional_domain_name}"
     origin_id = "${local.s3_script_origin_id}"
+  }
+
+  aliases = "${var.aws_cloudfront_otm_domain}"
+  viewer_certificate = {
+    acm_certificate_arn = "${var.aws_cloudfront_otm_acm_certificate_arn}"
+    cloudfront_default_certificate = "${var.aws_cloudfront_otm_acm_certificate_arn == "" ? true : false}"
+    ssl_support_method = "sni-only"
   }
 
   enabled = true
@@ -175,14 +186,10 @@ resource "aws_cloudfront_distribution" "otm_script_distribution" {
       restriction_type = "none"
     }
   }
-
-  viewer_certificate {
-    cloudfront_default_certificate = true
-  }
 }
 
 resource "aws_s3_bucket" "otm_stats" {
-  bucket = "${var.aws_s3_bucket_prefix}-otm-stats"
+  bucket = "${terraform.env}-${var.aws_s3_bucket_prefix}-otm-stats"
   acl = "private"
 
   cors_rule = {
@@ -196,7 +203,7 @@ resource "aws_s3_bucket" "otm_stats" {
 }
 
 resource "aws_s3_bucket" "otm_client" {
-  bucket = "${var.aws_s3_bucket_prefix}-otm-client"
+  bucket = "${terraform.env}-${var.aws_s3_bucket_prefix}-otm-client"
   acl = "public-read"
 }
 
@@ -206,6 +213,12 @@ resource "aws_cloudfront_distribution" "otm_client_distribution" {
     origin_id = "${local.s3_client_origin_id}"
   }
 
+  aliases = "${var.aws_cloudfront_client_domain}"
+  viewer_certificate = {
+    acm_certificate_arn = "${var.aws_cloudfront_client_acm_certificate_arn}"
+    cloudfront_default_certificate = "${var.aws_cloudfront_client_acm_certificate_arn == "" ? true : false}"
+    ssl_support_method = "sni-only"
+  }
   enabled = true
   is_ipv6_enabled = true
   comment = "otm client distribution"
@@ -239,27 +252,23 @@ resource "aws_cloudfront_distribution" "otm_client_distribution" {
       restriction_type = "none"
     }
   }
-
-  viewer_certificate {
-    cloudfront_default_certificate = true
-  }
 }
 
 resource "aws_s3_bucket" "otm_config" {
-  bucket = "${var.aws_s3_bucket_prefix}-otm-config"
+  bucket = "${terraform.env}-${var.aws_s3_bucket_prefix}-otm-config"
   acl = "private"
 }
 
 resource "aws_s3_bucket_object" "gc_key" {
   bucket = "${aws_s3_bucket.otm_config.id}"
   key = "account.json"
-  source = "account.json"
+  source = "../../account.json"
   acl = "private"
   server_side_encryption = "AES256"
 }
 
 resource "aws_dynamodb_table" "otm_session" {
-  name = "${var.prefix}otm_session"
+  name = "${terraform.env}_otm_session"
   read_capacity = 1
   write_capacity = 1
   hash_key = "session_id"
@@ -270,26 +279,8 @@ resource "aws_dynamodb_table" "otm_session" {
   }
 }
 
-resource "aws_iam_role" "ecs_instance_role" {
-  name = "${var.prefix}otm_ecs_instance_role"
-  assume_role_policy = <<EOF
-{
-    "Version": "2012-10-17",
-    "Statement": [
-    {
-        "Action": "sts:AssumeRole",
-        "Effect": "Allow",
-        "Principal": {
-        "Service": "ec2.amazonaws.com"
-        }
-    }
-    ]
-}
-EOF
-}
-
 resource "aws_iam_role" "ecs_task_role" {
-  name = "${var.prefix}otm_ecs_task_role"
+  name = "${terraform.env}_otm_ecs_task_role"
   assume_role_policy = <<EOF
 {
     "Version": "2012-10-17",
@@ -307,7 +298,7 @@ EOF
 }
 
 resource "aws_iam_policy" "log_stat_s3_access_policy" {
-  name        = "${var.prefix}otm_log_stat_s3_access_policy"
+  name = "${terraform.env}_otm_log_stat_s3_access_policy"
   description = "Open Tag Manager S3 Policy"
   policy = <<EOF
 {
@@ -381,11 +372,6 @@ resource "aws_iam_policy" "log_stat_s3_access_policy" {
 EOF
 }
 
-resource "aws_iam_role_policy_attachment" "ecs_instance_role" {
-  role = "${aws_iam_role.ecs_instance_role.name}"
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
-}
-
 resource "aws_iam_role_policy_attachment" "esc_task_role" {
   role = "${aws_iam_role.ecs_task_role.name}"
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
@@ -396,117 +382,16 @@ resource "aws_iam_role_policy_attachment" "ecs_task_role_s3" {
   policy_arn = "${aws_iam_policy.log_stat_s3_access_policy.arn}"
 }
 
-resource "aws_iam_instance_profile" "ecs_instance_role" {
-  name = "${var.prefix}otm_ecs_instance_role"
-  role = "${aws_iam_role.ecs_instance_role.name}"
-}
-
-resource "aws_iam_role" "aws_batch_service_role" {
-  name = "${var.prefix}otm_aws_batch_service_role"
-  assume_role_policy = <<EOF
-{
-    "Version": "2012-10-17",
-    "Statement": [
-    {
-        "Action": "sts:AssumeRole",
-        "Effect": "Allow",
-        "Principal": {
-        "Service": "batch.amazonaws.com"
-        }
-    }
-    ]
-}
-EOF
-}
-
-resource "aws_iam_role_policy_attachment" "aws_batch_service_role" {
-  role = "${aws_iam_role.aws_batch_service_role.name}"
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSBatchServiceRole"
-}
-
-resource "aws_security_group" "batch" {
-  name = "${var.prefix}otm_batch_compute_environment_security_group"
-  vpc_id = "${aws_vpc.otm.id}"
-  ingress {
-    from_port = 0
-    to_port = 0
-    protocol = "-1"
-    self = true
-  }
-
-  egress {
-    from_port = 0
-    to_port = 0
-    protocol = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-}
-
-resource "aws_vpc" "otm" {
-  cidr_block = "10.1.0.0/16"
-  tags = {
-    Name = "otm"
-  }
-}
-
-resource "aws_internet_gateway" "gw" {
-  vpc_id = "${aws_vpc.otm.id}"
-}
-
-resource "aws_route_table" "r" {
-  vpc_id = "${aws_vpc.otm.id}"
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = "${aws_internet_gateway.gw.id}"
-  }
-}
-
-resource "aws_subnet" "otm" {
-  vpc_id = "${aws_vpc.otm.id}"
-  cidr_block = "10.1.1.0/24"
-  map_public_ip_on_launch = true
-}
-
-resource "aws_route_table_association" "route_table_a" {
-  subnet_id = "${aws_subnet.otm.id}"
-  route_table_id = "${aws_route_table.r.id}"
-}
-
 resource "aws_ecr_repository" "otm_data_retriever" {
-  name = "${var.prefix}otm-data-retriever"
+  name = "${terraform.env}_otm-data-retriever"
 }
 
 resource "aws_ecr_repository" "otm_athena2bigquery" {
-  name = "${var.prefix}otm-athena2bigquery"
-}
-
-resource "aws_batch_compute_environment" "compute_environment" {
-  compute_environment_name = "${var.prefix}otm-compute-env"
-  compute_resources {
-    instance_role = "${aws_iam_instance_profile.ecs_instance_role.arn}"
-    instance_type = [
-      "optimal",
-    ]
-    max_vcpus = 2
-    min_vcpus = 0
-    security_group_ids = [
-      "${aws_security_group.batch.id}"
-    ]
-    subnets = [
-      "${aws_subnet.otm.id}"
-    ]
-    type = "EC2"
-  }
-  service_role = "${aws_iam_role.aws_batch_service_role.arn}"
-  type = "MANAGED"
-  depends_on = [
-    "aws_iam_role_policy_attachment.aws_batch_service_role"]
+  name = "${terraform.env}_otm-athena2bigquery"
 }
 
 resource "aws_batch_job_definition" "otm_data_retriever" {
-  name = "${var.prefix}otm_data_retriever_job_definition"
+  name = "${terraform.env}_otm_data_retriever_job_definition"
   type = "container"
   timeout = {
     attempt_duration_seconds = "${var.aws_batch_timeout}"
@@ -527,7 +412,7 @@ CONTAINER_PROPERTIES
 }
 
 resource "aws_batch_job_definition" "otm_athena2bigquery" {
-  name = "${var.prefix}otm_athena2bigquery_job_definition"
+  name = "${terraform.env}_otm_athena2bigquery_job_definition"
   type = "container"
   timeout = {
     attempt_duration_seconds = "${var.aws_batch_timeout}"
@@ -551,17 +436,8 @@ resource "aws_batch_job_definition" "otm_athena2bigquery" {
 CONTAINER_PROPERTIES
 }
 
-resource "aws_batch_job_queue" "otm" {
-  name = "${var.prefix}otm"
-  state = "ENABLED"
-  priority = 1
-  compute_environments = [
-    "${aws_batch_compute_environment.compute_environment.arn}"
-  ]
-}
-
 resource "aws_iam_role" "scheduled_batch" {
-  name = "${var.prefix}otm-scheduled-batch"
+  name = "${terraform.env}_otm-scheduled-batch"
   assume_role_policy = <<DOC
 {
   "Version": "2012-10-17",
@@ -580,7 +456,7 @@ DOC
 }
 
 resource "aws_iam_role_policy" "scheduled_batch" {
-  name = "${var.prefix}otm-scheduled-batch-policy"
+  name = "${terraform.env}_otm-scheduled-batch-policy"
   role = "${aws_iam_role.scheduled_batch.id}"
   policy = <<DOC
 {
@@ -599,7 +475,7 @@ DOC
 }
 
 resource "aws_cloudwatch_event_rule" "athena2bigquery" {
-  name = "${var.prefix}ExecuteAthena2BigQuery"
+  name = "${terraform.env}_ExecuteAthena2BigQuery"
   description = "Execute Athen2BigQuery"
   schedule_expression = "cron(0 2 * * ? *)"
   is_enabled = "${var.aws_cloudwatch_schedule_enabled}"
@@ -607,7 +483,7 @@ resource "aws_cloudwatch_event_rule" "athena2bigquery" {
 
 resource "aws_cloudwatch_event_target" "athena2bigquery" {
   rule = "${aws_cloudwatch_event_rule.athena2bigquery.name}"
-  arn = "${aws_batch_job_queue.otm.arn}"
+  arn = "${var.aws_batch_job_queue_arn}"
   role_arn = "${aws_iam_role.scheduled_batch.arn}"
   batch_target = {
     job_definition = "${aws_batch_job_definition.otm_athena2bigquery.arn}"
@@ -616,23 +492,62 @@ resource "aws_cloudwatch_event_target" "athena2bigquery" {
 }
 
 resource "google_bigquery_dataset" "dataset" {
-  dataset_id = "${var.prefix}open_tag_manager"
-  friendly_name = "${var.prefix}open_tag_manager"
+  dataset_id = "${terraform.env}_open_tag_manager"
+  friendly_name = "${terraform.env}_open_tag_manager"
   description = "open tag manager dataset"
   location = "${var.google_bigquery_dataset_location}"
 }
 
 resource "google_storage_bucket" "bucket" {
-  name = "${var.aws_s3_bucket_prefix}-open-tag-manager"
+  name = "${terraform.env}-${var.aws_s3_bucket_prefix}-open-tag-manager"
   location = "${var.google_storage_location}"
 }
 
 resource "aws_s3_bucket" "otm_athena" {
-  bucket = "${var.aws_s3_bucket_prefix}-otm-athena"
+  bucket = "${terraform.env}-${var.aws_s3_bucket_prefix}-otm-athena"
   acl = "private"
 }
 
 resource "aws_athena_database" "otm" {
-  name = "${var.prefix}otm_a2bq"
+  name = "${terraform.env}_${terraform.env}_otm_a2bq"
   bucket = "${aws_s3_bucket.otm_athena.bucket}"
+}
+
+resource "aws_route53_record" "collect" {
+  count = "${length(var.aws_cloudfront_collect_domain) > 0 ? 1 : 0}"
+  zone_id = "${var.aws_route53_collect_zone_id}"
+  name = "${var.aws_cloudfront_collect_domain[0]}"
+  type = "A"
+
+  alias = {
+    name = "${aws_cloudfront_distribution.otm_collect_distribution.domain_name}"
+    zone_id = "${aws_cloudfront_distribution.otm_collect_distribution.hosted_zone_id}"
+    evaluate_target_health = false
+  }
+}
+
+resource "aws_route53_record" "otm" {
+  count = "${length(var.aws_cloudfront_otm_domain) > 0 ? 1 : 0}"
+  zone_id = "${var.aws_route53_otm_zone_id}"
+  name = "${var.aws_cloudfront_otm_domain[0]}"
+  type = "A"
+
+  alias = {
+    name = "${aws_cloudfront_distribution.otm_script_distribution.domain_name}"
+    zone_id = "${aws_cloudfront_distribution.otm_script_distribution.hosted_zone_id}"
+    evaluate_target_health = false
+  }
+}
+
+resource "aws_route53_record" "client" {
+  count = "${length(var.aws_cloudfront_client_domain) > 0 ? 1 : 0}"
+  zone_id = "${var.aws_route53_client_zone_id}"
+  name = "${var.aws_cloudfront_client_domain[0]}"
+  type = "A"
+
+  alias = {
+    name = "${aws_cloudfront_distribution.otm_client_distribution.domain_name}"
+    zone_id = "${aws_cloudfront_distribution.otm_client_distribution.hosted_zone_id}"
+    evaluate_target_health = false
+  }
 }
