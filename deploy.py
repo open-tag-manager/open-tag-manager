@@ -8,20 +8,21 @@ from getpass import getpass
 
 def main():
     environment = os.environ.get('ENV') or 'dev'
+    s_environment = os.environ.get('S_ENV') or 'shared'
 
     print('1. deploy infra')
     subprocess.call(['npm', 'run', 'build'], env={'NODE_ENV': 'production', 'PATH': os.environ.get('PATH')})
 
     print('1.1. deploy shared infra')
     subprocess.call(['terraform', 'init'], cwd='./infra/aws-batch')
-    if not os.path.exists('./infra/aws-batch/terraform.tfstate.d/shared'):
-        subprocess.call(['terraform', 'workspace', 'new', 'shared'], cwd='./infra/aws-batch')
-    subprocess.call(['terraform', 'workspace', 'select', 'shared'], cwd='./infra/aws-batch')
+    if not os.path.exists('./infra/aws-batch/terraform.tfstate.d/%s' % s_environment):
+        subprocess.call(['terraform', 'workspace', 'new', s_environment], cwd='./infra/aws-batch')
+    subprocess.call(['terraform', 'workspace', 'select', s_environment], cwd='./infra/aws-batch')
     subprocess.call(['terraform', 'apply', '-var-file=../../terraform.tfvars'], cwd='./infra/aws-batch')
 
     print('1.2. deploy infra')
 
-    with open('./infra/aws-batch/terraform.tfstate.d/shared/terraform.tfstate') as f:
+    with open('./infra/aws-batch/terraform.tfstate.d/%s/terraform.tfstate' % s_environment) as f:
         tfstate = json.load(f)
         tfresource = tfstate['modules'][0]['resources']
 
