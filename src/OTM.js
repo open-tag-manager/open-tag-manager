@@ -244,7 +244,7 @@ class OTM {
         label = attributes['aria-label'].value
       } else if (attributes['title']) {
         label = attributes['title'].value
-      } else {
+      } else if (target.innerText) {
         label = target.innerText.replace(/[\n\r]/, '')
       }
 
