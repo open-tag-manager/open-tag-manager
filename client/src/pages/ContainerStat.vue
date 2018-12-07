@@ -423,7 +423,11 @@
 
         urls.forEach((url, idx) => {
           if (_.find(nodesData, {url})) {
-            g.setNode(`url-${idx}`, {label: url, clusterLabelPos: 'top', style: 'fill: ' + color(url)})
+            let style = 'fill:' + color(url)
+            if (url === this.url) {
+              style += ';stroke-width:10px'
+            }
+            g.setNode(`url-${idx}`, {label: url, clusterLabelPos: 'top', style})
           }
         })
 
