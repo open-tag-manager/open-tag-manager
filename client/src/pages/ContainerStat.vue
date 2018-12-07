@@ -96,9 +96,9 @@
   import * as DagreD3 from 'dagre-d3'
   import _ from 'lodash'
   import url from 'url'
+  import querystring from 'querystring'
   import moment from 'moment-timezone'
   import flatPickr from 'vue-flatpickr-component'
-  import swaggerPaths from 'swagger-paths'
 
   const sourceFieldName = 'p_state'
   const targetFieldName = 'state'
@@ -112,6 +112,37 @@
     'change-url': /^change-url.+/,
     timer: /^timer_.+/,
     scroll: /^scroll_.+/
+  }
+
+  const lookupPath = (paths, target) => {
+    const targetUrl = url.parse(target)
+    const targetQs = querystring.parse(targetUrl.query)
+
+    for (let p in paths) {
+      const u = url.parse(p)
+      const r = new RegExp('^' + u.pathname.replace(/{[^}]*}/g, '[^/]*') + '$')
+
+      if (r.exec(targetUrl.pathname)) {
+        // match pathname
+        if (u.query) {
+          let queryMatch = true
+          const qs = querystring.parse(u.query)
+          for (let qd in qs) {
+            const qr = new RegExp('^' + qs[qd].replace(/{[^}]*}/g, '[^/]*') + '$')
+            if (!qr.exec(targetQs[qd])) {
+              queryMatch = false
+              break
+            }
+          }
+          if (queryMatch) {
+            return p
+          }
+        } else {
+          return p
+        }
+      }
+    }
+    return null
   }
 
   const findRelatedEdge = (data, edges, skipStatePatterns, results = [], path = []) => {
@@ -237,7 +268,7 @@
     if (!swaggerDoc) {
       return data
     }
-    const paths = new swaggerPaths(JSON.parse(swaggerDoc).paths)
+    const paths = JSON.parse(swaggerDoc).paths
     for (let d of data) {
       const parsedUrl = url.parse(d.url)
       if (!parsedUrl.path) {
@@ -253,7 +284,7 @@
         }
       }
 
-      const matched = paths.match(path)
+      const matched = lookupPath(paths, path)
       if (matched) {
         const e = _.find(data, {url: d.url, p_state: d.p_state, state: d.state})
         if (e) {
@@ -261,7 +292,7 @@
           d.url = null
         }
 
-        d.url = matched.path.path
+        d.url = matched
       }
     }
 

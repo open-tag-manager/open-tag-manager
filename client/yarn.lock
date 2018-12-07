@@ -6452,7 +6452,7 @@ querystring-es3@^0.2.0:
   version "0.2.1"
   resolved "https://registry.yarnpkg.com/querystring-es3/-/querystring-es3-0.2.1.tgz#9ec61f79049875707d69414596fd907a4d711e73"
 
-querystring@0.2.0:
+querystring@0.2.0, querystring@^0.2.0:
   version "0.2.0"
   resolved "https://registry.yarnpkg.com/querystring/-/querystring-0.2.0.tgz#b209849203bb25df820da756e747005878521620"
 
@@ -7451,10 +7451,6 @@ svgo@^0.7.0:
     mkdirp "~0.5.1"
     sax "~1.2.1"
     whet.extend "~0.9.9"
-
-swagger-paths@^1.0.3:
-  version "1.0.3"
-  resolved "https://registry.yarnpkg.com/swagger-paths/-/swagger-paths-1.0.3.tgz#cd801e87f64f4c7b78d016bab3bb6652a9bd6b9e"
 
 symbol-tree@^3.2.2:
   version "3.2.2"
