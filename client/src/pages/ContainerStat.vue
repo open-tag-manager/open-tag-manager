@@ -421,8 +421,10 @@
           nodesData[targetIdx].class = o.class
         })
 
-        urls.forEach(function (url, idx) {
-          g.setNode(`url-${idx}`, {label: url, clusterLabelPos: 'top', style: 'fill: ' + color(url)})
+        urls.forEach((url, idx) => {
+          if (_.find(nodesData, {url})) {
+            g.setNode(`url-${idx}`, {label: url, clusterLabelPos: 'top', style: 'fill: ' + color(url)})
+          }
         })
 
         nodesData.forEach(function (node, idx) {
