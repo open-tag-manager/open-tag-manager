@@ -30,6 +30,7 @@ class DataRetriever:
 
         sql = """SELECT 
 JSON_EXTRACT_SCALAR(qs_json, "$.dl") AS url,
+JSON_EXTRACT_SCALAR(qs_json, "$.o_pl") AS p_url,
 JSON_EXTRACT_SCALAR(qs_json, "$.dt") AS title,
 JSON_EXTRACT_SCALAR(qs_json, "$.o_s") AS state,
 JSON_EXTRACT_SCALAR(qs_json, "$.o_ps") AS p_state,
@@ -40,7 +41,7 @@ JSON_EXTRACT_SCALAR(qs_json, "$.o_a_class") AS class,
 COUNT(qs_json) AS c
 FROM TABLE_DATE_RANGE([%s.%s_], TIMESTAMP('%s'), TIMESTAMP('%s'))
 WHERE %s
-GROUP BY url, title, state, p_state, label, xpath
+GROUP BY url, p_url, title, state, p_state, label, xpath
 """ % (self.options['bq_dataset'],
        self.options['bq_table_prefix'],
        datetime.datetime.fromtimestamp(int((self.options['query_stime'] - 3600000) / 1000)).strftime('%Y-%m-%d'),
@@ -54,7 +55,7 @@ GROUP BY url, title, state, p_state, label, xpath
         print(str(query_job.job_id))
         result = []
         for row in query_job:
-            result.append({'url': row['url'], 'title': row['title'], 'state': row['state'], 'p_state': row['p_state'],
+            result.append({'url': row['url'], 'p_url': row['p_url'], 'title': row['title'], 'state': row['state'], 'p_state': row['p_state'],
                            'label': row['label'], 'xpath': row['xpath'], 'a_id': row['a_id'], 'class': row['class'],
                            'count': row['c']})
 
