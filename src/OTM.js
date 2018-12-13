@@ -41,6 +41,8 @@ class OTM {
         case 'collect':
           // manage state for collect
           this.prevState = this.state
+          this.prevUrl = this.url
+          this.url = window.document.URL
           let newState = target
           if (params.statePrefix) {
             newState = params.statePrefix + '_' + newState
@@ -52,12 +54,14 @@ class OTM {
           }
           this.state = newState
           Cookies.set('_st', newState, {expires: 20})
+          Cookies.set('_pu', this.url, {expires: 20})
 
           for (let n in observer.collect) {
             params[n] = observer.collect[n]
           }
 
           this.call(observer.name, target, params)
+
           break
         case 'script':
           if (typeof observer.options.script === 'function') {
@@ -94,6 +98,7 @@ class OTM {
     params.cid = this.userUUID
     params.ec = target
     params.ea = name
+    params.o_pl = this.prevUrl
     params.o_psid = this.viewUUID
     params.o_ps = this.prevState
     params.o_s = this.state
@@ -231,6 +236,7 @@ class OTM {
       this.userUUID = uuid()
       Cookies.set('_kk', this.userUUID, {expires: 60 * 60 * 24 * 365 * 2})
     }
+    this.prevUrl = Cookies.get('_pu')
     this.state = Cookies.get('_st')
 
     document.addEventListener('click', (e) => {
@@ -296,7 +302,7 @@ class OTM {
         stateSuffix = tagName + '_class=' + params.o_a_class
       }
       params.stateSuffix = stateSuffix
-      params.o_e_x = e.touches[0].pageX
+      params.o_e_x = e.touches[0].paueX
       params.o_e_y = e.touches[0].pageY
 
       this.notify('touchstart', params)
@@ -338,8 +344,9 @@ class OTM {
 
     setInterval(() => {
       if (this.url !== window.document.URL) {
-        this.notify('change-url', {stateSuffix: '_url=' + window.document.URL})
+        this.prevUrl = this.url
         this.url = window.document.URL
+        this.notify('change-url', {stateSuffix: '_url=' + window.document.URL})
       }
     }, 1000)
 
