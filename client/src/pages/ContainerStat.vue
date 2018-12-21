@@ -114,8 +114,21 @@
     scroll: /^scroll_.+/
   }
 
-  const lookupPath = (paths, target) => {
-    const targetUrl = url.parse(target)
+  const lookupPath = (paths, parsedUrl) => {
+    if (!parsedUrl.path) {
+      return null
+    }
+
+    let path = parsedUrl.path
+    if (parsedUrl.hash) {
+      const match = parsedUrl.hash.match(/^#!(\/.*)/)
+      if (match) {
+        const hashUrl = url.parse(match[1])
+        path = hashUrl.path
+      }
+    }
+
+    const targetUrl = url.parse(path)
     const targetQs = querystring.parse(targetUrl.query)
 
     for (let p in paths) {
@@ -166,6 +179,7 @@
 
         let searchCondition = {}
         searchCondition[targetFieldName] = e[sourceFieldName]
+        searchCondition.url = e.p_url
         let deepEdges = _.filter(data, searchCondition)
         path.push(e)
         findRelatedEdge(data, deepEdges, skipStatePatterns, results, path)
@@ -186,24 +200,14 @@
   }
 
   const filterByUrl = (data, url) => {
-    const relatedNodesS = []
-    const relatedNodesT = []
-    const newData = _.filter(data, (d) => {
-      if (d.url === url) {
-        relatedNodesS.push(d[sourceFieldName])
-        relatedNodesT.push(d[targetFieldName])
-        return true
-      }
-
-      return false
-    })
+    const newData = _.filter(data, {url})
 
     _.each(data, (d) => {
       if (d.url === url) {
         return
       }
 
-      if (_.includes(relatedNodesT, d[sourceFieldName]) || _.includes(relatedNodesS, d[targetFieldName])) {
+      if (d.p_url === url) {
         newData.push(d)
       }
     })
@@ -233,6 +237,7 @@
       if (d.sourceSkip) {
         let searchCondition = {}
         searchCondition[targetFieldName] = d[sourceFieldName]
+        searchCondition.url = d.p_url
         let edges = _.filter(data, searchCondition)
         edges = findRelatedEdge(data, edges, skipStatePatterns)
         for (let e of edges) {
@@ -248,6 +253,7 @@
             newEdge[sourceFieldName] = e[sourceFieldName]
             newEdge[targetFieldName] = d[targetFieldName]
             newEdge.url = d.url
+            newEdge.p_url = d.p_url
             newEdge.title = d.title
             newEdge.label = d.label
             newEdge.xpath = d.xpath
@@ -269,30 +275,16 @@
       return data
     }
     const paths = JSON.parse(swaggerDoc).paths
+
     for (let d of data) {
-      const parsedUrl = url.parse(d.url)
-      if (!parsedUrl.path) {
-        continue
-      }
+      d.url = lookupPath(paths, url.parse(d.url)) || d.url
+      d.p_url = lookupPath(paths, url.parse(d.p_url)) || d.p_url
 
-      let path = parsedUrl.path
-      if (parsedUrl.hash) {
-        const match = parsedUrl.hash.match(/^#!(\/.*)/)
-        if (match) {
-          const hashUrl = url.parse(match[1])
-          path = hashUrl.path
-        }
-      }
-
-      const matched = lookupPath(paths, path)
-      if (matched) {
-        const e = _.find(data, {url: d.url, p_state: d.p_state, state: d.state})
-        if (e) {
-          e.count += d.count
-          d.url = null
-        }
-
-        d.url = matched
+      // remove duplicated record
+      const e = _.find(data, {url: d.url, p_url: d.p_url, state: d.state, p_state: d.p_state})
+      if (e) {
+        e.count += d.count
+        d.url = null
       }
     }
 
@@ -365,6 +357,7 @@
       async renderGraph (stat) {
         const data = await axios.get(stat.url)
         this.rawGraphData = data.data.result
+
         this.node = null
         this.urls = getUrls(this.rawGraphData)
         if (this.urls.length === 0) {
@@ -384,16 +377,23 @@
         const self = this
 
         this.graphData = _.cloneDeep(this.rawGraphData)
-        this.graphData = skipData(this.graphData, _.values(_.pick(statusPatterns, _.difference(this.statuses, this.enabledStatues))))
+
+        // -- data filter process
+        // 1. url reformat
         this.graphData = convertUrl(this.graphData, this.swaggerDoc)
+
+        // 2. skip data
+        this.graphData = skipData(this.graphData, _.values(_.pick(statusPatterns, _.difference(this.statuses, this.enabledStatues))))
+
+        // 3. filter by url
         this.urls = getUrls(this.graphData)
         this.graphData = filterByUrl(this.graphData, this.url)
+        // -- data filter process
 
         if (this.graphData.length === 0) {
           console.log('no data to render')
           return
         }
-        console.log(this.graphData.length)
 
         const cl = d3.select('#graph')
         const width = cl.node().clientWidth
@@ -429,21 +429,27 @@
           if (!o.label) {
             o.label = ''
           }
-          let sourceIdx = _.findIndex(nodesData, {name: o[sourceFieldName]})
+          let sourceIdx = _.findIndex(nodesData, {name: o[sourceFieldName], url: o.p_url})
           if (sourceIdx === -1) {
-            nodesData.push({name: o[sourceFieldName]})
+            nodesData.push({name: o[sourceFieldName], url: o.p_url})
           }
-          let targetIdx = _.findIndex(nodesData, {name: o[targetFieldName]})
+          let targetIdx = _.findIndex(nodesData, {name: o[targetFieldName], url: o.url})
           if (targetIdx === -1) {
-            nodesData.push({name: o[targetFieldName]})
+            nodesData.push({name: o[targetFieldName], url: o.url})
           }
-          targetIdx = _.findIndex(nodesData, {name: o[targetFieldName]})
+          targetIdx = _.findIndex(nodesData, {name: o[targetFieldName], url: o.url})
 
           if (o.url) {
             if (_.indexOf(urls, o.url) === -1) {
               urls.push(o.url)
             }
           }
+          if (o.p_url) {
+            if (_.indexOf(urls, o.p_url) === -1) {
+              urls.push(o.p_url)
+            }
+          }
+
           nodesData[targetIdx].url = o.url
           nodesData[targetIdx].title = o.title
           nodesData[targetIdx].label = o.label
@@ -477,8 +483,13 @@
         })
 
         this.graphData.forEach(function (o) {
-          let sourceIdx = _.findIndex(nodesData, {name: o[sourceFieldName]})
-          let targetIdx = _.findIndex(nodesData, {name: o[targetFieldName]})
+          let sourceIdx = _.findIndex(nodesData, {name: o[sourceFieldName], url: o.p_url})
+          let targetIdx = _.findIndex(nodesData, {name: o[targetFieldName], url: o.url})
+
+          if (sourceIdx === -1 || targetIdx === -1) {
+            return
+          }
+
           let w = 0
           if (minmax[1] - minmax[0] > 0) {
             w = (parseInt(o[countFieldName]) - minmax[0]) / (minmax[1] - minmax[0])
