@@ -138,6 +138,7 @@ resource "aws_s3_bucket_object" "otm_otm" {
   source = "../../dist/otm.js"
   acl = "public-read"
   content_type = "text/javascript"
+  etag = "${md5(file("../../dist/otm.js"))}"
 }
 
 resource "aws_cloudfront_distribution" "otm_script_distribution" {
