@@ -41,8 +41,6 @@ class OTM {
         case 'collect':
           // manage state for collect
           this.prevState = this.state
-          this.prevUrl = this.url
-          this.url = window.document.URL
           let newState = target
           if (params.statePrefix) {
             newState = params.statePrefix + '_' + newState
@@ -54,13 +52,15 @@ class OTM {
           }
           this.state = newState
           Cookies.set('_st', newState, {expires: 20})
-          Cookies.set('_pu', this.url, {expires: 20})
 
           for (let n in observer.collect) {
             params[n] = observer.collect[n]
           }
 
           this.call(observer.name, target, params)
+
+          this.prevUrl = this.url
+          Cookies.set('_pu', window.document.URL, {expires: 20})
 
           break
         case 'script':
@@ -344,7 +344,6 @@ class OTM {
 
     setInterval(() => {
       if (this.url !== window.document.URL) {
-        this.prevUrl = this.url
         this.url = window.document.URL
         this.notify('change-url', {stateSuffix: '_url=' + window.document.URL})
       }
