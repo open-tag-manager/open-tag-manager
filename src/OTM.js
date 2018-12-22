@@ -302,7 +302,7 @@ class OTM {
         stateSuffix = tagName + '_class=' + params.o_a_class
       }
       params.stateSuffix = stateSuffix
-      params.o_e_x = e.touches[0].paueX
+      params.o_e_x = e.touches[0].pageX
       params.o_e_y = e.touches[0].pageY
 
       this.notify('touchstart', params)
