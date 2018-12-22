@@ -58,6 +58,10 @@ class OTM {
           }
 
           this.call(observer.name, target, params)
+
+          this.prevUrl = this.url
+          Cookies.set('_pu', window.document.URL, {expires: 20})
+
           break
         case 'script':
           if (typeof observer.options.script === 'function') {
@@ -94,6 +98,7 @@ class OTM {
     params.cid = this.userUUID
     params.ec = target
     params.ea = name
+    params.o_pl = this.prevUrl
     params.o_psid = this.viewUUID
     params.o_ps = this.prevState
     params.o_s = this.state
@@ -231,6 +236,7 @@ class OTM {
       this.userUUID = uuid()
       Cookies.set('_kk', this.userUUID, {expires: 60 * 60 * 24 * 365 * 2})
     }
+    this.prevUrl = Cookies.get('_pu')
     this.state = Cookies.get('_st')
 
     document.addEventListener('click', (e) => {
@@ -338,8 +344,8 @@ class OTM {
 
     setInterval(() => {
       if (this.url !== window.document.URL) {
-        this.notify('change-url', {stateSuffix: '_url=' + window.document.URL})
         this.url = window.document.URL
+        this.notify('change-url', {stateSuffix: '_url=' + window.document.URL})
       }
     }, 1000)
 
