@@ -14,6 +14,7 @@
 - `ec`: event category name
 - `ea`: event action name
 - `el` (optional): event label
+- `o_pl`: previous page URL
 - `o_psid`: page view session UUID
 - `o_ps`: previous state, see state format spec
 - `o_s`: current state, see state format spec
