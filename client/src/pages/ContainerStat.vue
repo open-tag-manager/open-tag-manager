@@ -10,7 +10,7 @@
         <div v-if="node" class="detail">
           <h3>Node Info</h3>
           <div><span class="label">Event:</span> {{node.name}}</div>
-          <div><span class="label">URL:</span> <a :href="nodeUrl">{{ node.url }}</a></div>
+          <div><span class="label">URL:</span> <a :href="nodeUrl" target="_blank">{{ node.url }}</a></div>
           <div><span class="label">Label:</span> {{ node.label }}</div>
           <div><span class="label">XPath:</span> {{node.xpath}}</div>
           <div><span class="label">ID:</span> {{node.a_id}}</div>
