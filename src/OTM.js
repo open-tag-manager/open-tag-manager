@@ -2,6 +2,7 @@ import 'fetch-ie8'
 import Cookies from 'cookies-js'
 import uuidV4 from 'uuid/v4'
 import JsSHA from 'jssha'
+import url from 'url'
 
 const OTM_VERSION = 1
 
@@ -81,6 +82,11 @@ class OTM {
   }
 
   call (name, target, params = {}) {
+    if (this.preview) {
+      console.log('call', name, target, params)
+      return
+    }
+
     params.v = OTM_VERSION
     params.tid = this.name
     params.dl = document.URL
@@ -224,12 +230,31 @@ class OTM {
   }
 
   init (endpoint, options = {}) {
+    this.preview = false
     this.endpoint = endpoint
     this.viewUUID = uuid()
     this.url = window.document.URL
     this.prevState = null
     this.state = null
     this.name = options.name || ''
+
+    const parsedUrl = url.parse(this.url, true)
+    if (parsedUrl.query._op === '1') {
+      console.log('OTM Preview MODE')
+      this.preview = true
+
+      if (parsedUrl.query._op_id) {
+        const element = document.getElementById(parsedUrl.query._op_id)
+        if (element) {
+          element.style.border = '3px red solid'
+        }
+      } else if (parsedUrl.query._op_xpath) {
+        const element = document.evaluate(parsedUrl.query._op_xpath, document).iterateNext()
+        if (element) {
+          element.style.border = '3px red solid'
+        }
+      }
+    }
 
     this.userUUID = Cookies.get('_kk')
     if (!this.userUUID) {
