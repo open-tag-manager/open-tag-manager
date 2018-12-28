@@ -327,7 +327,7 @@
         if (this.node && this.node.url) {
           const parsedUrl = url.parse(this.node.url, true)
           parsedUrl.query._op = '1'
-          parsedUrl.query._op_id =  this.node.a_id
+          parsedUrl.query._op_id = this.node.a_id
           parsedUrl.query._op_xpath = this.node.xpath
           return url.format(parsedUrl)
         }
