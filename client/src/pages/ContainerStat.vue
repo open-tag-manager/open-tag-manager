@@ -7,21 +7,17 @@
         </div>
       </div>
       <div class="node-info" v-if="graphData">
-        <div v-if="node" class="detail">
-          <h3>Node Info</h3>
-          <div><span class="label">Event:</span> {{node.name}}</div>
-          <div><span class="label">URL:</span> <a :href="nodeUrl" target="_blank">{{ node.url }}</a></div>
-          <div><span class="label">Label:</span> {{ node.label }}</div>
-          <div><span class="label">XPath:</span> {{node.xpath}}</div>
-          <div><span class="label">ID:</span> {{node.a_id}}</div>
-          <div><span class="label">Class:</span> {{node.class}}</div>
-        </div>
+        <node-detail v-if="node" :node="node"></node-detail>
 
         <b-form-select v-model="url" :options="urls" @input="r"></b-form-select>
 
         <b-form-group label="Enabled Statuses" class="status-filter">
           <b-form-checkbox-group id="enabled-statuses" v-model="enabledStatues"
                                  :options="statuses" @input="r"></b-form-checkbox-group>
+        </b-form-group>
+
+        <b-form-group label="Threshold Count" horizontal>
+          <b-form-input v-model="thresholdCount" type="number" required></b-form-input>
         </b-form-group>
       </div>
 
@@ -31,47 +27,46 @@
         </button>
       </div>
     </div>
+
+    <b-modal id="new-report-modal" title="New Report" @ok="makeReport">
+      <div class="d-flex align-items-center">
+        <div class="form-group">
+          <label for="stime">Report From</label>
+          <flat-pickr v-model="stime" class="form-control" id="stime"
+                      :config="{enableTime: true, dateFormat: 'Y-m-d H:i'}"></flat-pickr>
+        </div>
+        <div class="mx-2">〜</div>
+        <div class="form-group">
+          <label for="etime">Report To</label>
+          <flat-pickr v-model="etime" class="form-control" id="etime"
+                      :config="{enableTime: true, dateFormat: 'Y-m-d H:i'}"></flat-pickr>
+        </div>
+        <div class="form-group mx-2">
+          <label for="timezone">Timezone</label>
+          <select v-model="timezone" class="form-control" id="timezone">
+            <option v-for="tz in timezones" :value="tz">{{tz}}</option>
+          </select>
+        </div>
+      </div>
+      <div class="d-flex">
+        <div class="form-group">
+          <label for="label">Report Label</label>
+          <input type="text" id="label" v-model="label" class="form-control" pattern="[a-zA-Z]+">
+        </div>
+      </div>
+    </b-modal>
+
+    <b-modal id="setting-modal" title="Setting" @ok="saveSetting">
+      <div class="form-group">
+        <label for="swagger-doc">Swagger Doc (JSON)</label>
+        <textarea id="swagger-doc" class="form-control" v-model="swaggerDoc" rows="10"></textarea>
+      </div>
+    </b-modal>
+
     <div class="container py-2">
       <div v-if="stats">
-        <div>
-          <div class="form-group">
-            <label for="swagger-doc">Swagger Doc (JSON)</label>
-            <textarea id="swagger-doc" class="form-control" v-model="swaggerDoc" rows="10"></textarea>
-          </div>
-        </div>
-
-        <form @submit="makeReport" ref="form">
-          <div class="d-flex align-items-center">
-            <div class="form-group">
-              <label for="stime">Report From</label>
-              <flat-pickr v-model="stime" class="form-control" id="stime"
-                          :config="{enableTime: true, dateFormat: 'Y-m-d H:i'}"></flat-pickr>
-            </div>
-            <div class="mx-2">〜</div>
-            <div class="form-group">
-              <label for="etime">Report To</label>
-              <flat-pickr v-model="etime" class="form-control" id="etime"
-                          :config="{enableTime: true, dateFormat: 'Y-m-d H:i'}"></flat-pickr>
-            </div>
-            <div class="form-group mx-2">
-              <label for="timezone">Timezone</label>
-              <select v-model="timezone" class="form-control" id="timezone">
-                <option v-for="tz in timezones" :value="tz">{{tz}}</option>
-              </select>
-            </div>
-          </div>
-          <div class="d-flex">
-            <div class="form-group">
-              <label for="label">Report Label</label>
-              <input type="text" id="label" v-model="label" class="form-control" pattern="[a-zA-Z]+">
-            </div>
-          </div>
-
-          <b-button type="submit" class="my-2" variant="primary">
-            Make Report
-          </b-button>
-        </form>
-
+        <button type="button" class="btn btn-primary" v-b-modal.new-report-modal>New Report</button>
+        <button type="button" class="btn btn-primary" v-b-modal.setting-modal>Setting</button>
         <div>
           <b-button class="my-2" variant="primary" @click="reload">
             Reload
@@ -99,6 +94,7 @@
   import querystring from 'querystring'
   import moment from 'moment-timezone'
   import flatPickr from 'vue-flatpickr-component'
+  import NodeDetail from '../components/NodeDetail'
 
   const sourceFieldName = 'p_state'
   const targetFieldName = 'state'
@@ -215,7 +211,7 @@
     return newData
   }
 
-  const skipData = (data, skipStatePatterns = []) => {
+  const skipData = (data, skipStatePatterns = [], thresholdCount) => {
     const cData = _.cloneDeep(data)
     // Mark as skip
     for (let d of cData) {
@@ -225,6 +221,7 @@
         if (d[sourceFieldName] && d[sourceFieldName].match(pattern)) sourceMatched = true
         if (d[targetFieldName] && d[targetFieldName].match(pattern)) targetMatched = true
       }
+      if (d[countFieldName] < thresholdCount) targetMatched = true
       d.sourceSkip = sourceMatched
       d.targetSkip = targetMatched
     }
@@ -274,7 +271,12 @@
     if (!swaggerDoc) {
       return data
     }
+
     const paths = JSON.parse(swaggerDoc).paths
+
+    if (!paths) {
+      return data
+    }
 
     for (let d of data) {
       d.url = lookupPath(paths, url.parse(d.url)) || d.url
@@ -294,7 +296,7 @@
   }
 
   export default {
-    components: {flatPickr},
+    components: {flatPickr, NodeDetail},
     data () {
       return {
         name: null,
@@ -312,7 +314,8 @@
         isExpanded: false,
         swaggerDoc: '',
         urls: [],
-        url: null
+        url: null,
+        thresholdCount: 1
       }
     },
     computed: {
@@ -322,23 +325,13 @@
         } else {
           return 400
         }
-      },
-      nodeUrl () {
-        if (this.node && this.node.url) {
-          const parsedUrl = url.parse(this.node.url, true)
-          parsedUrl.query._op = '1'
-          parsedUrl.query._op_id = this.node.a_id
-          parsedUrl.query._op_xpath = this.node.xpath
-          return url.format(parsedUrl)
-        }
-
-        return ''
       }
     },
     async created () {
       const name = this.$route.params.name
       this.name = name
       await this.reload()
+      await this.getSwaggerDoc()
     },
     methods: {
       async makeReport () {
@@ -364,6 +357,16 @@
         const data = await api(this.$store).get(`containers/${this.name}/stats`)
         const stats = data.data
         this.stats = stats
+      },
+      async getSwaggerDoc () {
+        const data = await api(this.$store).get(`containers/${this.name}/swagger_doc`)
+        this.swaggerDoc = JSON.stringify(data.data)
+      },
+      async saveSwaggerDoc () {
+        await api(this.$store).put(`containers/${this.name}/swagger_doc`, JSON.parse(this.swaggerDoc))
+      },
+      async saveSetting () {
+        await this.saveSwaggerDoc()
       },
       async renderGraph (stat) {
         const data = await axios.get(stat.url)
@@ -394,17 +397,12 @@
         this.graphData = convertUrl(this.graphData, this.swaggerDoc)
 
         // 2. skip data
-        this.graphData = skipData(this.graphData, _.values(_.pick(statusPatterns, _.difference(this.statuses, this.enabledStatues))))
+        this.graphData = skipData(this.graphData, _.values(_.pick(statusPatterns, _.difference(this.statuses, this.enabledStatues))), parseInt(this.thresholdCount))
 
         // 3. filter by url
         this.urls = getUrls(this.graphData)
         this.graphData = filterByUrl(this.graphData, this.url)
         // -- data filter process
-
-        if (this.graphData.length === 0) {
-          console.log('no data to render')
-          return
-        }
 
         const cl = d3.select('#graph')
         const width = cl.node().clientWidth
@@ -415,6 +413,11 @@
         const g = new DagreD3.graphlib.Graph({compound: true}).setGraph({}).setDefaultEdgeLabel(function () {
           return {}
         })
+
+        if (this.graphData.length === 0) {
+          console.log('no data to render')
+          return
+        }
 
         const nodesData = []
         const linksData = []
@@ -578,15 +581,6 @@
     background: #fff;
     max-width: 50vw;
     opacity: 0.8;
-  }
-
-  .graph-container .node-info .detail {
-    max-height: 200px;
-    overflow: auto;
-  }
-
-  .graph-container .node-info .detail .label {
-    font-weight: bold;
   }
 
   .graph-container .graph-operation {
