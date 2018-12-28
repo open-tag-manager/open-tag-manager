@@ -9,6 +9,7 @@ import Container from '@/pages/Container'
 import ContainerSetting from '@/pages/ContainerSetting'
 import ContainerHome from '@/pages/ContainerHome'
 import ContainerStat from '@/pages/ContainerStat'
+import ContainerStatGraph from '@/pages/ContainerStatGraph'
 
 import store from '../store'
 
@@ -58,7 +59,14 @@ const router = new Router({
         {
           path: 'stat',
           name: 'Container-Stat',
-          component: ContainerStat
+          component: ContainerStat,
+          children: [
+            {
+              path: ':statid',
+              name: 'Container-Stat-Graph',
+              component: ContainerStatGraph
+            }
+          ]
         }
       ]
     }
