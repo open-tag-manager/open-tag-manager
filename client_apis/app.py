@@ -13,7 +13,6 @@ import datetime
 import random
 import string
 
-
 app = Chalice(app_name="open_tag_manager")
 app.debug = True
 
@@ -66,13 +65,27 @@ def get_container_data(name, config):
         return (copy.copy(container), container)
 
 
+def get_container_swagger_doc_data(name):
+    try:
+        response = s3.Object(os.environ.get('OTM_BUCKET'), 'containers/' + name + '_swagger_doc.json').get()
+        print(response)
+        return json.loads(response['Body'].read())
+    except ClientError:
+        return None
+
+
+def put_container_swagger_doc_data(name, doc):
+    s3.Object(os.environ.get('OTM_BUCKET'), 'containers/' + name + '_swagger_doc.json').put(Body=json.dumps(doc),
+                                                                                            ContentType='application/json')
+
+
 def put_container_data(name, config):
     s3.Object(os.environ.get('OTM_BUCKET'), 'containers/' + name + '.json').put(Body=json.dumps(config),
                                                                                 ContentType='application/json')
 
 
 def randomname(n):
-   return ''.join(random.choices(string.ascii_letters + string.digits, k=n))
+    return ''.join(random.choices(string.ascii_letters + string.digits, k=n))
 
 
 @app.route("/", cors=True)
@@ -213,6 +226,44 @@ def delete_container(name):
     put_config_data(config)
 
     return Response(body='', status_code=204)
+
+
+@app.route('/containers/{name}/swagger_doc', methods=['GET'], cors=True)
+def get_container_swagger_doc(name):
+    session = get_session()
+    if not session:
+        return Response(body={'error': 'session required'}, status_code=401)
+
+    config = get_config_data()
+    (data, container) = get_container_data(name, config)
+
+    if data is None:
+        return Response(body={'error': 'not found'}, status_code=404)
+
+    doc = get_container_swagger_doc_data(name)
+    if doc is None:
+        return Response(body={}, status_code=404)
+
+    return doc
+
+
+@app.route('/containers/{name}/swagger_doc', methods=['PUT'], cors=True)
+def put_container_swagger_doc(name):
+    session = get_session()
+    if not session:
+        return Response(body={'error': 'session required'}, status_code=401)
+
+    config = get_config_data()
+    (data, container) = get_container_data(name, config)
+
+    if data is None:
+        return Response(body={'error': 'not found'}, status_code=404)
+
+    request = app.current_request
+    body = request.json_body
+
+    put_container_swagger_doc_data(name, body)
+    return body
 
 
 @app.route('/containers/{name}/stats', methods=['GET'], cors=True)
