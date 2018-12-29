@@ -41,7 +41,7 @@ JSON_EXTRACT_SCALAR(qs_json, "$.o_a_class") AS class,
 COUNT(qs_json) AS c
 FROM TABLE_DATE_RANGE([%s.%s_], TIMESTAMP('%s'), TIMESTAMP('%s'))
 WHERE %s
-GROUP BY url, p_url, title, state, p_state, label, xpath
+GROUP BY url, p_url, title, state, p_state, label, xpath, a_id, class
 """ % (self.options['bq_dataset'],
        self.options['bq_table_prefix'],
        datetime.datetime.fromtimestamp(int((self.options['query_stime'] - 3600000) / 1000)).strftime('%Y-%m-%d'),
