@@ -16,7 +16,7 @@
       </b-form-group>
 
       <b-form-group label="Threshold Count" horizontal>
-        <b-form-input v-model="thresholdCount" type="number" required></b-form-input>
+        <b-form-input v-model.number="thresholdCount" type="number" required @change="r"></b-form-input>
       </b-form-group>
     </div>
 
@@ -307,7 +307,7 @@
         this.graphData = convertUrl(this.graphData, this.swaggerDoc)
 
         // 2. skip data
-        this.graphData = skipData(this.graphData, _.values(_.pick(statusPatterns, _.difference(this.statuses, this.enabledStatues))), parseInt(this.thresholdCount))
+        this.graphData = skipData(this.graphData, _.values(_.pick(statusPatterns, _.difference(this.statuses, this.enabledStatues))), this.thresholdCount)
 
         // 3. filter by url
         this.urls = getUrls(this.graphData)
