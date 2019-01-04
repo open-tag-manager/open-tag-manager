@@ -242,7 +242,7 @@ def get_container_swagger_doc(name):
 
     doc = get_container_swagger_doc_data(name)
     if doc is None:
-        return Response(body={}, status_code=404)
+        return {}
 
     return doc
 
