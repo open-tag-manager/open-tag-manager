@@ -15,6 +15,8 @@
                                :options="statuses" @input="r"></b-form-checkbox-group>
       </b-form-group>
 
+      <b-form-checkbox id="merge-same-id" v-model="mergeSameId" @input="r">Merge same ID</b-form-checkbox>
+
       <b-form-group label="Threshold Count" horizontal>
         <b-form-input v-model.number="thresholdCount" type="number" required @change="r"></b-form-input>
       </b-form-group>
@@ -209,6 +211,33 @@
     return _.reject(_.reject(cData, 'sourceSkip'), 'targetSkip')
   }
 
+  const mergeSameId = (data) => {
+    const cData = []
+
+    for (let d of data) {
+      if (d.deleted) {
+        continue
+      }
+
+      const filtered = _.filter(data, {url: d.url, p_url: d.p_url, state: d.state, p_state: d.p_state})
+      if (filtered.length <= 1) {
+        cData.push(d)
+      } else {
+        let count = 0
+        for (let fd of filtered) {
+          count += fd.count
+          fd.deleted = true
+        }
+
+        delete d.deleted
+        d.count = count
+        cData.push(d)
+      }
+    }
+
+    return cData
+  }
+
   const convertUrl = (data, swaggerDoc) => {
     if (!swaggerDoc) {
       return data
@@ -250,7 +279,8 @@
         urls: [],
         url: null,
         thresholdCount: 1,
-        swaggerDoc: ''
+        swaggerDoc: '',
+        mergeSameId: true
       }
     },
     computed: {
@@ -309,7 +339,12 @@
         // 2. skip data
         this.graphData = skipData(this.graphData, _.values(_.pick(statusPatterns, _.difference(this.statuses, this.enabledStatues))), this.thresholdCount)
 
-        // 3. filter by url
+        // 3. merge same id data
+        if (this.mergeSameId) {
+          this.graphData = mergeSameId(this.graphData)
+        }
+
+        // 4. filter by url
         this.urls = getUrls(this.graphData)
         this.graphData = filterByUrl(this.graphData, this.url)
         // -- data filter process
