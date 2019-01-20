@@ -39,9 +39,9 @@
           {{ container.updated_at | date }}
         </td>
         <td class="text-right">
-          <b-button variant="primary" :to="{name: 'Container-Stat', params: {name: container.name}}">Stats</b-button>
+          <b-button variant="primary" :to="{name: 'Container-Stat', params: {org: $route.params.org, name: container.name}}">Stats</b-button>
 
-          <b-button variant="primary" :to="{name: 'Container-Setting', params: {name: container.name}}">Setting</b-button>
+          <b-button variant="primary" :to="{name: 'Container-Setting', params: {org: $route.params.org, name: container.name}}">Setting</b-button>
 
           <button type="button" class="btn btn-danger" @click="deleteContainer(container.name)">Delete</button>
         </td>
@@ -65,7 +65,6 @@
 </template>
 
 <script>
-  import api from '../api'
   import moment from 'moment'
 
   import { validationMixin } from 'vuelidate'
@@ -103,8 +102,8 @@
         this.isCreating = true
         this.error = null
         try {
-          await api(this.$store).post('containers', {
-            name: this.newName
+          await this.$Amplify.API.post('OTMClientAPI', `/orgs/${this.$route.params.org}/containers`, {
+            body: {name: this.newName}
           })
           await this.loadContainers()
           this.newName = ''
@@ -123,11 +122,11 @@
         }
       },
       async loadContainers () {
-        const data = await api(this.$store).get('containers')
-        this.containers = data.data
+        const data = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}/containers`)
+        this.containers = data
       },
       async deleteContainer (name) {
-        await api(this.$store).delete(`containers/${name}`)
+        await this.$Amplify.API.del('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${name}`)
         await this.loadContainers()
       }
     }

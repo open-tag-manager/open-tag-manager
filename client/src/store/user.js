@@ -1,4 +1,4 @@
-import api from '../api'
+import _ from 'lodash'
 
 const getters = {
   isAuthenticated (state) {
@@ -8,33 +8,35 @@ const getters = {
 
 const state = {
   user: null,
-  token: null
+  orgs: [],
+  currentOrg: null
 }
 
 const mutations = {
-  SET_USER (state, {user, token}) {
+  SET_USER (state, {user, orgs}) {
     state.user = user
-    state.token = token
+    state.orgs = orgs
+    state.currentOrg = _.first(state.orgs)
+  },
+  SET_CURRENT_ORG (state, org) {
+    state.currentOrg = org
   }
 }
 
 const actions = {
-  async login (ctx, {username, password}) {
-    const response = await api(this).post('/login', {username, password})
-    const user = response.data
-    const token = user.token
-    this.app.$cookie.set('otm_token', token, {path: process.env.BASE_PATH})
-    ctx.commit('SET_USER', {user, token})
+  setUser (ctx, {user, orgs}) {
+    ctx.commit('SET_USER', {user, orgs})
   },
-  async loginByToken (ctx, {token}) {
-    const response = await api(this, {headers: {Authorization: token}}).get('/')
-    const user = response.data
-    user.token = token
-    ctx.commit('SET_USER', {user, token})
+  unsetUser (ctx) {
+    ctx.commit('SET_USER', {user: null, orgs: []})
+    ctx.commit('SET_CURRENT_ORG', null)
   },
-  logout ({commit}) {
-    commit('SET_USER', {user: null, token: null})
-    this.app.$cookie.delete('otm_token')
+  async signOut (ctx) {
+    await this.app.$Amplify.Auth.signOut()
+    ctx.dispatch('unsetUser')
+  },
+  setCurrentOrg (ctx, org) {
+    ctx.commit('SET_CURRENT_ORG', org)
   }
 }
 
