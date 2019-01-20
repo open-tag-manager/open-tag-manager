@@ -7,6 +7,8 @@ import Org from '@/pages/Org'
 import Containers from '@/pages/Containers'
 import Container from '@/pages/Container'
 import ContainerSetting from '@/pages/ContainerSetting'
+import ContainerStat from '@/pages/ContainerStat'
+import ContainerStatGraph from '@/pages/ContainerStatGraph'
 
 import * as AmplifyModules from 'aws-amplify'
 import {AmplifyPlugin, AmplifyEventBus} from 'aws-amplify-vue'
@@ -76,6 +78,18 @@ const router = new Router({
               path: 'setting',
               name: 'Container-Setting',
               component: ContainerSetting
+            },
+            {
+              path: 'stat',
+              name: 'Container-Stat',
+              component: ContainerStat,
+              children: [
+                {
+                  path: ':statid',
+                  name: 'Container-Stat-Graph',
+                  component: ContainerStatGraph
+                }
+              ]
             }
           ]
         }

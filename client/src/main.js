@@ -4,6 +4,7 @@ import Vue from 'vue'
 import App from './App'
 import BootstrapVue from 'bootstrap-vue'
 import Vuelidate from 'vuelidate'
+import VueToasted from 'vue-toasted'
 import router from './router'
 import store from './store'
 import Amplify from 'aws-amplify'
@@ -46,6 +47,7 @@ Amplify.configure({
 
 Vue.use(Vuelidate)
 Vue.use(BootstrapVue)
+Vue.use(VueToasted)
 
 library.add(faExpand)
 Vue.component('fa-icon', FontAwesomeIcon)
