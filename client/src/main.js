@@ -20,6 +20,11 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
 Vue.config.productionTip = false
 
+let apiBase = process.env.API_BASE_URL
+if (apiBase.match('/$')) {
+  apiBase = apiBase.substr(0, apiBase.length - 1)
+}
+
 Amplify.configure({
   Auth: {
     identityPoolId: process.env.COGNITO_IDENTITY_POOL_ID,
@@ -36,7 +41,7 @@ Amplify.configure({
     endpoints: [
       {
         name: 'OTMClientAPI',
-        endpoint: process.env.API_BASE_URL,
+        endpoint: apiBase,
         custom_header: async () => {
           return { Authorization: (await Amplify.Auth.currentSession()).idToken.jwtToken }
         }

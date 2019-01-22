@@ -2,9 +2,8 @@ import subprocess
 import shutil
 import json
 import yaml
-import bcrypt
 import os
-from getpass import getpass
+import re
 
 def main():
     environment = os.environ.get('ENV') or 'dev'
@@ -61,8 +60,8 @@ def main():
     if 'aws_route53_record.client' in tfresource:
         client_domain = tfresource['aws_route53_record.client']['primary']['attributes']['name']
 
-    dynamo_db_table = tfresource['aws_dynamodb_table.otm_session']['primary']['id']
-    dynamo_db_table_arn = tfresource['aws_dynamodb_table.otm_session']['primary']['attributes']['arn']
+    dynamo_db_table = tfresource['aws_dynamodb_table.otm_role']['primary']['id']
+    dynamo_db_table_arn = tfresource['aws_dynamodb_table.otm_role']['primary']['attributes']['arn']
 
     job_definition = tfresource['aws_batch_job_definition.otm_data_retriever']['primary']['id']
 
@@ -74,6 +73,19 @@ def main():
 
     athena_database = tfresource['aws_athena_database.otm']['primary']['id']
 
+    cognito_identify_pool_id = tfresource['aws_cognito_identity_pool.otm']['primary']['id']
+    cognito_user_pool_id = None
+    cognito_user_pool_client_id = None
+    aws_id = re.match('^arn:aws:cognito-identity:[a-z0-9\-]+:([0-9]+):identitypool', tfresource['aws_cognito_identity_pool.otm']['primary']['attributes']['arn'])[1]
+    for i in tfresource['aws_cognito_identity_pool.otm']['primary']['attributes'].keys():
+        v = tfresource['aws_cognito_identity_pool.otm']['primary']['attributes'][i]
+        if re.match('^cognito_identity_providers\.[0-9]+\.client_id$', i):
+            cognito_user_pool_client_id = v
+        if re.match('^cognito_identity_providers\.[0-9]+\.provider_name$', i):
+            cognito_user_pool_id = re.match('^cognito-idp\.([a-z0-9\-]+)\.amazonaws.com/(.+)$', v)[2]
+
+    cognito_user_pool_arn = 'arn:aws:cognito-idp:%s:%s:userpool/%s' % (os.environ.get('AWS_DEFAULT_REGION'), aws_id, cognito_user_pool_id)
+
     shutil.copy('./client_apis/.chalice/config.json.sample', './client_apis/.chalice/config.json')
     shutil.copy('./client_apis/.chalice/policy-sample.json', './client_apis/.chalice/policy-dev.json')
     shutil.copy('./s3weblog2athena/config/sample.yml', './s3weblog2athena/config/dev.yml')
@@ -84,19 +96,14 @@ def main():
     with open('./client_apis/.chalice/config.json', 'r') as f:
         config = json.load(f)
         env = config['environment_variables']
-        if not env['ROOT_PASSWORD_HASH']:
-            salt = bcrypt.gensalt(rounds=12, prefix=b'2b')
-            password = getpass('Client Root Password: ')
-            hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
-            env['ROOT_PASSWORD_HASH'] = hashed_password.decode('utf-8')
-
         env['OTM_BUCKET'] = script_bucket
         env['OTM_URL'] = 'https://%s/otm.js' % script_domain
         env['COLLECT_URL'] = 'https://%s/collect.html' % collect_domain
-        env['OTM_SESSION_DYNAMODB_TABLE'] = dynamo_db_table
+        env['OTM_ROLE_DYNAMODB_TABLE'] = dynamo_db_table
         env['OTM_STATS_BUCKET'] = stat_bucket
         env['OTM_STATS_PREFIX'] = 'stats/'
         env['OTM_SCRIPT_CDN'] = 'https://%s' % script_domain
+        env['OTM_COGNITO_USER_POOL_ARN'] = cognito_user_pool_arn
         env['STATS_BATCH_JOB_QUEUE'] = job_queue
         env['STATS_BATCH_JOB_DEFINITION'] = job_definition
         env['STATS_CONFIG_BUCKET'] = config_bucket
@@ -141,6 +148,13 @@ def main():
         'PATH': os.environ.get('PATH'),
         'API_BASE_URL': api_resource['resources'][2]['rest_api_url'],
         'ASSETS_PUBLIC_PATH': "https://%s/" % client_domain,
+        'COGNITO_IDENTITY_POOL_ID': cognito_identify_pool_id,
+        'COGNITO_REGION': os.environ.get('AWS_DEFAULT_REGION'),
+        'COGNITO_IDENTITY_POOL_REGION': os.environ.get('AWS_DEFAULT_REGION'),
+        'COGNITO_USER_POOL_ID': cognito_user_pool_id,
+        'COGNITO_USER_POOL_WEB_CLIENT_ID': cognito_user_pool_client_id,
+        'COGNITO_COOKIE_STORAGE_DOMAIN': client_domain,
+        'COGNITO_COOKIE_SECURE': '1',
         'BASE_PATH': ''
     }, cwd='./client')
     subprocess.call(['aws', 's3', 'sync', './client/dist/', 's3://%s/' % client_bucket, '--acl=public-read'])
