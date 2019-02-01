@@ -182,6 +182,7 @@ def create_container(org):
     ts = int(time.time())
     new_container = {
         'name': make_random_name(org),
+        'org': org,
         'label': body['name'],
         'created_at': ts,
         'updated_at': ts
@@ -225,6 +226,7 @@ def put_container(org, name):
         return Response(body={'error': 'there is no observer configurations'}, status_code=400)
 
     ts = int(time.time())
+    data['org'] = org
     data['updated_at'] = ts
     data['observers'] = body['observers']
     data['triggers'] = body['triggers']
