@@ -133,7 +133,7 @@
 </script>
 
 <style>
-  #graph .node rect {
+  #graph .node rect, #graph .node ellipse {
     stroke: #333;
     fill: #fff;
     stroke-width: 1.5px;
