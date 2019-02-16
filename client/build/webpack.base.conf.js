@@ -1,6 +1,4 @@
 'use strict'
-
-const webpack = require('webpack')
 const path = require('path')
 const utils = require('./utils')
 const config = require('../config')

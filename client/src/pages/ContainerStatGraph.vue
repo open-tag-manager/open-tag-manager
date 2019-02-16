@@ -8,14 +8,14 @@
     <div class="node-info" v-if="graphData">
       <node-detail v-if="node" :node="node"></node-detail>
 
-      <b-form-select v-model="url" :options="urls" @input="r"></b-form-select>
+      <button class="btn btn-primary" v-if="url" @click="back">Back</button>
 
       <b-form-group label="Enabled Statuses" class="status-filter">
         <b-form-checkbox-group id="enabled-statuses" v-model="enabledStatues"
                                :options="statuses" @input="r"></b-form-checkbox-group>
       </b-form-group>
 
-      <b-form-checkbox id="merge-same-id" v-model="mergeSameId" @input="r">Merge same ID</b-form-checkbox>
+      <b-form-checkbox id="merge-same-id" v-model="mergeSameId" @input="render">Merge same ID</b-form-checkbox>
 
       <b-form-group label="Threshold Count" horizontal>
         <b-form-input v-model.number="thresholdCount" type="number" required @change="r"></b-form-input>
@@ -31,7 +31,6 @@
 </template>
 
 <script>
-  import api from '../api'
   import axios from 'axios'
   import _ from 'lodash'
   import * as d3 from 'd3'
@@ -298,8 +297,7 @@
     },
     methods: {
       async renderGraph () {
-        const statsData = await api(this.$store).get(`containers/${this.$route.params.name}/stats`)
-        const stats = statsData.data
+        const stats = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.$route.params.name}/stats`)
         const stat = _.find(stats, {key: this.$route.params.statid})
         if (!stat) {
           return
@@ -310,15 +308,12 @@
 
         this.node = null
         this.urls = getUrls(this.rawGraphData)
-        if (this.urls.length === 0) {
-          return
-        }
-        this.url = this.urls[0]
+        this.url = null
         this.render()
       },
       async getSwaggerDoc () {
-        const data = await api(this.$store).get(`containers/${this.$route.params.name}/swagger_doc`)
-        this.swaggerDoc = JSON.stringify(data.data)
+        const data = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.$route.params.name}/swagger_doc`)
+        this.swaggerDoc = JSON.stringify(data)
       },
       expand () {
         const cl = d3.select('#graph')
@@ -326,10 +321,7 @@
         this.isExpanded = !this.isExpanded
         svg.attr('height', this.svgHeight)
       },
-      render () {
-        console.log('render')
-        const self = this
-
+      filter () {
         this.graphData = _.cloneDeep(this.rawGraphData)
 
         // -- data filter process
@@ -346,8 +338,92 @@
 
         // 4. filter by url
         this.urls = getUrls(this.graphData)
+      },
+      renderUrls () {
+        console.log('render URLs')
+
+        this.filter()
+
+        const cl = d3.select('#graph')
+        const width = cl.node().clientWidth
+        const height = this.svgHeight
+        cl.selectAll('*').remove()
+        const svg = cl.append('svg').attr('width', width).attr('height', height)
+        const inner = svg.append('g')
+        const g = new DagreD3.graphlib.Graph({compound: true}).setGraph({}).setDefaultEdgeLabel(function () {
+          return {}
+        })
+
+        this.urls.forEach(function (u, idx) {
+          g.setNode(idx, {shape: 'ellipse', label: u})
+        })
+
+        const h = {}
+        const urlLinks = this.graphData.reduce(function (r, o) {
+          let key = `${o.url}-${o.p_url}`
+
+          if (!h[key]) {
+            h[key] = Object.assign({}, o)
+            r.push(h[key])
+          } else {
+            h[key].count += o.count
+          }
+
+          return r
+        }, [])
+
+        console.log(urlLinks)
+        g.setNode(this.urls.length, {label: 'Undefined', shape: 'ellipse'})
+
+        urlLinks.forEach((u) => {
+          let p = _.indexOf(this.urls, u.p_url)
+          let t = _.indexOf(this.urls, u.url)
+
+          if (p === -1) {
+            p = this.urls.length
+          }
+          if (t === -1) {
+            t = this.urls.length
+          }
+
+          g.setEdge(p, t, {
+            label: u.count,
+            arrowheadClass: 'arrowhead',
+            curve: d3.curveBasis
+          })
+        })
+
+        const render = new DagreD3.render()
+        render(inner, g)
+
+        const zoom = d3.zoom().on('zoom', () => {
+          inner.attr('transform', d3.event.transform)
+        })
+        svg.call(zoom)
+        const initialScale = 0.75
+        svg.call(zoom.transform, d3.zoomIdentity.translate((svg.attr('width') - g.graph().width * initialScale) / 2, 20).scale(initialScale))
+
+        svg.selectAll('g.node').on('click', (id) => {
+          if (id !== this.urls.length) {
+            this.url = this.urls[id]
+            this.render()
+          }
+        })
+      },
+      back () {
+        this.url = null
+        this.node = null
+        this.render()
+      },
+      render () {
+        if (!this.url) {
+          return this.renderUrls()
+        }
+
+        console.log('render')
+
+        this.filter()
         this.graphData = filterByUrl(this.graphData, this.url)
-        // -- data filter process
 
         const cl = d3.select('#graph')
         const width = cl.node().clientWidth
@@ -432,7 +508,7 @@
           if (node.name && node.name !== 'undefined') {
             label = strimwidth(node.name, 20) + '\n' + node.title + '\n' + strimwidth(node.label, 20)
           }
-          g.setNode(idx, {label})
+          g.setNode(idx, {shape: 'ellipse', label})
         })
 
         nodesData.forEach(function (node, idx) {
@@ -477,9 +553,8 @@
         svg.call(zoom)
         const initialScale = 0.75
         svg.call(zoom.transform, d3.zoomIdentity.translate((svg.attr('width') - g.graph().width * initialScale) / 2, 20).scale(initialScale))
-        svg.selectAll('g.node').on('click', function (id) {
-          // use `this` for element
-          self.node = nodesData[id]
+        svg.selectAll('g.node').on('click', (id) => {
+          this.node = nodesData[id]
         })
       },
       r () {

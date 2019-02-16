@@ -7,7 +7,6 @@
         Script URL: <input type="text" readonly v-model="container.script">
       </div>
 
-
       <form @submit.prevent="deploy">
         <b-button variant="primary" class="my-2" type="submit">Deploy</b-button>
 
@@ -63,7 +62,6 @@
 
         <b-button variant="primary" @click="addBlankObserver">New Observer</b-button>
 
-
         <h3 class="my-2">Triggers</h3>
 
         <b-card v-for="trigger in container.triggers" :key="trigger.id" class="my-2">
@@ -101,7 +99,6 @@
 </template>
 
 <script>
-  import api from '../api'
   import uuid from 'uuid/v4'
   import _ from 'lodash'
 
@@ -134,7 +131,6 @@
               name: 'change-url'
             }
           ]
-
           return preset.concat(this.container.triggers)
         }
       },
@@ -160,8 +156,7 @@
     },
     async created () {
       const name = this.$route.params.name
-      const data = await api(this.$store).get(`containers/` + name)
-      const container = data.data
+      const container = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${name}`)
       if (!container.observers) {
         container.observers = []
       }
@@ -218,15 +213,15 @@
           alert('You cannot delete this trigger because it used by any observers.')
           return
         }
-
         this.container.triggers = _.reject(this.container.triggers, {id: trigger.id})
       },
       async deploy () {
-        const data = await api(this.$store).patch(`containers/` + this.container.name, {
-          observers: this.container.observers,
-          triggers: this.container.triggers
+        this.container = await this.$Amplify.API.put('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.container.name}`, {
+          body: {
+            observers: this.container.observers,
+            triggers: this.container.triggers
+          }
         })
-        this.container = data.data
       }
     }
   }

@@ -41,7 +41,7 @@
         "dynamodb:DeleteItem"
       ],
       "Resource": [
-        "arn:aws:dynamodb:us-west-1:xxxx:table/OTM_SESSION_DYNAMODB_TABLE"
+        "arn:aws:dynamodb:us-west-1:xxxx:table/OTM_ROLE_DYNAMODB_TABLE"
       ]
     },
     {

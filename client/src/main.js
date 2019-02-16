@@ -3,11 +3,12 @@
 import Vue from 'vue'
 import App from './App'
 import BootstrapVue from 'bootstrap-vue'
-import VueCookie from 'vue-cookie'
 import Vuelidate from 'vuelidate'
 import VueToasted from 'vue-toasted'
-import store from './store'
 import router from './router'
+import store from './store'
+import Amplify from 'aws-amplify'
+import {components} from 'aws-amplify-vue'
 
 import 'bootstrap/dist/css/bootstrap.css'
 import 'bootstrap-vue/dist/bootstrap-vue.css'
@@ -18,22 +19,50 @@ import { faExpand } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
 Vue.config.productionTip = false
+
+let apiBase = process.env.API_BASE_URL
+if (apiBase.match('/$')) {
+  apiBase = apiBase.substr(0, apiBase.length - 1)
+}
+
+Amplify.configure({
+  Auth: {
+    identityPoolId: process.env.COGNITO_IDENTITY_POOL_ID,
+    region: process.env.COGNITO_REGION,
+    identityPoolRegion: process.env.COGNITO_IDENTITY_POOL_REGION,
+    userPoolId: process.env.COGNITO_USER_POOL_ID,
+    userPoolWebClientId: process.env.COGNITO_USER_POOL_WEB_CLIENT_ID,
+    cookieStorage: {
+      domain: process.env.COGNITO_COOKIE_STORAGE_DOMAIN,
+      secure: process.env.COGNITO_COOKIE_SECURE === '1'
+    }
+  },
+  API: {
+    endpoints: [
+      {
+        name: 'OTMClientAPI',
+        endpoint: apiBase,
+        custom_header: async () => {
+          return { Authorization: (await Amplify.Auth.currentSession()).idToken.jwtToken }
+        }
+      }
+    ]
+  }
+})
+
 Vue.use(Vuelidate)
 Vue.use(BootstrapVue)
-Vue.use(VueCookie)
 Vue.use(VueToasted)
 
 library.add(faExpand)
 Vue.component('fa-icon', FontAwesomeIcon)
-
-router.$store = store
 
 /* eslint-disable no-new */
 const vue = new Vue({
   el: '#app',
   store,
   router,
-  components: {App},
+  components: {App, components},
   template: '<App/>'
 })
 

@@ -57,7 +57,9 @@ class OTM {
           for (let n in observer.collect) {
             params[n] = observer.collect[n]
           }
-
+          if (this.org) {
+            params['org'] = this.org
+          }
           this.call(observer.name, target, params)
 
           this.prevUrl = this.url
@@ -237,6 +239,7 @@ class OTM {
     this.prevState = null
     this.state = null
     this.name = options.name || ''
+    this.org = options.org || ''
 
     const parsedUrl = url.parse(this.url, true)
     if (parsedUrl.query._op === '1') {

@@ -268,14 +268,20 @@ resource "aws_s3_bucket_object" "gc_key" {
   server_side_encryption = "AES256"
 }
 
-resource "aws_dynamodb_table" "otm_session" {
-  name = "${terraform.env}_otm_session"
+resource "aws_dynamodb_table" "otm_role" {
+  name = "${terraform.env}_otm_role"
   read_capacity = 1
   write_capacity = 1
-  hash_key = "session_id"
+  hash_key = "username"
+  range_key = "organization"
 
   attribute {
-    name = "session_id"
+    name = "username"
+    type = "S"
+  }
+
+  attribute {
+    name = "organization"
     type = "S"
   }
 }
@@ -550,5 +556,16 @@ resource "aws_route53_record" "client" {
     name = "${aws_cloudfront_distribution.otm_client_distribution.domain_name}"
     zone_id = "${aws_cloudfront_distribution.otm_client_distribution.hosted_zone_id}"
     evaluate_target_health = false
+  }
+}
+
+resource "aws_cognito_identity_pool" "otm" {
+  identity_pool_name = "${terraform.env}_otm_id"
+  allow_unauthenticated_identities = false
+
+  cognito_identity_providers {
+    client_id = "${var.aws_cognito_user_pool_client_id}"
+    provider_name = "cognito-idp.${var.aws_region}.amazonaws.com/${var.aws_cognito_user_pool_id}"
+    server_side_token_check = false
   }
 }

@@ -48,7 +48,7 @@
         </div>
 
         <ul>
-          <li v-for="stat in stats"><router-link :to="{name: 'Container-Stat-Graph', params: {name: $route.params.name, statid: stat.key}}">{{ stat.key }}</router-link></li>
+          <li v-for="stat in stats"><router-link :to="{name: 'Container-Stat-Graph', params: {org: $route.params.org, name: $route.params.name, statid: stat.key}}">{{ stat.key }}</router-link></li>
         </ul>
       </div>
       <div class="col-3" v-else>
@@ -60,7 +60,6 @@
 </template>
 
 <script>
-  import api from '../api'
   import moment from 'moment-timezone'
   import flatPickr from 'vue-flatpickr-component'
 
@@ -109,23 +108,22 @@
           body.label = this.label
         }
 
-        await api(this.$store).post(`containers/${this.name}/stats`, body)
+        await this.$Amplify.API.post('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.name}/stats`, {body})
         toast.goAway(0)
         this.$toasted.show('Requested!', {duration: 3000})
         this.label = null
       },
       async reload () {
         this.stats = null
-        const data = await api(this.$store).get(`containers/${this.name}/stats`)
-        const stats = data.data
+        const stats = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.name}/stats`)
         this.stats = stats
       },
       async getSwaggerDoc () {
-        const data = await api(this.$store).get(`containers/${this.name}/swagger_doc`)
-        this.swaggerDoc = JSON.stringify(data.data)
+        const data = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.name}/swagger_doc`)
+        this.swaggerDoc = JSON.stringify(data)
       },
       async saveSwaggerDoc () {
-        await api(this.$store).put(`containers/${this.name}/swagger_doc`, JSON.parse(this.swaggerDoc))
+        await this.$Amplify.API.put('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.name}/swagger_doc`, {body: JSON.parse(this.swaggerDoc)})
       },
       async saveSetting () {
         await this.saveSwaggerDoc()
@@ -135,7 +133,7 @@
 </script>
 
 <style>
-  #graph .node rect {
+  #graph .node rect, #graph .node ellipse {
     stroke: #333;
     fill: #fff;
     stroke-width: 1.5px;

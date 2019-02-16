@@ -7,7 +7,7 @@
         </router-link>
 
         <b-navbar-nav class="ml-auto">
-          <b-nav-item @click.prevent="logout" v-if="$store.getters['user/isAuthenticated']">Sign out</b-nav-item>
+          <b-nav-item href="#" @click.prevent="signOut" v-if="$store.getters['user/isAuthenticated']">Sign out</b-nav-item>
           <b-nav-item to="/login" v-else>Sign in</b-nav-item>
         </b-navbar-nav>
       </b-navbar>
@@ -18,10 +18,14 @@
 
 <script>
   export default {
-    name: 'App',
+    data () {
+      return {
+        selected: null
+      }
+    },
     methods: {
-      logout () {
-        this.$store.dispatch('user/logout')
+      async signOut () {
+        await this.$store.dispatch('user/signOut')
         this.$router.push('/')
       }
     }

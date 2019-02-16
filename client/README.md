@@ -1,4 +1,4 @@
-# open_tag_manager_client
+# otm-client
 
 > A Vue.js project
 
