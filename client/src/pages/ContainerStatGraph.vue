@@ -279,7 +279,8 @@
         url: null,
         thresholdCount: 1,
         swaggerDoc: '',
-        mergeSameId: true
+        mergeSameId: true,
+        urlGraph: null
       }
     },
     computed: {
@@ -342,66 +343,69 @@
       renderUrls () {
         console.log('render URLs')
 
-        this.filter()
-
         const cl = d3.select('#graph')
         const width = cl.node().clientWidth
         const height = this.svgHeight
         cl.selectAll('*').remove()
         const svg = cl.append('svg').attr('width', width).attr('height', height)
         const inner = svg.append('g')
-        const g = new DagreD3.graphlib.Graph({compound: true}).setGraph({}).setDefaultEdgeLabel(function () {
-          return {}
-        })
 
-        this.urls.forEach(function (u, idx) {
-          g.setNode(idx, {shape: 'ellipse', label: u})
-        })
-
-        const h = {}
-        const urlLinks = this.graphData.reduce(function (r, o) {
-          let key = `${o.url}-${o.p_url}`
-
-          if (!h[key]) {
-            h[key] = Object.assign({}, o)
-            r.push(h[key])
-          } else {
-            h[key].count += o.count
-          }
-
-          return r
-        }, [])
-
-        console.log(urlLinks)
-        g.setNode(this.urls.length, {label: 'Undefined', shape: 'ellipse'})
-
-        urlLinks.forEach((u) => {
-          let p = _.indexOf(this.urls, u.p_url)
-          let t = _.indexOf(this.urls, u.url)
-
-          if (p === -1) {
-            p = this.urls.length
-          }
-          if (t === -1) {
-            t = this.urls.length
-          }
-
-          g.setEdge(p, t, {
-            label: u.count,
-            arrowheadClass: 'arrowhead',
-            curve: d3.curveBasis
+        if (!this.urlGraph) {
+          this.filter()
+          const g = new DagreD3.graphlib.Graph({compound: true}).setGraph({}).setDefaultEdgeLabel(function () {
+            return {}
           })
-        })
+
+          this.urls.forEach(function (u, idx) {
+            g.setNode(idx, {shape: 'ellipse', label: u})
+          })
+
+          const h = {}
+          const urlLinks = this.graphData.reduce(function (r, o) {
+            let key = `${o.url}-${o.p_url}`
+
+            if (!h[key]) {
+              h[key] = Object.assign({}, o)
+              r.push(h[key])
+            } else {
+              h[key].count += o.count
+            }
+
+            return r
+          }, [])
+
+          console.log(urlLinks)
+          g.setNode(this.urls.length, {label: 'Undefined', shape: 'ellipse'})
+
+          urlLinks.forEach((u) => {
+            let p = _.indexOf(this.urls, u.p_url)
+            let t = _.indexOf(this.urls, u.url)
+
+            if (p === -1) {
+              p = this.urls.length
+            }
+            if (t === -1) {
+              t = this.urls.length
+            }
+
+            g.setEdge(p, t, {
+              label: u.count,
+              arrowheadClass: 'arrowhead',
+              curve: d3.curveBasis
+            })
+          })
+          this.urlGraph = g
+        }
 
         const render = new DagreD3.render()
-        render(inner, g)
+        render(inner, this.urlGraph)
 
         const zoom = d3.zoom().on('zoom', () => {
           inner.attr('transform', d3.event.transform)
         })
         svg.call(zoom)
         const initialScale = 0.75
-        svg.call(zoom.transform, d3.zoomIdentity.translate((svg.attr('width') - g.graph().width * initialScale) / 2, 20).scale(initialScale))
+        svg.call(zoom.transform, d3.zoomIdentity.translate((svg.attr('width') - this.urlGraph.graph().width * initialScale) / 2, 20).scale(initialScale))
 
         svg.selectAll('g.node').on('click', (id) => {
           if (id !== this.urls.length) {
