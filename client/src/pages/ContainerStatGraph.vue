@@ -569,9 +569,9 @@
         })
         svg.selectAll('g.cluster').on('click', (id) => {
           const match = id.match(/url-(\d+)/)
-          const url = urls[parseInt(match[1])]
-          if (url !== this.url) {
-            this.url = url
+          const u = urls[parseInt(match[1])]
+          if (u !== this.url) {
+            this.url = u
             this.render()
           }
         })
