@@ -307,6 +307,14 @@
         const data = await axios.get(stat.url)
         this.rawGraphData = data.data.result
 
+        /*
+        this.rawGraphData = [
+          {count: 100, label: 'hello', state: 'pageview', p_state: null, url: 'urlA', p_url: null, xpath: ''},
+          {count: 50, label: 'hello', state: 'click_widget_a', p_state: 'pageview', url: 'urlA', p_url: 'urlA'},
+          {count: 30, label: 'hello', state: 'pageview', p_state: 'click_widget_a', url: 'urlB', p_url: 'urlA'}
+        ]
+        */
+
         this.node = null
         this.urls = getUrls(this.rawGraphData)
         this.url = null
@@ -374,7 +382,6 @@
             return r
           }, [])
 
-          console.log(urlLinks)
           g.setNode(this.urls.length, {label: 'Undefined', shape: 'ellipse'})
 
           urlLinks.forEach((u) => {
@@ -499,9 +506,9 @@
 
         urls.forEach((url, idx) => {
           if (_.find(nodesData, {url})) {
-            let style = 'fill:' + color(url)
+            let style = 'fill:' + color(url) + ';rx:5px;ry:5px'
             if (url === this.url) {
-              style += ';stroke-width:10px'
+              style += ';stroke-width:5px'
             }
             g.setNode(`url-${idx}`, {label: url, clusterLabelPos: 'top', style})
           }
@@ -559,6 +566,14 @@
         svg.call(zoom.transform, d3.zoomIdentity.translate((svg.attr('width') - g.graph().width * initialScale) / 2, 20).scale(initialScale))
         svg.selectAll('g.node').on('click', (id) => {
           this.node = nodesData[id]
+        })
+        svg.selectAll('g.cluster').on('click', (id) => {
+          const match = id.match(/url-(\d+)/)
+          const url = urls[parseInt(match[1])]
+          if (url !== this.url) {
+            this.url = url
+            this.render()
+          }
         })
       },
       r () {
