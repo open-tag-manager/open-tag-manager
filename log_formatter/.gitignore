@@ -1,0 +1,6 @@
+__pycache__/
+.chalice/deployments/
+.chalice/venv/
+.chalice/deployed/*
+.chalice/policy-*.json
+.chalice/config.json
