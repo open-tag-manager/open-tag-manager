@@ -1,7 +1,6 @@
 import subprocess
 import shutil
 import json
-import yaml
 import os
 import re
 
@@ -65,7 +64,7 @@ def main():
 
     job_definition = tfresource['aws_batch_job_definition.otm_data_retriever']['primary']['id']
 
-    sns_arn = tfresource['aws_sns_topic.otm_collect_log_topic']['primary']['id']
+    sns_topic = tfresource['aws_sns_topic.otm_collect_log_topic']['primary']['attributes']['name']
 
     athena_database = tfresource['aws_athena_database.otm']['primary']['id']
 
@@ -83,7 +82,7 @@ def main():
     cognito_user_pool_arn = 'arn:aws:cognito-idp:%s:%s:userpool/%s' % (os.environ.get('AWS_DEFAULT_REGION'), aws_id, cognito_user_pool_id)
 
     shutil.copy('./client_apis/.chalice/config.json.sample', './client_apis/.chalice/config.json')
-    shutil.copy('./client_apis/.chalice/policy-sample.json', './client_apis/.chalice/policy-dev.json')
+    shutil.copy('./log_formatter/.chalice/config.json.sample', './log_formatter/.chalice/config.json')
 
     print('2. deploy client API')
     with open('./client_apis/.chalice/config.json', 'r') as f:
@@ -103,6 +102,7 @@ def main():
         env['STATS_GCLOUD_KEY_NAME'] = 'account.json'
         env['STATS_ATHENA_DATABASE'] = athena_database
         env['STATS_ATHENA_TABLE'] = 'otm_collect2'
+        env['STATS_ATHENA_RESULT_BUCKET'] = athena_bucket
 
     with open('./client_apis/.chalice/config.json', 'w') as f:
         json.dump(config, f, indent=4)
@@ -152,8 +152,33 @@ def main():
     }, cwd='./client')
     subprocess.call(['aws', 's3', 'sync', './client/dist/', 's3://%s/' % client_bucket, '--acl=public-read'])
 
+    print('5. deploy log_formatter')
+    with open('./log_formatter/.chalice/config.json', 'r') as f:
+        config = json.load(f)
+        env = config['environment_variables']
+        env['OTM_REFORM_S3_BUCKET'] = collect_log_bucket
+        env['OTM_REFORM_LOG_PREFIX'] = 'formatted/'
+
+    with open('./log_formatter/.chalice/config.json', 'w') as f:
+        json.dump(config, f, indent=4)
+
+    with open('./log_formatter/.chalice/policy-sample.json', 'r') as f:
+        config = json.load(f)
+        config['Statement'][1]['Resource'] = []
+        config['Statement'][1]['Resource'].append('arn:aws:s3:::%s/*' % collect_log_bucket)
+        config['Statement'][1]['Resource'].append('arn:aws:s3:::%s' % collect_log_bucket)
+
+    with open('./log_formatter/.chalice/policy-%s.json' % environment, 'w') as f:
+        json.dump(config, f, indent=4)
+
+    subprocess.call(['pip', 'install', '-r', 'requirements.txt'], cwd='./log_formatter')
+    local_env = os.environ.copy()
+    local_env['OTM_LOG_SNS'] = sns_topic
+    subprocess.call(['chalice', 'deploy', '--no-autogen-policy', '--stage=%s' % environment], cwd='./log_formatter', env=local_env)
+
+    print('6. make athena table')
     athena_query = '''
-CREATE EXTERNAL TABLE %s.otm_collect2(
+CREATE EXTERNAL TABLE IF NOT EXISTS %s.otm_collect2(
   `datetime` timestamp, 
   `x_edge_location` string, 
   `sc_bytes` string, 
