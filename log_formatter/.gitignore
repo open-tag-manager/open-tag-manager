@@ -4,3 +4,4 @@ __pycache__/
 .chalice/deployed/*
 .chalice/policy-*.json
 .chalice/config.json
+!.chalice/policy-sample.json

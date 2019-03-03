@@ -1,66 +1,97 @@
-from google.cloud import bigquery
-from google.oauth2 import service_account
+from retrying import retry
+import pandas as pd
+import json
 import time
 import boto3
 import argparse
-import json
 import uuid
 import datetime
 
 
 class DataRetriever:
-    def load_config_json(self, bucket_name, key):
-        bucket = self.s3.Bucket(bucket_name)
-        gcloud_key = bucket.Object(key)
-        j = json.loads(gcloud_key.get()['Body'].read().decode('utf-8'))
-        return service_account.Credentials.from_service_account_info(j)
-
     def __init__(self, **kwargs):
         self.options = kwargs
         self.s3 = boto3.resource('s3')
+        self.athena = boto3.client('athena')
+
+    @retry(stop_max_attempt_number=10,
+           wait_exponential_multiplier=1000,
+           wait_exponential_max=10 * 60 * 1000)
+    def _poll_status(self, id):
+        print('poll status %s' % id)
+        result = self.athena.get_query_execution(
+            QueryExecutionId=id
+        )
+        state = result['QueryExecution']['Status']['State']
+        if state == 'SUCCEEDED':
+            return result
+        elif state == 'FAILED':
+            return result
+        else:
+            raise Exception
+
+    def _execute_athena_query(self, query):
+        response = self.athena.start_query_execution(
+            QueryString=query,
+            ResultConfiguration={
+                'OutputLocation': 's3://%s/%s' % (
+                    self.options['athena_result_bucket'], self.options['athena_result_prefix']),
+                'EncryptionConfiguration': {
+                    'EncryptionOption': 'SSE_S3'
+                }
+            }
+        )
+        QueryExecutionId = response['QueryExecutionId']
+        return self._poll_status(QueryExecutionId)
 
     def execute(self):
-        credential = self.load_config_json(self.options['config_bucket'], self.options['gcloud_key'])
-        client = bigquery.Client(project=credential.project_id, credentials=credential)
+        result = self._execute_athena_query(
+            'MSCK REPAIR TABLE %s.%s;' % (self.options['athena_database'], self.options['athena_table']))
+        if result['QueryExecution']['Status']['State'] != 'SUCCEEDED':
+            raise Exception('Cannot make partition')
+
+        stime = datetime.datetime.utcfromtimestamp(int(self.options['query_stime'] / 1000))
+        etime = datetime.datetime.utcfromtimestamp(int(self.options['query_etime'] / 1000))
 
         q = ''
-        q += 'JSON_EXTRACT_SCALAR(qs_json, "$.tid") = "%s"' % self.options['query_tid']
-        q += ' AND datetime >= MSEC_TO_TIMESTAMP(%s)' % self.options['query_stime']
-        q += ' AND datetime < MSEC_TO_TIMESTAMP(%s)' % self.options['query_etime']
+        q += " tid = '%s'" % self.options['query_tid']
+        q += ' AND year >= %s AND year <= %s' % (stime.strftime('%Y'), etime.strftime('%Y'))
+        q += ' AND month >= %s AND month <= %s' % (stime.strftime('%m'), etime.strftime('%m'))
+        q += ' AND day >= %s AND day <= %s' % (stime.strftime('%d'), etime.strftime('%d'))
+        q += " AND datetime >= timestamp '%s'" % (stime.strftime('%Y-%m-%d %H:%M:%S'))
+        q += " AND datetime <= timestamp '%s'" % (etime.strftime('%Y-%m-%d %H:%M:%S'))
 
-        sql = """SELECT 
-JSON_EXTRACT_SCALAR(qs_json, "$.dl") AS url,
-JSON_EXTRACT_SCALAR(qs_json, "$.o_pl") AS p_url,
-JSON_EXTRACT_SCALAR(qs_json, "$.dt") AS title,
-JSON_EXTRACT_SCALAR(qs_json, "$.o_s") AS state,
-JSON_EXTRACT_SCALAR(qs_json, "$.o_ps") AS p_state,
-JSON_EXTRACT_SCALAR(qs_json, "$.el") AS label,
-JSON_EXTRACT_SCALAR(qs_json, "$.o_xpath") AS xpath,
-JSON_EXTRACT_SCALAR(qs_json, "$.o_a_id") AS a_id,
-JSON_EXTRACT_SCALAR(qs_json, "$.o_a_class") AS class,
-COUNT(qs_json) AS c
-FROM TABLE_DATE_RANGE([%s.%s_], TIMESTAMP('%s'), TIMESTAMP('%s'))
+        sql = """SELECT * , COUNT(*) as count
+FROM 
+(SELECT 
+JSON_EXTRACT_SCALAR(qs, '$.dl') AS url,
+JSON_EXTRACT_SCALAR(qs, '$.o_pl') AS p_url,
+JSON_EXTRACT_SCALAR(qs, '$.dt') AS title,
+JSON_EXTRACT_SCALAR(qs, '$.o_s') AS state,
+JSON_EXTRACT_SCALAR(qs, '$.o_ps') AS p_state,
+JSON_EXTRACT_SCALAR(qs, '$.el') AS label,
+JSON_EXTRACT_SCALAR(qs, '$.o_xpath') AS xpath,
+JSON_EXTRACT_SCALAR(qs, '$.o_a_id') AS a_id,
+JSON_EXTRACT_SCALAR(qs, '$.o_a_class') AS class
+FROM %s.%s
 WHERE %s
-GROUP BY url, p_url, title, state, p_state, label, xpath, a_id, class
-""" % (self.options['bq_dataset'],
-       self.options['bq_table_prefix'],
-       datetime.datetime.fromtimestamp(int((self.options['query_stime'] - 3600000) / 1000)).strftime('%Y-%m-%d'),
-       datetime.datetime.fromtimestamp(int(self.options['query_etime'] / 1000)).strftime('%Y-%m-%d'), q)
-        print('Execute query')
-        print(sql)
-        # TODO: change to Standard SQL
-        config = bigquery.QueryJobConfig()
-        config.use_legacy_sql = True
-        query_job = client.query(sql, job_config=config)
-        print(str(query_job.job_id))
-        result = []
-        for row in query_job:
-            result.append({'url': row['url'], 'p_url': row['p_url'], 'title': row['title'], 'state': row['state'], 'p_state': row['p_state'],
-                           'label': row['label'], 'xpath': row['xpath'], 'a_id': row['a_id'], 'class': row['class'],
-                           'count': row['c']})
+) tmp
+GROUP BY url, p_url, title, state, p_state, label, xpath, a_id, class 
+""" % (self.options['athena_database'], self.options['athena_table'], q)
 
-        s3 = boto3.resource('s3')
-        target = s3.Object(self.options['target_bucket'], self.options['target_name'])
+        result = self._execute_athena_query(sql)
+        if result['QueryExecution']['Status']['State'] != 'SUCCEEDED':
+            raise Exception('Cannot execute query')
+
+        result_data = self.s3.Bucket(self.options['athena_result_bucket']).Object(
+            '%s%s.csv' % (self.options['athena_result_prefix'], result['QueryExecution']['QueryExecutionId'])).get()
+        pd_data = pd.read_csv(result_data['Body'], encoding='utf-8')
+
+        target = self.s3.Object(self.options['target_bucket'], self.options['target_name'])
+
+        result = []
+        for index, row in pd_data.iterrows():
+            result.append(json.loads(row.to_json()))
         print('s3://' + self.options['target_bucket'] + '/' + self.options['target_name'])
         print(result)
         target.put(Body=json.dumps({
@@ -75,10 +106,10 @@ GROUP BY url, p_url, title, state, p_state, label, xpath, a_id, class
 
 def main():
     parser = argparse.ArgumentParser(description='Make stats from BigQuery')
-    parser.add_argument('-c', '--config-bucket', dest='config_bucket', required=True, help='config bucket name')
-    parser.add_argument('-k', '--gcloud-key-name', dest='gcloud_key', required=True, help='gcloud key place')
-    parser.add_argument('-d', '--dataset', dest='bq_dataset', required=True, help='bq dataset')
-    parser.add_argument('-p', '--table-prefix', dest='bq_table_prefix', required=True, help='bq table prefix')
+    parser.add_argument('-d', '--database', dest='athena_database', required=True, help='athena database')
+    parser.add_argument('-p', '--table', dest='athena_table', required=True, help='athena table')
+    parser.add_argument('--result-bucket', dest='athena_result_bucket', required=True, help='athena result bucket')
+    parser.add_argument('--result-prefix', dest='athena_result_prefix', help='athena result object prefix', default='')
     parser.add_argument('-t', '--target-bucket', dest='target_bucket', required=True, help='target bucket')
     parser.add_argument('-n', '--target-prefix', dest='target_prefix', required=True, help='target key prefix')
     parser.add_argument('--target-suffix', dest='target_suffix', required=False, help='target key suffix')
@@ -91,8 +122,8 @@ def main():
     args = vars(parser.parse_args())
 
     target_name = args['target_prefix'] + time.strftime("%Y%m%d%H%M%S") + '_'
-    target_name += datetime.datetime.fromtimestamp(int(args['query_stime'] / 1000)).strftime('%Y%m%d%H%M%S') + '_'
-    target_name += datetime.datetime.fromtimestamp(int(args['query_etime'] / 1000)).strftime('%Y%m%d%H%M%S') + '_'
+    target_name += datetime.datetime.utcfromtimestamp(int(args['query_stime'] / 1000)).strftime('%Y%m%d%H%M%S') + '_'
+    target_name += datetime.datetime.utcfromtimestamp(int(args['query_etime'] / 1000)).strftime('%Y%m%d%H%M%S') + '_'
     if args['target_suffix']:
         target_name += args['target_suffix'] + '_'
     target_name += str(uuid.uuid4()) + '.json'
