@@ -56,8 +56,8 @@ class DataRetriever:
         q = ''
         q += " tid = '%s'" % self.options['query_tid']
         q += ' AND year >= %s AND year <= %s' % (stime.strftime('%Y'), etime.strftime('%Y'))
-        q += ' AND month >= %s AND month <= %s' % (stime.strftime('%m'), etime.strftime('%m'))
-        q += ' AND day >= %s AND day <= %s' % (stime.strftime('%d'), etime.strftime('%d'))
+        q += ' AND month >= %s AND month <= %s' % (stime.strftime('%-m'), etime.strftime('%-m'))
+        q += ' AND day >= %s AND day <= %s' % (stime.strftime('%-d'), etime.strftime('%-d'))
         q += " AND datetime >= timestamp '%s'" % (stime.strftime('%Y-%m-%d %H:%M:%S'))
         q += " AND datetime <= timestamp '%s'" % (etime.strftime('%Y-%m-%d %H:%M:%S'))
 
@@ -78,6 +78,8 @@ WHERE %s
 ) tmp
 GROUP BY url, p_url, title, state, p_state, label, xpath, a_id, class 
 """ % (self.options['athena_database'], self.options['athena_table'], q)
+
+        print(sql)
 
         result = self._execute_athena_query(sql)
         if result['QueryExecution']['Status']['State'] != 'SUCCEEDED':

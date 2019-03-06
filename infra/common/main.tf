@@ -399,7 +399,9 @@ resource "aws_batch_job_definition" "otm_data_retriever" {
   "memory": 2000,
   "vcpus": 2,
   "volumes": [],
-  "environment": [],
+  "environment": [
+    {"name": "AWS_DEFAULT_REGION", "value": "${var.aws_region}"}
+  ],
   "mountPoints": [],
   "ulimits": []
 }
