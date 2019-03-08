@@ -1,31 +1,40 @@
 <template>
-  <div class="container-fluid graph-container">
-    <div id="graph">
-      <div>
-        Select report
+  <div>
+    <div class="container-fluid graph-container" v-show="isGraph">
+      <div id="graph">
+        <div>
+          Select report
+        </div>
+      </div>
+      <div class="node-info" v-if="graphData">
+        <node-detail v-if="node" :node="node"></node-detail>
+
+        <button class="btn btn-primary" v-if="url" @click="back">URL Graph</button>
+        <button class="btn btn-primary" v-if="tableData" @click="showTable">Table</button>
+
+        <b-form-group label="Enabled Statuses" class="status-filter">
+          <b-form-checkbox-group id="enabled-statuses" v-model="enabledStatues"
+                                 :options="statuses" @input="r"></b-form-checkbox-group>
+        </b-form-group>
+
+        <b-form-checkbox id="merge-same-id" v-model="mergeSameId" @input="render">Merge same ID</b-form-checkbox>
+
+        <b-form-group label="Threshold Count" horizontal>
+          <b-form-input v-model.number="thresholdCount" type="number" required @change="r"></b-form-input>
+        </b-form-group>
+      </div>
+
+      <div v-if="graphData" class="graph-operation">
+        <button class="wide-button btn btn-primary" @click="expand">
+          <fa-icon icon="expand"></fa-icon>
+        </button>
       </div>
     </div>
-    <div class="node-info" v-if="graphData">
-      <node-detail v-if="node" :node="node"></node-detail>
-
-      <button class="btn btn-primary" v-if="url" @click="back">Back</button>
-
-      <b-form-group label="Enabled Statuses" class="status-filter">
-        <b-form-checkbox-group id="enabled-statuses" v-model="enabledStatues"
-                               :options="statuses" @input="r"></b-form-checkbox-group>
-      </b-form-group>
-
-      <b-form-checkbox id="merge-same-id" v-model="mergeSameId" @input="render">Merge same ID</b-form-checkbox>
-
-      <b-form-group label="Threshold Count" horizontal>
-        <b-form-input v-model.number="thresholdCount" type="number" required @change="r"></b-form-input>
-      </b-form-group>
-    </div>
-
-    <div v-if="graphData" class="graph-operation">
-      <button class="wide-button btn btn-primary" @click="expand">
-        <fa-icon icon="expand"></fa-icon>
-      </button>
+    <div v-if="!isGraph">
+      <div class="table-container">
+        <stat-table :data="tableData" @clickUrl="goToUrlGraph"></stat-table>
+      </div>
+      <button class="btn btn-primary" @click="showGraph">Graph</button>
     </div>
   </div>
 </template>
@@ -38,6 +47,7 @@
   import url from 'url'
   import querystring from 'querystring'
   import NodeDetail from '../components/NodeDetail'
+  import StatTable from '../components/StatTable'
 
   const sourceFieldName = 'p_state'
   const targetFieldName = 'state'
@@ -266,11 +276,13 @@
   }
 
   export default {
-    components: {NodeDetail},
+    components: {StatTable, NodeDetail},
     data () {
       return {
+        isGraph: true,
         graphData: null,
         rawGraphData: null,
+        tableData: null,
         node: null,
         statuses: _.keys(statusPatterns),
         enabledStatues: _.difference(_.keys(statusPatterns), ['click_trivial', 'timer', 'scroll']),
@@ -306,6 +318,7 @@
 
         const data = await axios.get(stat.url)
         this.rawGraphData = data.data.result
+        this.tableData = data.data.table
 
         /*
         this.rawGraphData = [
@@ -425,6 +438,19 @@
         this.url = null
         this.node = null
         this.render()
+      },
+      showTable () {
+        this.isGraph = false
+      },
+      showGraph () {
+        this.isGraph = true
+      },
+      goToUrlGraph (url) {
+        this.url = url
+        this.isGraph = true
+        setTimeout(() => {
+          this.render()
+        }, 500)
       },
       render () {
         if (!this.url) {
@@ -582,3 +608,10 @@
     }
   }
 </script>
+
+<style scoped>
+  .table-container {
+    height: 300px;
+    overflow: scroll;
+  }
+</style>

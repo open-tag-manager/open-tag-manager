@@ -18,7 +18,7 @@ class DataRetriever:
            wait_exponential_multiplier=1000,
            wait_exponential_max=10 * 60 * 1000)
     def _poll_status(self, id):
-        print('poll status %s' % id)
+        print(json.dumps({'message': 'poll status', 'id': id}))
         result = self.athena.get_query_execution(
             QueryExecutionId=id
         )
@@ -31,6 +31,7 @@ class DataRetriever:
             raise Exception
 
     def _execute_athena_query(self, query):
+        print(json.dumps({'message': 'execute athena', 'query': query}))
         response = self.athena.start_query_execution(
             QueryString=query,
             ResultConfiguration={
@@ -79,32 +80,59 @@ WHERE %s
 GROUP BY url, p_url, title, state, p_state, label, xpath, a_id, class 
 """ % (self.options['athena_database'], self.options['athena_table'], q)
 
-        print(sql)
-
-        result = self._execute_athena_query(sql)
-        if result['QueryExecution']['Status']['State'] != 'SUCCEEDED':
+        result_athena = self._execute_athena_query(sql)
+        if result_athena['QueryExecution']['Status']['State'] != 'SUCCEEDED':
             raise Exception('Cannot execute query')
 
         result_data = self.s3.Bucket(self.options['athena_result_bucket']).Object(
-            '%s%s.csv' % (self.options['athena_result_prefix'], result['QueryExecution']['QueryExecutionId'])).get()
+            '%s%s.csv' % (self.options['athena_result_prefix'], result_athena['QueryExecution']['QueryExecutionId'])).get()
         pd_data = pd.read_csv(result_data['Body'], encoding='utf-8')
-
-        target = self.s3.Object(self.options['target_bucket'], self.options['target_name'])
 
         result = []
         for index, row in pd_data.iterrows():
             result.append(json.loads(row.to_json()))
-        print('s3://' + self.options['target_bucket'] + '/' + self.options['target_name'])
-        print(result)
+
+        sql2 = """
+SELECT
+JSON_EXTRACT_SCALAR(qs, '$.dl') as url,
+JSON_EXTRACT_SCALAR(qs, '$.o_s') as state, 
+COUNT(qs) as count,
+COUNT(DISTINCT JSON_EXTRACT_SCALAR(qs, '$.o_psid')) as session_count,
+COUNT(DISTINCT JSON_EXTRACT_SCALAR(qs, '$.cid')) as user_count
+FROM %s.%s
+WHERE %s
+GROUP BY JSON_EXTRACT_SCALAR(qs, '$.dl'), JSON_EXTRACT_SCALAR(qs, '$.o_s')
+ORDER BY count DESC
+""" % (self.options['athena_database'], self.options['athena_table'], q)
+
+        result_athena = self._execute_athena_query(sql2)
+        if result_athena['QueryExecution']['Status']['State'] != 'SUCCEEDED':
+            raise Exception('Cannot execute query')
+
+        result_data = self.s3.Bucket(self.options['athena_result_bucket']).Object(
+            '%s%s.csv' % (self.options['athena_result_prefix'], result_athena['QueryExecution']['QueryExecutionId'])).get()
+        pd_data = pd.read_csv(result_data['Body'], encoding='utf-8')
+
+        target = self.s3.Object(self.options['target_bucket'], self.options['target_name'])
+
+        table_result = []
+        for index, row in pd_data.iterrows():
+            table_result.append(json.loads(row.to_json()))
+
+        print(json.dumps({'message': 'dump data', 'bucket': 's3://' + self.options['target_bucket'] + '/' + self.options['target_name']}))
+        print(json.dumps(result))
+        print(json.dumps(table_result))
+
         target.put(Body=json.dumps({
             'meta': {
                 'stime': self.options['query_stime'],
                 'etime': self.options['query_etime'],
-                'tid': self.options['query_tid']
+                'tid': self.options['query_tid'],
+                'version': 2
             },
-            'result': result
+            'result': result,
+            'table': table_result
         }, ensure_ascii=False), ContentType='application/json; charset=utf-8')
-
 
 def main():
     parser = argparse.ArgumentParser(description='Make stats from BigQuery')
