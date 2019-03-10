@@ -254,19 +254,51 @@
 
     const paths = JSON.parse(swaggerDoc).paths
 
-    if (!paths) {
-      return data
-    }
-
     for (let d of data) {
-      d.url = lookupPath(paths, url.parse(d.url)) || d.url
-      d.p_url = lookupPath(paths, url.parse(d.p_url)) || d.p_url
+      let newUrl = lookupPath(paths, url.parse(d.url)) || d.url
+      let newPUrl = lookupPath(paths, url.parse(d.p_url)) || d.p_url
 
       // remove duplicated record
-      const e = _.find(data, {url: d.url, p_url: d.p_url, state: d.state, p_state: d.p_state})
+      const e = _.find(data, {url: newUrl, p_url: newPUrl, state: d.state, p_state: d.p_state})
       if (e) {
         e.count += d.count
         d.url = null
+      } else {
+        d.url = newUrl
+        d.p_url = newPUrl
+      }
+    }
+
+    return _.reject(data, (d) => {
+      return d.url === null
+    })
+  }
+
+  const convertUrlForTableData = (data, swaggerDoc) => {
+    if (!swaggerDoc) {
+      return data
+    }
+
+    const paths = JSON.parse(swaggerDoc).paths
+
+    if (!paths) {
+      return data
+    }
+    for (let d of data) {
+      let newUrl = lookupPath(paths, url.parse(d.url)) || d.url
+      if (d.url === newUrl) {
+        continue
+      }
+
+      // remove duplicated record
+      const e = _.find(data, {url: newUrl, state: d.state})
+      if (e) {
+        e.count += d.count
+        e.session_count += d.session_count
+        e.user_count += d.user_count
+        d.url = null
+      } else {
+        d.url = newUrl
       }
     }
 
@@ -318,7 +350,7 @@
 
         const data = await axios.get(stat.url)
         this.rawGraphData = data.data.result
-        this.tableData = data.data.table
+        this.tableData = convertUrlForTableData(data.data.table, this.swaggerDoc)
 
         /*
         this.rawGraphData = [
