@@ -2,34 +2,6 @@
   <div>
     <router-view :key="$route.fullPath"></router-view>
 
-    <b-modal id="new-report-modal" title="New Report" @ok="makeReport">
-      <div class="d-flex align-items-center">
-        <div class="form-group">
-          <label for="stime">Report From</label>
-          <flat-pickr v-model="stime" class="form-control" id="stime"
-                      :config="{enableTime: true, dateFormat: 'Y-m-d H:i'}"></flat-pickr>
-        </div>
-        <div class="mx-2">〜</div>
-        <div class="form-group">
-          <label for="etime">Report To</label>
-          <flat-pickr v-model="etime" class="form-control" id="etime"
-                      :config="{enableTime: true, dateFormat: 'Y-m-d H:i'}"></flat-pickr>
-        </div>
-        <div class="form-group mx-2">
-          <label for="timezone">Timezone</label>
-          <select v-model="timezone" class="form-control" id="timezone">
-            <option v-for="tz in timezones" :value="tz">{{tz}}</option>
-          </select>
-        </div>
-      </div>
-      <div class="d-flex">
-        <div class="form-group">
-          <label for="label">Report Label</label>
-          <input type="text" id="label" v-model="label" class="form-control" pattern="[a-zA-Z]+">
-        </div>
-      </div>
-    </b-modal>
-
     <b-modal id="setting-modal" title="Setting" @ok="saveSetting">
       <div class="form-group">
         <label for="swagger-doc">Swagger Doc (JSON)</label>
@@ -39,8 +11,37 @@
 
     <div class="container py-2">
       <div v-if="stats">
-        <button type="button" class="btn btn-primary" v-b-modal.new-report-modal>New Report</button>
         <button type="button" class="btn btn-primary" v-b-modal.setting-modal>Setting</button>
+
+        <form @submit.prevent="makeReport">
+          <div class="d-flex align-items-center">
+            <div class="form-group">
+              <label for="stime">Report From</label>
+              <flat-pickr v-model="stime" class="form-control" id="stime"
+                          :config="{enableTime: true, dateFormat: 'Y-m-d H:i'}"></flat-pickr>
+            </div>
+            <div class="mx-2">〜</div>
+            <div class="form-group">
+              <label for="etime">Report To</label>
+              <flat-pickr v-model="etime" class="form-control" id="etime"
+                          :config="{enableTime: true, dateFormat: 'Y-m-d H:i'}"></flat-pickr>
+            </div>
+            <div class="form-group mx-2">
+              <label for="timezone">Timezone</label>
+              <select v-model="timezone" class="form-control" id="timezone">
+                <option v-for="tz in timezones" :value="tz">{{tz}}</option>
+              </select>
+            </div>
+          </div>
+          <div class="d-flex">
+            <div class="form-group">
+              <label for="label">Report Label</label>
+              <input type="text" id="label" v-model="label" class="form-control" pattern="[a-zA-Z]+">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary" :disabled="!(stime && etime)">Make Report</button>
+        </form>
+
         <div>
           <b-button class="my-2" variant="primary" @click="reload">
             Reload

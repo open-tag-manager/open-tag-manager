@@ -1,0 +1,14 @@
+{
+  "version": "2.0",
+  "app_name": "otm_log_formatter",
+  "lambda_timeout": 120,
+  "lambda_memory_size": 1024,
+  "environment_variables": {
+    "OTM_REFORM_S3_BUCKET": "dev-kawahara-sp2-otm-collect-log",
+    "OTM_REFORM_LOG_PREFIX": "formatted/"
+  },
+  "stages": {
+    "dev": {
+    }
+  }
+}

@@ -369,18 +369,16 @@ def make_container_stats(org, name):
         o_prefix = org + '/'
 
     command = [
-        '-c',
-        os.environ.get('STATS_CONFIG_BUCKET'),
-        '-k',
-        os.environ.get('STATS_GCLOUD_KEY_NAME'),
         '-d',
-        os.environ.get('STATS_BQ_DATASET'),
+        os.environ.get('STATS_ATHENA_DATABASE'),
         '-p',
-        os.environ.get('STATS_BQ_TABLE_PREFIX'),
+        os.environ.get('STATS_ATHENA_TABLE'),
         '-t',
         os.environ.get('OTM_STATS_BUCKET'),
         '-n',
         (os.environ.get('OTM_STATS_PREFIX') or '') + o_prefix + name + '/',
+        '--result-bucket',
+        os.environ.get('STATS_ATHENA_RESULT_BUCKET'),
         '--query-tid',
         name,
         '--query-stime',

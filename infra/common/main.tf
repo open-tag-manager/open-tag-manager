@@ -260,14 +260,6 @@ resource "aws_s3_bucket" "otm_config" {
   acl = "private"
 }
 
-resource "aws_s3_bucket_object" "gc_key" {
-  bucket = "${aws_s3_bucket.otm_config.id}"
-  key = "account.json"
-  source = "../../account.json"
-  acl = "private"
-  server_side_encryption = "AES256"
-}
-
 resource "aws_dynamodb_table" "otm_role" {
   name = "${terraform.env}_otm_role"
   read_capacity = 1
@@ -393,10 +385,6 @@ resource "aws_ecr_repository" "otm_data_retriever" {
   name = "${terraform.env}_otm-data-retriever"
 }
 
-resource "aws_ecr_repository" "otm_athena2bigquery" {
-  name = "${terraform.env}_otm-athena2bigquery"
-}
-
 resource "aws_batch_job_definition" "otm_data_retriever" {
   name = "${terraform.env}_otm_data_retriever_job_definition"
   type = "container"
@@ -411,103 +399,13 @@ resource "aws_batch_job_definition" "otm_data_retriever" {
   "memory": 2000,
   "vcpus": 2,
   "volumes": [],
-  "environment": [],
-  "mountPoints": [],
-  "ulimits": []
-}
-CONTAINER_PROPERTIES
-}
-
-resource "aws_batch_job_definition" "otm_athena2bigquery" {
-  name = "${terraform.env}_otm_athena2bigquery_job_definition"
-  type = "container"
-  timeout = {
-    attempt_duration_seconds = "${var.aws_batch_timeout}"
-  }
-  container_properties = <<CONTAINER_PROPERTIES
-{
-  "command": [],
-  "image": "${aws_ecr_repository.otm_athena2bigquery.repository_url}:latest",
-  "jobRoleArn": "${aws_iam_role.ecs_task_role.arn}",
-  "memory": 2000,
-  "vcpus": 2,
-  "volumes": [],
   "environment": [
-    {"name": "CONFIG_BUCKET", "value": "${aws_s3_bucket.otm_config.id}"},
-    {"name": "CONFIG_KEY", "value": "athena2bigquery-config.yml"},
-    {"name": "GCLOUD_KEY", "value": "${aws_s3_bucket_object.gc_key.key}"}
+    {"name": "AWS_DEFAULT_REGION", "value": "${var.aws_region}"}
   ],
   "mountPoints": [],
   "ulimits": []
 }
 CONTAINER_PROPERTIES
-}
-
-resource "aws_iam_role" "scheduled_batch" {
-  name = "${terraform.env}_otm-scheduled-batch"
-  assume_role_policy = <<DOC
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "",
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "events.amazonaws.com"
-      },
-      "Action": "sts:AssumeRole"
-    }
-  ]
-}
-DOC
-}
-
-resource "aws_iam_role_policy" "scheduled_batch" {
-  name = "${terraform.env}_otm-scheduled-batch-policy"
-  role = "${aws_iam_role.scheduled_batch.id}"
-  policy = <<DOC
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "batch:SubmitJob"
-      ],
-      "Resource": "*"
-    }
-  ]
-}
-DOC
-}
-
-resource "aws_cloudwatch_event_rule" "athena2bigquery" {
-  name = "${terraform.env}_ExecuteAthena2BigQuery"
-  description = "Execute Athen2BigQuery"
-  schedule_expression = "cron(0 2 * * ? *)"
-  is_enabled = "${var.aws_cloudwatch_schedule_enabled}"
-}
-
-resource "aws_cloudwatch_event_target" "athena2bigquery" {
-  rule = "${aws_cloudwatch_event_rule.athena2bigquery.name}"
-  arn = "${var.aws_batch_job_queue_arn}"
-  role_arn = "${aws_iam_role.scheduled_batch.arn}"
-  batch_target = {
-    job_definition = "${aws_batch_job_definition.otm_athena2bigquery.arn}"
-    job_name = "athena2bigquery-daily"
-  }
-}
-
-resource "google_bigquery_dataset" "dataset" {
-  dataset_id = "${terraform.env}_open_tag_manager"
-  friendly_name = "${terraform.env}_open_tag_manager"
-  description = "open tag manager dataset"
-  location = "${var.google_bigquery_dataset_location}"
-}
-
-resource "google_storage_bucket" "bucket" {
-  name = "${terraform.env}-${var.aws_s3_bucket_prefix}-open-tag-manager"
-  location = "${var.google_storage_location}"
 }
 
 resource "aws_s3_bucket" "otm_athena" {
