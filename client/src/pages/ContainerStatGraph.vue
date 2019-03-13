@@ -254,6 +254,10 @@
 
     const paths = JSON.parse(swaggerDoc).paths
 
+    if (!paths) {
+      return data
+    }
+
     for (let d of data) {
       let newUrl = lookupPath(paths, url.parse(d.url)) || d.url
       let newPUrl = lookupPath(paths, url.parse(d.p_url)) || d.p_url
@@ -359,7 +363,6 @@
           {count: 30, label: 'hello', state: 'pageview', p_state: 'click_widget_a', url: 'urlB', p_url: 'urlA'}
         ]
         */
-
         this.node = null
         this.urls = getUrls(this.rawGraphData)
         this.url = null
