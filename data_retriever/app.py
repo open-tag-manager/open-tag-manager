@@ -93,17 +93,35 @@ GROUP BY url, p_url, title, state, p_state, label, xpath, a_id, class
             result.append(json.loads(row.to_json()))
 
         sql2 = """
+WITH scroll  as (
+SELECT 
+url, AVG(CAST(y as bigint)) as avg_scroll_y, MAX(CAST(y as bigint)) as max_scroll_y
+FROM 
+(
 SELECT
 JSON_EXTRACT_SCALAR(qs, '$.dl') as url,
-JSON_EXTRACT_SCALAR(qs, '$.o_s') as state, 
+MAX(JSON_EXTRACT_SCALAR(qs, '$.o_e_y')) as y,
+JSON_EXTRACT_SCALAR(qs, '$.cid') as uid
+FROM %s.%s
+WHERE JSON_EXTRACT_SCALAR(qs, '$.o_s') LIKE 'scroll_%%'
+GROUP BY JSON_EXTRACT_SCALAR(qs, '$.dl'),  JSON_EXTRACT_SCALAR(qs, '$.cid')
+) tmp 
+GROUP BY url  
+)
+SELECT
+JSON_EXTRACT_SCALAR(qs, '$.dl') as url,
 COUNT(qs) as count,
 COUNT(DISTINCT JSON_EXTRACT_SCALAR(qs, '$.o_psid')) as session_count,
-COUNT(DISTINCT JSON_EXTRACT_SCALAR(qs, '$.cid')) as user_count
-FROM %s.%s
-WHERE %s
-GROUP BY JSON_EXTRACT_SCALAR(qs, '$.dl'), JSON_EXTRACT_SCALAR(qs, '$.o_s')
+COUNT(DISTINCT JSON_EXTRACT_SCALAR(qs, '$.cid')) as user_count,
+scroll.avg_scroll_y,
+scroll.max_scroll_y
+FROM 
+%s.%s LEFT OUTER JOIN 
+scroll ON (scroll.url = JSON_EXTRACT_SCALAR(qs, '$.dl'))
+WHERE JSON_EXTRACT_SCALAR(qs, '$.o_s') = 'pageview' AND %s
+GROUP BY JSON_EXTRACT_SCALAR(qs, '$.dl'), avg_scroll_y, max_scroll_y
 ORDER BY count DESC
-""" % (self.options['athena_database'], self.options['athena_table'], q)
+""" % (self.options['athena_database'], self.options['athena_table'], self.options['athena_database'], self.options['athena_table'], q)
 
         result_athena = self._execute_athena_query(sql2)
         if result_athena['QueryExecution']['Status']['State'] != 'SUCCEEDED':
