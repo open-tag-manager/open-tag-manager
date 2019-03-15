@@ -32,7 +32,7 @@
     </div>
     <div v-if="!isGraph">
       <div class="table-container">
-        <stat-table :data="tableData" @clickUrl="goToUrlGraph"></stat-table>
+        <stat-table :data="summaryTableData" @clickUrl="goToUrlGraph"></stat-table>
       </div>
       <button class="btn btn-primary" @click="showGraph">Graph</button>
     </div>
@@ -319,6 +319,7 @@
         graphData: null,
         rawGraphData: null,
         tableData: null,
+        summaryTableData: null,
         node: null,
         statuses: _.keys(statusPatterns),
         enabledStatues: _.difference(_.keys(statusPatterns), ['click_trivial', 'timer', 'scroll']),
@@ -355,6 +356,32 @@
         const data = await axios.get(stat.url)
         this.rawGraphData = data.data.result
         this.tableData = convertUrlForTableData(data.data.table, this.swaggerDoc)
+        this.summaryTableData = _(this.tableData).groupBy('url').map((d, url) => {
+          const scrollCount = _.sumBy(d, 's_count')
+
+          const data = {
+            url,
+            count: _.sumBy(d, 'count'),
+            session_count: _.sumBy(d, 'session_count'),
+            user_count: _.sumBy(d, 'user_count'),
+            avg_scroll_y: null,
+            max_scroll_y: null
+          }
+
+          if (scrollCount > 0) {
+            data.avg_scroll_y = _.reduce(d, (result, o) => {
+              if (!o.s_count) {
+                return result
+              }
+
+              result += o.avg_scroll_y * o.s_count
+              return result
+            }, 0) / scrollCount
+            data.max_scroll_y = _.maxBy(d, 'max_scroll_y').max_scroll_y
+          }
+
+          return data
+        }).value()
 
         /*
         this.rawGraphData = [

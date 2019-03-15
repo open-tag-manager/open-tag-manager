@@ -95,31 +95,34 @@ GROUP BY url, p_url, title, state, p_state, label, xpath, a_id, class
         sql2 = """
 WITH scroll  as (
 SELECT 
-url, AVG(CAST(y as bigint)) as avg_scroll_y, MAX(CAST(y as bigint)) as max_scroll_y
+datet, url, COUNT(y) as s_count, AVG(CAST(y as bigint)) as avg_scroll_y, MAX(CAST(y as bigint)) as max_scroll_y
 FROM 
 (
 SELECT
+format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ') as datet,
 JSON_EXTRACT_SCALAR(qs, '$.dl') as url,
 MAX(JSON_EXTRACT_SCALAR(qs, '$.o_e_y')) as y,
 JSON_EXTRACT_SCALAR(qs, '$.cid') as uid
 FROM %s.%s
 WHERE JSON_EXTRACT_SCALAR(qs, '$.o_s') LIKE 'scroll_%%'
-GROUP BY JSON_EXTRACT_SCALAR(qs, '$.dl'),  JSON_EXTRACT_SCALAR(qs, '$.cid')
+GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), JSON_EXTRACT_SCALAR(qs, '$.dl'),  JSON_EXTRACT_SCALAR(qs, '$.cid')
 ) tmp 
-GROUP BY url  
+GROUP BY datet, url  
 )
 SELECT
+format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ') as datetime,
 JSON_EXTRACT_SCALAR(qs, '$.dl') as url,
 COUNT(qs) as count,
 COUNT(DISTINCT JSON_EXTRACT_SCALAR(qs, '$.o_psid')) as session_count,
 COUNT(DISTINCT JSON_EXTRACT_SCALAR(qs, '$.cid')) as user_count,
+scroll.s_count,
 scroll.avg_scroll_y,
 scroll.max_scroll_y
 FROM 
 %s.%s LEFT OUTER JOIN 
-scroll ON (scroll.url = JSON_EXTRACT_SCALAR(qs, '$.dl'))
+scroll ON (scroll.url = JSON_EXTRACT_SCALAR(qs, '$.dl') AND scroll.datet = format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'))
 WHERE JSON_EXTRACT_SCALAR(qs, '$.o_s') = 'pageview' AND %s
-GROUP BY JSON_EXTRACT_SCALAR(qs, '$.dl'), avg_scroll_y, max_scroll_y
+GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), JSON_EXTRACT_SCALAR(qs, '$.dl'), s_count, avg_scroll_y, max_scroll_y
 ORDER BY count DESC
 """ % (self.options['athena_database'], self.options['athena_table'], self.options['athena_database'], self.options['athena_table'], q)
 
