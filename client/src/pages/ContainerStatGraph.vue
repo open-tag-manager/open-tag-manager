@@ -31,6 +31,7 @@
       </div>
     </div>
     <div v-if="!isGraph">
+      <stat-line-chart :data="tableData"></stat-line-chart>
       <div class="table-container">
         <stat-table :data="summaryTableData" @clickUrl="goToUrlGraph"></stat-table>
       </div>
@@ -48,10 +49,7 @@
   import querystring from 'querystring'
   import NodeDetail from '../components/NodeDetail'
   import StatTable from '../components/StatTable'
-
-  const sourceFieldName = 'p_state'
-  const targetFieldName = 'state'
-  const countFieldName = 'count'
+  import StatLineChart from '../components/StatLineChart'
 
   const statusPatterns = {
     pageview: /^pageview$/,
@@ -109,25 +107,25 @@
 
   const findRelatedEdge = (data, edges, skipStatePatterns, results = [], path = []) => {
     for (let e of edges) {
-      if (e[sourceFieldName] === e[targetFieldName]) {
+      if (e['p_state'] === e['state']) {
         continue
       }
       let idx = _.findIndex(skipStatePatterns, (p) => {
-        return e[sourceFieldName] && e[sourceFieldName].match(p)
+        return e['p_state'] && e['p_state'].match(p)
       })
       if (idx === -1) {
         results.push(e)
       } else {
         // prevent circular reference
         let si = _.findIndex(path, (pe) => {
-          return pe[sourceFieldName] && pe[sourceFieldName] === e[sourceFieldName]
+          return pe['p_state'] && pe['p_state'] === e['p_state']
         })
         if (si !== -1) {
           continue
         }
 
         let searchCondition = {}
-        searchCondition[targetFieldName] = e[sourceFieldName]
+        searchCondition['state'] = e['p_state']
         searchCondition.url = e.p_url
         let deepEdges = _.filter(data, searchCondition)
         path.push(e)
@@ -171,10 +169,10 @@
       let sourceMatched = false
       let targetMatched = false
       for (let pattern of skipStatePatterns) {
-        if (d[sourceFieldName] && d[sourceFieldName].match(pattern)) sourceMatched = true
-        if (d[targetFieldName] && d[targetFieldName].match(pattern)) targetMatched = true
+        if (d['p_state'] && d['p_state'].match(pattern)) sourceMatched = true
+        if (d['state'] && d['state'].match(pattern)) targetMatched = true
       }
-      if (d[countFieldName] < thresholdCount) targetMatched = true
+      if (d['count'] < thresholdCount) targetMatched = true
       d.sourceSkip = sourceMatched
       d.targetSkip = targetMatched
     }
@@ -186,22 +184,22 @@
       }
       if (d.sourceSkip) {
         let searchCondition = {}
-        searchCondition[targetFieldName] = d[sourceFieldName]
+        searchCondition['state'] = d['p_state']
         searchCondition.url = d.p_url
         let edges = _.filter(data, searchCondition)
         edges = findRelatedEdge(data, edges, skipStatePatterns)
         for (let e of edges) {
           let searchCondition2 = {}
-          searchCondition2[sourceFieldName] = e[sourceFieldName]
-          searchCondition2[targetFieldName] = d[targetFieldName]
+          searchCondition2['p_state'] = e['p_state']
+          searchCondition2['state'] = d['state']
           let existsEdge = _.find(cData, searchCondition2)
-          let count = e[countFieldName] > d[countFieldName] ? d[countFieldName] : e[countFieldName]
+          let count = e['count'] > d['count'] ? d['count'] : e['count']
           if (existsEdge) {
-            existsEdge[countFieldName] += count
+            existsEdge['count'] += count
           } else {
             let newEdge = {}
-            newEdge[sourceFieldName] = e[sourceFieldName]
-            newEdge[targetFieldName] = d[targetFieldName]
+            newEdge['p_state'] = e['p_state']
+            newEdge['state'] = d['state']
             newEdge.url = d.url
             newEdge.p_url = d.p_url
             newEdge.title = d.title
@@ -209,7 +207,7 @@
             newEdge.xpath = d.xpath
             newEdge.a_id = d.a_id
             newEdge.class = d.class
-            newEdge[countFieldName] = count
+            newEdge['count'] = count
             cData.push(newEdge)
           }
         }
@@ -312,7 +310,7 @@
   }
 
   export default {
-    components: {StatTable, NodeDetail},
+    components: {StatTable, NodeDetail, StatLineChart},
     data () {
       return {
         isGraph: true,
@@ -556,22 +554,22 @@
         }
 
         const minmax = d3.extent(this.graphData, function (o) {
-          return parseInt(o[countFieldName])
+          return parseInt(o['count'])
         })
 
         this.graphData.forEach(function (o) {
           if (!o.label) {
             o.label = ''
           }
-          let sourceIdx = _.findIndex(nodesData, {name: o[sourceFieldName], url: o.p_url})
+          let sourceIdx = _.findIndex(nodesData, {name: o['p_state'], url: o.p_url})
           if (sourceIdx === -1) {
-            nodesData.push({name: o[sourceFieldName], url: o.p_url})
+            nodesData.push({name: o['p_state'], url: o.p_url})
           }
-          let targetIdx = _.findIndex(nodesData, {name: o[targetFieldName], url: o.url})
+          let targetIdx = _.findIndex(nodesData, {name: o['state'], url: o.url})
           if (targetIdx === -1) {
-            nodesData.push({name: o[targetFieldName], url: o.url})
+            nodesData.push({name: o['state'], url: o.url})
           }
-          targetIdx = _.findIndex(nodesData, {name: o[targetFieldName], url: o.url})
+          targetIdx = _.findIndex(nodesData, {name: o['state'], url: o.url})
 
           if (o.url) {
             if (_.indexOf(urls, o.url) === -1) {
@@ -617,8 +615,8 @@
         })
 
         this.graphData.forEach(function (o) {
-          let sourceIdx = _.findIndex(nodesData, {name: o[sourceFieldName], url: o.p_url})
-          let targetIdx = _.findIndex(nodesData, {name: o[targetFieldName], url: o.url})
+          let sourceIdx = _.findIndex(nodesData, {name: o['p_state'], url: o.p_url})
+          let targetIdx = _.findIndex(nodesData, {name: o['state'], url: o.url})
 
           if (sourceIdx === -1 || targetIdx === -1) {
             return
@@ -626,17 +624,17 @@
 
           let w = 0
           if (minmax[1] - minmax[0] > 0) {
-            w = (parseInt(o[countFieldName]) - minmax[0]) / (minmax[1] - minmax[0])
+            w = (parseInt(o['count']) - minmax[0]) / (minmax[1] - minmax[0])
           }
           linksData.push({
             source: sourceIdx,
             target: targetIdx,
-            count: o[countFieldName],
+            count: o['count'],
             w
           })
           let width = 3 * w + 1
           g.setEdge(sourceIdx, targetIdx, {
-            label: o[countFieldName],
+            label: o['count'],
             style: `stroke-width: ${width}px;`,
             arrowheadClass: 'arrowhead',
             curve: d3.curveBasis

@@ -80,15 +80,6 @@
         thresholdCount: 1
       }
     },
-    computed: {
-      svgHeight () {
-        if (this.isExpanded) {
-          return window.innerHeight - 60
-        } else {
-          return 400
-        }
-      }
-    },
     async created () {
       const name = this.$route.params.name
       this.name = name
