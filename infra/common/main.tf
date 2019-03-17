@@ -1,13 +1,6 @@
 provider "aws" {
-  access_key = "${var.aws_access_key}"
-  secret_key = "${var.aws_secret_key}"
   region = "${var.aws_region}"
-}
-
-provider "google" {
-  credentials = "${file("../../account.json")}"
-  project = "${var.google_project_id}"
-  region = "${var.google_region}"
+  profile = "${var.aws_profile}"
 }
 
 resource "aws_s3_bucket" "otm_collect" {
