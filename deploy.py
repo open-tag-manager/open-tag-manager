@@ -9,6 +9,7 @@ def main():
     s_environment = os.environ.get('S_ENV') or 'shared'
 
     print('1. deploy infra')
+    subprocess.call(['yarn', 'install'])
     subprocess.call(['npm', 'run', 'build'], env={'NODE_ENV': 'production', 'PATH': os.environ.get('PATH')})
 
     print('1.1. deploy shared infra')
