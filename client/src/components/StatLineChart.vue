@@ -42,7 +42,7 @@
           }
 
           return data
-        }).value()
+        }).sortBy('datetime').value()
 
         const cl = d3.select('#line-chart')
         const width = cl.node().clientWidth
