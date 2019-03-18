@@ -95,7 +95,7 @@ GROUP BY url, p_url, title, state, p_state, label, xpath, a_id, class
         sql2 = """
 WITH scroll  as (
 SELECT 
-datet, url, COUNT(y) as s_count, AVG(CAST(y as bigint)) as avg_scroll_y, MAX(CAST(y as bigint)) as max_scroll_y
+datet, url, COUNT(y) as s_count, AVG(CAST(y as decimal)) as avg_scroll_y, MAX(CAST(y as decimal)) as max_scroll_y
 FROM 
 (
 SELECT
@@ -156,7 +156,7 @@ ORDER BY count DESC
         }, ensure_ascii=False), ContentType='application/json; charset=utf-8')
 
 def main():
-    parser = argparse.ArgumentParser(description='Make stats from BigQuery')
+    parser = argparse.ArgumentParser(description='Make stats from Athena')
     parser.add_argument('-d', '--database', dest='athena_database', required=True, help='athena database')
     parser.add_argument('-p', '--table', dest='athena_table', required=True, help='athena table')
     parser.add_argument('--result-bucket', dest='athena_result_bucket', required=True, help='athena result bucket')
