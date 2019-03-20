@@ -10,7 +10,7 @@
         <node-detail v-if="node" :node="node"></node-detail>
 
         <button class="btn btn-primary" v-if="url" @click="back">URL Graph</button>
-        <button class="btn btn-primary" v-if="tableData" @click="showTable">Table</button>
+        <button class="btn btn-primary" v-if="tableData" @click="showTable">Table & Line Chart</button>
 
         <b-form-group label="Enabled Statuses" class="status-filter">
           <b-form-checkbox-group id="enabled-statuses" v-model="enabledStatues"
@@ -31,9 +31,13 @@
       </div>
     </div>
     <div v-if="!isGraph">
-      <stat-line-chart :data="tableData"></stat-line-chart>
+      <div v-if="lineChartFilterUrl">
+        Filtered by: {{lineChartFilterUrl}} <a href="#" @click="lineChartFilterUrl = null">x</a>
+      </div>
+      <stat-line-chart :data="tableData" :filtered-url="lineChartFilterUrl"></stat-line-chart>
       <div class="table-container">
-        <stat-table :data="summaryTableData" @clickUrl="goToUrlGraph"></stat-table>
+        <stat-table :data="summaryTableData" @clickGraphUrl="goToUrlGraph"
+                    @clickFilterUrl="filterLineChartUrl"></stat-table>
       </div>
       <button class="btn btn-primary" @click="showGraph">Graph</button>
     </div>
@@ -318,6 +322,7 @@
         rawGraphData: null,
         tableData: null,
         summaryTableData: null,
+        lineChartFilterUrl: null,
         node: null,
         statuses: _.keys(statusPatterns),
         enabledStatues: _.difference(_.keys(statusPatterns), ['click_trivial', 'timer', 'scroll']),
@@ -500,6 +505,7 @@
         this.render()
       },
       showTable () {
+        this.lineChartFilterUrl = this.url
         this.isGraph = false
       },
       showGraph () {
@@ -511,6 +517,9 @@
         setTimeout(() => {
           this.render()
         }, 500)
+      },
+      filterLineChartUrl (url) {
+        this.lineChartFilterUrl = url
       },
       render () {
         if (!this.url) {

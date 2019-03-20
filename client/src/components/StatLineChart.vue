@@ -26,6 +26,9 @@
     props: {
       data: {
         type: Array
+      },
+      filteredUrl: {
+        type: String
       }
     },
     data () {
@@ -37,13 +40,24 @@
           {value: 'user_count', text: 'User'},
           {value: 'avg_scroll_y', text: 'Scroll(AVG)'},
           {value: 'max_scroll_y', text: 'Scroll(MAX)'}
-        ]
+        ],
+        formattedData: null
       }
     },
-    computed: {
-      formattedData () {
-        console.log('format')
+    watch: {
+      filteredUrl () {
+        this.formattedData = this.formatData()
+        this.r()
+      }
+    },
+    methods: {
+      formatData () {
         let data = _.cloneDeep(this.data)
+
+        if (this.filteredUrl) {
+          data = _.filter(data, {url: this.filteredUrl})
+        }
+
         return _(data).groupBy('datetime').map((d, datetime) => {
           const scrollCount = _.sumBy(d, 's_count')
 
@@ -70,15 +84,16 @@
 
           return data
         }).sortBy('datetime').value()
-      }
-    },
-    methods: {
+      },
       r () {
         this.render()
       },
       render () {
+        if (!this.formattedData) {
+          this.formattedData = this.formatData()
+        }
+
         const data = this.formattedData
-        console.log(data)
         const cl = d3.select('#line-chart')
         const width = cl.node().clientWidth
         const height = 200
