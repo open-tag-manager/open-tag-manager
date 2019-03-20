@@ -1,5 +1,20 @@
 <template>
-  <div id="line-chart">
+  <div>
+    <div id="line-chart">
+    </div>
+
+    <b-form-group>
+      <b-form-radio-group
+        id="y-radio"
+        buttons
+        button-variant="outline-primary"
+        size="sm"
+        v-model="yItem"
+        :options="options"
+        name="radiosBtnDefault"
+        @input="r"
+      />
+    </b-form-group>
   </div>
 </template>
 
@@ -10,14 +25,26 @@
   export default {
     props: {
       data: {
-        type: Array,
-        required: true
+        type: Array
       }
     },
-    methods: {
-      render () {
+    data () {
+      return {
+        yItem: 'count',
+        options: [
+          {value: 'count', text: 'Count'},
+          {value: 'session_count', text: 'Session'},
+          {value: 'user_count', text: 'User'},
+          {value: 'avg_scroll_y', text: 'Scroll(AVG)'},
+          {value: 'max_scroll_y', text: 'Scroll(MAX)'}
+        ]
+      }
+    },
+    computed: {
+      formattedData () {
+        console.log('format')
         let data = _.cloneDeep(this.data)
-        data = _(data).groupBy('datetime').map((d, datetime) => {
+        return _(data).groupBy('datetime').map((d, datetime) => {
           const scrollCount = _.sumBy(d, 's_count')
 
           const data = {
@@ -43,7 +70,15 @@
 
           return data
         }).sortBy('datetime').value()
-
+      }
+    },
+    methods: {
+      r () {
+        this.render()
+      },
+      render () {
+        const data = this.formattedData
+        console.log(data)
         const cl = d3.select('#line-chart')
         const width = cl.node().clientWidth
         const height = 200
@@ -52,10 +87,16 @@
         const svg = cl.append('svg').attr('width', width).attr('height', height)
 
         const xScale = d3.scaleTime()
-          .domain([d3.min(data.map((d) => { return d.datetime })), d3.max(data.map((d) => { return d.datetime }))])
+          .domain([d3.min(data.map((d) => {
+            return d.datetime
+          })), d3.max(data.map((d) => {
+            return d.datetime
+          }))])
           .range([margin.left, width - margin.right])
         const yScale = d3.scaleLinear()
-          .domain([0, d3.max(data.map((d) => { return d.count }))])
+          .domain([0, d3.max(data.map((d) => {
+            return d[this.yItem]
+          }))])
           .range([height - margin.bottom, margin.top])
         const xAxis = d3.axisBottom(xScale).tickFormat(d3.timeFormat('%m/%d %H'))
         const yAxis = d3.axisLeft(yScale).ticks(5)
@@ -83,15 +124,19 @@
           .attr('transform', 'rotate(-90)')
           .attr('font-weight', 'bold')
           .attr('font-size', '10pt')
-          .text('count')
+          .text(_.find(this.options, {value: this.yItem}).text)
 
         svg.append('path').datum(data)
           .attr('fill', 'none')
           .attr('stroke', 'steelblue')
           .attr('stroke-width', 1.5)
           .attr('d', d3.line()
-            .x((d) => { return xScale(new Date(d.datetime)) })
-            .y((d) => { return yScale(d.count) })
+            .x((d) => {
+              return xScale(new Date(d.datetime))
+            })
+            .y((d) => {
+              return yScale(d[this.yItem])
+            })
           )
       }
     },
