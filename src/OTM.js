@@ -70,6 +70,7 @@ class OTM {
           if (typeof observer.options.script === 'function') {
             observer.options.script(params)
           } else {
+            // eslint-disable-next-line no-eval
             const func = eval('(function(params){' + observer.options.script + '})')
             func(params)
           }
@@ -231,6 +232,24 @@ class OTM {
     return false
   }
 
+  _getLabel (target, attributes) {
+    if (target.innerText) {
+      return target.innerText.replace(/[\n\r]/, '')
+    } else if (attributes['aria-label']) {
+      return attributes['aria-label'].value
+    } else if (attributes['alt']) {
+      return attributes['alt'].value
+    } else if (attributes['title']) {
+      return attributes['title'].value
+    } else if (attributes['href']) {
+      return attributes['href'].value
+    } else if (attributes['src']) {
+      return attributes['src'].value
+    }
+
+    return null
+  }
+
   init (endpoint, options = {}) {
     this.preview = false
     this.endpoint = endpoint
@@ -271,16 +290,8 @@ class OTM {
       const target = e.target
       const tagName = target.tagName.toLowerCase()
       const attributes = target.attributes
-      let label = null
+      let label = this._getLabel(target, attributes)
       const params = {}
-
-      if (attributes['aria-label']) {
-        label = attributes['aria-label'].value
-      } else if (attributes['title']) {
-        label = attributes['title'].value
-      } else if (target.innerText) {
-        label = target.innerText.replace(/[\n\r]/, '')
-      }
 
       if (label) {
         params.el = label.slice(0, 100)
@@ -289,7 +300,6 @@ class OTM {
       for (let attribute of attributes) {
         let attributeName = attribute.name.toLowerCase()
         params['o_a_' + attributeName] = attribute.value
-
       }
       params.o_tag = tagName
       params.o_xpath = this._getXpathByElementNode(e.target)
@@ -304,10 +314,16 @@ class OTM {
       stateSuffix += '_' + tagName
       if (params.o_a_id) {
         stateSuffix += '_id=' + params.o_a_id
+      } else {
+        const shaObj = new JsSHA('SHA-1', 'TEXT')
+        if (label) {
+          shaObj.update(label)
+          stateSuffix += '_lhash=' + shaObj.getHash('HEX')
+        } else {
+          shaObj.update(this.url + '_' + params.o_xpath + '_' + JSON.stringify(params))
+          stateSuffix += '_hash=' + shaObj.getHash('HEX')
+        }
       }
-      const shaObj = new JsSHA('SHA-1', 'TEXT')
-      shaObj.update(this.url + '_' + params.o_xpath + '_' + JSON.stringify(params))
-      stateSuffix += '_hash=' + shaObj.getHash('HEX')
       params.stateSuffix = stateSuffix
 
       this.notify('click', params)
@@ -316,6 +332,7 @@ class OTM {
     document.addEventListener('touchstart', (e) => {
       const tagName = e.target.tagName.toLowerCase()
       const attributes = e.target.attributes
+      let label = this._getLabel(e.target, attributes)
       const params = {}
       for (let attribute of attributes) {
         params['o_a_' + attribute.name] = attribute.value
@@ -325,9 +342,15 @@ class OTM {
       let stateSuffix = tagName
       if (params.o_a_id) {
         stateSuffix = tagName + '_id=' + params.o_a_id
-      }
-      if (params.o_a_class) {
-        stateSuffix = tagName + '_class=' + params.o_a_class
+      } else {
+        const shaObj = new JsSHA('SHA-1', 'TEXT')
+        if (label) {
+          shaObj.update(label)
+          stateSuffix += '_lhash=' + shaObj.getHash('HEX')
+        } else {
+          shaObj.update(this.url + '_' + params.o_xpath + '_' + JSON.stringify(params))
+          stateSuffix += '_hash=' + shaObj.getHash('HEX')
+        }
       }
       params.stateSuffix = stateSuffix
       params.o_e_x = e.touches[0].pageX
