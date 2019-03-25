@@ -14,7 +14,7 @@
     </thead>
     <tbody>
     <tr v-for="col in data">
-      <td>{{col.url}}</td>
+      <td class="url">{{col.url}}</td>
       <td><a @click.prevent="clickUrl(col.url)" href="#">Show Graph</a></td>
       <td><a @click.prevent="filterUrl(col.url)" href="#">Filter in Line Chart</a></td>
       <td>{{col.count}}</td>
@@ -45,3 +45,10 @@
     }
   }
 </script>
+
+<style scoped>
+  .url {
+    font-size: 0.8em;
+    word-break: break-all;
+  }
+</style>
