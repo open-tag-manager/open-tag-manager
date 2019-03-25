@@ -62,22 +62,28 @@ class DataRetriever:
         q += " AND datetime >= timestamp '%s'" % (stime.strftime('%Y-%m-%d %H:%M:%S'))
         q += " AND datetime <= timestamp '%s'" % (etime.strftime('%Y-%m-%d %H:%M:%S'))
 
-        sql = """SELECT * , COUNT(*) as count
-FROM 
-(SELECT 
+        sql = """
+SELECT 
 JSON_EXTRACT_SCALAR(qs, '$.dl') AS url,
 JSON_EXTRACT_SCALAR(qs, '$.o_pl') AS p_url,
 JSON_EXTRACT_SCALAR(qs, '$.dt') AS title,
 JSON_EXTRACT_SCALAR(qs, '$.o_s') AS state,
 JSON_EXTRACT_SCALAR(qs, '$.o_ps') AS p_state,
 JSON_EXTRACT_SCALAR(qs, '$.el') AS label,
-JSON_EXTRACT_SCALAR(qs, '$.o_xpath') AS xpath,
 JSON_EXTRACT_SCALAR(qs, '$.o_a_id') AS a_id,
-JSON_EXTRACT_SCALAR(qs, '$.o_a_class') AS class
+arbitrary(JSON_EXTRACT_SCALAR(qs, '$.o_xpath')) AS xpath,
+arbitrary(JSON_EXTRACT_SCALAR(qs, '$.o_a_class')) AS class,
+COUNT(*) as count
 FROM %s.%s
 WHERE %s
-) tmp
-GROUP BY url, p_url, title, state, p_state, label, xpath, a_id, class 
+GROUP BY 
+JSON_EXTRACT_SCALAR(qs, '$.dl'), 
+JSON_EXTRACT_SCALAR(qs, '$.o_pl'),
+JSON_EXTRACT_SCALAR(qs, '$.dt'),
+JSON_EXTRACT_SCALAR(qs, '$.o_s'),
+JSON_EXTRACT_SCALAR(qs, '$.o_ps'),
+JSON_EXTRACT_SCALAR(qs, '$.el'),
+JSON_EXTRACT_SCALAR(qs, '$.o_a_id')
 """ % (self.options['athena_database'], self.options['athena_table'], q)
 
         result_athena = self._execute_athena_query(sql)
