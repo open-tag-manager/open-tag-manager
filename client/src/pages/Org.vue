@@ -1,6 +1,5 @@
 <template>
   <div>
-    <div>Org: {{$store.state.user.currentOrg.org}}</div>
     <router-view></router-view>
   </div>
 </template>

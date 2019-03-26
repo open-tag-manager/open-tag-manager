@@ -2,8 +2,11 @@
   <div>
     <div class="container-fluid graph-container" v-show="isGraph">
       <div id="graph">
-        <div>
+        <div v-if="!isLoading" class="text-center">
           Select report
+        </div>
+        <div v-if="isLoading" class="text-center">
+          <b-spinner label="Loading..." variant="primary" />
         </div>
       </div>
       <div class="node-info" v-if="graphData">
@@ -105,6 +108,7 @@
         }
       }
     }
+
     return null
   }
 
@@ -264,13 +268,14 @@
       let newPUrl = lookupPath(paths, url.parse(d.p_url)) || d.p_url
 
       // remove duplicated record
-      const e = _.find(data, {url: newUrl, p_url: newPUrl, state: d.state, p_state: d.p_state})
+      const e = _.find(data, {url: newUrl, p_url: newPUrl, state: d.state, p_state: d.p_state, m: true})
       if (e) {
         e.count += d.count
         d.url = null
       } else {
         d.url = newUrl
         d.p_url = newPUrl
+        d.m = true
       }
     }
 
@@ -280,6 +285,7 @@
   }
 
   const convertUrlForTableData = (data, swaggerDoc) => {
+    const cData = _.cloneDeep(data)
     if (!swaggerDoc) {
       return data
     }
@@ -289,27 +295,15 @@
     if (!paths) {
       return data
     }
-    for (let d of data) {
+    for (let d of cData) {
       let newUrl = lookupPath(paths, url.parse(d.url)) || d.url
       if (d.url === newUrl) {
         continue
       }
-
-      // remove duplicated record
-      const e = _.find(data, {url: newUrl, state: d.state})
-      if (e) {
-        e.count += d.count
-        e.session_count += d.session_count
-        e.user_count += d.user_count
-        d.url = null
-      } else {
-        d.url = newUrl
-      }
+      d.url = newUrl
     }
 
-    return _.reject(data, (d) => {
-      return d.url === null
-    })
+    return cData
   }
 
   export default {
@@ -331,7 +325,8 @@
         thresholdCount: 1,
         swaggerDoc: '',
         mergeSameId: true,
-        urlGraph: null
+        urlGraph: null,
+        isLoading: false
       }
     },
     computed: {
@@ -349,6 +344,7 @@
     },
     methods: {
       async renderGraph () {
+        this.isLoading = true
         const stats = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.$route.params.name}/stats`)
         const stat = _.find(stats, {key: this.$route.params.statid})
         if (!stat) {
@@ -396,6 +392,7 @@
         this.urls = getUrls(this.rawGraphData)
         this.url = null
         this.render()
+        this.isLoading = false
       },
       async getSwaggerDoc () {
         const data = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.$route.params.name}/swagger_doc`)
