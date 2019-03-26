@@ -85,7 +85,6 @@
     for (let p in paths) {
       const u = url.parse(p)
       const r = new RegExp('^' + u.pathname.replace(/{[^}]*}/g, '[^/]*') + '$')
-
       if (r.exec(targetUrl.pathname)) {
         // match pathname
         if (u.query) {
@@ -99,10 +98,10 @@
             }
           }
           if (queryMatch) {
-            return p
+            return `${parsedUrl.protocol}//${parsedUrl.host}${p}`
           }
         } else {
-          return p
+          return `${parsedUrl.protocol}//${parsedUrl.host}${p}`
         }
       }
     }
