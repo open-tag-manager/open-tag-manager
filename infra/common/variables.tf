@@ -51,3 +51,8 @@ variable "aws_cognito_user_pool_client_id" {
 }
 
 variable "aws_s3_bucket_prefix" {}
+variable "aws_resource_tags" {
+  type = "map"
+  default = {
+  }
+}

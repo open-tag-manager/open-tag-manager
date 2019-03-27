@@ -71,17 +71,19 @@ resource "aws_security_group" "batch" {
     cidr_blocks = [
       "0.0.0.0/0"]
   }
+
+  tags = "${var.aws_resource_tags}"
 }
 
 resource "aws_vpc" "otm" {
   cidr_block = "10.1.0.0/16"
-  tags = {
-    Name = "otm"
-  }
+  tags = "${var.aws_resource_tags}"
 }
 
 resource "aws_internet_gateway" "gw" {
   vpc_id = "${aws_vpc.otm.id}"
+
+  tags = "${var.aws_resource_tags}"
 }
 
 resource "aws_route_table" "r" {
@@ -91,12 +93,15 @@ resource "aws_route_table" "r" {
     cidr_block = "0.0.0.0/0"
     gateway_id = "${aws_internet_gateway.gw.id}"
   }
+
+  tags = "${var.aws_resource_tags}"
 }
 
 resource "aws_subnet" "otm" {
   vpc_id = "${aws_vpc.otm.id}"
   cidr_block = "10.1.1.0/24"
   map_public_ip_on_launch = true
+  tags = "${var.aws_resource_tags}"
 }
 
 resource "aws_route_table_association" "route_table_a" {
@@ -120,6 +125,7 @@ resource "aws_batch_compute_environment" "compute_environment" {
       "${aws_subnet.otm.id}"
     ]
     type = "EC2"
+    tags = "${var.aws_resource_tags}"
   }
   service_role = "${aws_iam_role.aws_batch_service_role.arn}"
   type = "MANAGED"

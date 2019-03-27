@@ -15,6 +15,7 @@ resource "aws_s3_bucket" "otm_collect" {
       "*"]
     expose_headers = []
   }
+  tags = "${var.aws_resource_tags}"
 }
 
 resource "aws_s3_bucket_object" "otm_collect" {
@@ -28,6 +29,7 @@ resource "aws_s3_bucket_object" "otm_collect" {
 resource "aws_s3_bucket" "otm_collect_log" {
   bucket = "${terraform.env}-${var.aws_s3_bucket_prefix}-otm-collect-log"
   acl = "private"
+  tags = "${var.aws_resource_tags}"
 }
 
 locals {
@@ -88,6 +90,8 @@ resource "aws_cloudfront_distribution" "otm_collect_distribution" {
       restriction_type = "none"
     }
   }
+
+  tags = "${var.aws_resource_tags}"
 }
 
 resource "aws_sns_topic" "otm_collect_log_topic" {
@@ -123,6 +127,7 @@ resource "aws_s3_bucket_notification" "otm_collect_log_notification" {
 resource "aws_s3_bucket" "otm_script" {
   bucket = "${terraform.env}-${var.aws_s3_bucket_prefix}-otm-script"
   acl = "private"
+  tags = "${var.aws_resource_tags}"
 }
 
 resource "aws_s3_bucket_object" "otm_otm" {
@@ -180,6 +185,8 @@ resource "aws_cloudfront_distribution" "otm_script_distribution" {
       restriction_type = "none"
     }
   }
+
+  tags = "${var.aws_resource_tags}"
 }
 
 resource "aws_s3_bucket" "otm_stats" {
@@ -194,11 +201,13 @@ resource "aws_s3_bucket" "otm_stats" {
       "*"]
     expose_headers = []
   }
+  tags = "${var.aws_resource_tags}"
 }
 
 resource "aws_s3_bucket" "otm_client" {
   bucket = "${terraform.env}-${var.aws_s3_bucket_prefix}-otm-client"
   acl = "public-read"
+  tags = "${var.aws_resource_tags}"
 }
 
 resource "aws_cloudfront_distribution" "otm_client_distribution" {
@@ -246,11 +255,14 @@ resource "aws_cloudfront_distribution" "otm_client_distribution" {
       restriction_type = "none"
     }
   }
+
+  tags = "${var.aws_resource_tags}"
 }
 
 resource "aws_s3_bucket" "otm_config" {
   bucket = "${terraform.env}-${var.aws_s3_bucket_prefix}-otm-config"
   acl = "private"
+  tags = "${var.aws_resource_tags}"
 }
 
 resource "aws_dynamodb_table" "otm_role" {
@@ -404,6 +416,7 @@ CONTAINER_PROPERTIES
 resource "aws_s3_bucket" "otm_athena" {
   bucket = "${terraform.env}-${var.aws_s3_bucket_prefix}-otm-athena"
   acl = "private"
+  tags = "${var.aws_resource_tags}"
 }
 
 resource "aws_athena_database" "otm" {

@@ -3,6 +3,7 @@ node_modules/
 dist/
 terraform.tfstate
 terraform.tfstate.backup
+**/terraform.tfstate.d/**/*
 account.json
 .terraform/
 *-terraform.tfvars
