@@ -305,6 +305,15 @@
 
     return cData
   }
+  const strimwidth = function (text, size) {
+    if (!text) {
+      return ''
+    }
+    if (text.length < size) {
+      return text
+    }
+    return text.replace(/[\n\r]/g, '').substr(0, size) + '...'
+  }
 
   export default {
     components: {StatTable, NodeDetail, StatLineChart},
@@ -438,8 +447,13 @@
             return {}
           })
 
-          this.urls.forEach(function (u, idx) {
-            g.setNode(idx, {shape: 'ellipse', label: u})
+          this.urls.forEach((u, idx) => {
+            let label = ''
+            const parsedUrl = url.parse(u)
+            label += parsedUrl.path + '\n'
+            const e = _.find(this.graphData, {url: u})
+            label += strimwidth(e.title)
+            g.setNode(idx, {shape: 'ellipse', label: label})
           })
 
           const h = {}
@@ -547,16 +561,6 @@
         const urls = []
 
         const color = d3.scaleOrdinal(d3.schemeCategory20)
-
-        const strimwidth = function (text, size) {
-          if (!text) {
-            return ''
-          }
-          if (text.length < size) {
-            return text
-          }
-          return text.replace(/[\n\r]/g, '').substr(0, size) + '...'
-        }
 
         const minmax = d3.extent(this.graphData, function (o) {
           return parseInt(o['count'])
