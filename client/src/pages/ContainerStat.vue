@@ -148,25 +148,4 @@
     stroke: #333;
     stroke-width: 1.5px;
   }
-
-  .graph-container {
-    position: relative;
-  }
-
-  .graph-container .node-info {
-    position: absolute;
-    left: 0;
-    bottom: 0;
-    padding: 5px;
-    background: #fff;
-    max-width: 50vw;
-    opacity: 0.8;
-  }
-
-  .graph-container .graph-operation {
-    position: absolute;
-    right: 0;
-    bottom: 0;
-    padding: 5px;
-  }
 </style>

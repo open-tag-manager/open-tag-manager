@@ -9,7 +9,7 @@
           <b-spinner label="Loading..." variant="primary" />
         </div>
       </div>
-      <div class="node-info" v-if="graphData">
+      <div class="node-info m-2" v-if="graphData">
         <node-detail v-if="node" :node="node"></node-detail>
 
         <button class="btn btn-primary" v-if="url" @click="back">URL Graph</button>
@@ -27,13 +27,13 @@
         </b-form-group>
       </div>
 
-      <div v-if="graphData" class="graph-operation">
+      <div v-if="graphData" class="graph-operation m-2">
         <button class="wide-button btn btn-primary" @click="expand">
           <fa-icon icon="expand"></fa-icon>
         </button>
       </div>
     </div>
-    <div v-if="!isGraph">
+    <div v-if="!isGraph" class="p-2">
       <div v-if="lineChartFilterUrl">
         Filtered by: {{lineChartFilterUrl}} <a href="#" @click="lineChartFilterUrl = null">x</a>
       </div>
@@ -44,6 +44,10 @@
       </div>
       <button class="btn btn-primary" @click="showGraph">Graph</button>
     </div>
+    <b-modal id="swagger-sample" title="Swagger Sample" hide-footer>
+      <textarea class="form-control" readonly rows="20" v-model="prettifySwaggerSample"></textarea>
+    </b-modal>
+    <button v-if="swaggerSample" type="button" class="btn btn-primary m-2" v-b-modal.swagger-sample>Swagger Sample</button>
   </div>
 </template>
 
@@ -324,6 +328,7 @@
         rawGraphData: null,
         tableData: null,
         summaryTableData: null,
+        swaggerSample: null,
         lineChartFilterUrl: null,
         node: null,
         statuses: _.keys(statusPatterns),
@@ -345,6 +350,9 @@
         } else {
           return 400
         }
+      },
+      prettifySwaggerSample () {
+        return JSON.stringify(this.swaggerSample, null, 2)
       }
     },
     async created () {
@@ -363,6 +371,7 @@
         const data = await axios.get(stat.url)
         this.rawGraphData = data.data.result
         this.tableData = convertUrlForTableData(data.data.table, this.swaggerDoc)
+        this.swaggerSample = data.data.swagger_sample
         this.summaryTableData = _(this.tableData).groupBy('url').map((d, url) => {
           const scrollCount = _.sumBy(d, 's_count')
 
@@ -679,8 +688,27 @@
 </script>
 
 <style scoped>
+  .graph-container {
+    position: relative;
+  }
+
   .table-container {
     height: 300px;
     overflow: scroll;
+  }
+
+  .node-info {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    background: #fff;
+    max-width: 50vw;
+    opacity: 0.8;
+  }
+
+  .graph-operation {
+    position: absolute;
+    right: 0;
+    bottom: 0;
   }
 </style>

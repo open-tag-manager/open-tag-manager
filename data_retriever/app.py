@@ -1,4 +1,5 @@
 from retrying import retry
+from urllib.parse import urlparse
 import pandas as pd
 import json
 import time
@@ -44,6 +45,66 @@ class DataRetriever:
         )
         QueryExecutionId = response['QueryExecutionId']
         return self._poll_status(QueryExecutionId)
+
+    def _get_swagger_helper(self, urls):
+        tree = {
+            'path': '',
+            'exists': False,
+            'children': []
+        }
+
+        def get_child_path(children, target_path):
+            values = [child for child in children if child['path'] == target_path]
+            return values[0] if values else None
+
+        for url in urls:
+            if not url:
+                continue
+
+            if url.lower() == 'undefined':
+                continue
+
+            paths = urlparse(url).path.split('/')
+
+            if len(paths) == 1 or len(paths) == 2 and paths[1] == '':
+                tree['exists'] = True
+                continue
+
+            current = tree
+            for i in range(1, len(paths)):
+                c = get_child_path(current['children'], paths[i])
+                if c is None:
+                    new_child = {
+                        'path': paths[i],
+                        'exists': False,
+                        'children': []
+                    }
+                    current['children'].append(new_child)
+                    c = new_child
+
+                current = c
+
+                if len(paths) - 1 == i:
+                    c['exists'] = True
+
+        result = []
+        def check_child(path, children):
+            for child in children:
+                if child['exists']:
+                    result.append(path + child['path'])
+                check_child(path + child['path'] + '/', child['children'])
+
+        if tree['exists']:
+            result.append('/')
+
+        check_child('/', tree['children'])
+        result.reverse()
+
+        swagger = {'paths': {}}
+        for path in result:
+            swagger['paths'][path] = {}
+
+        return swagger
 
     def execute(self):
         result = self._execute_athena_query(
@@ -146,6 +207,12 @@ ORDER BY count DESC
         for index, row in pd_data.iterrows():
             table_result.append(json.loads(row.to_json()))
 
+        urls = []
+        for index, row in pd_data['url'].iteritems():
+            urls.append(row)
+
+        swagger = self._get_swagger_helper(urls)
+
         print(json.dumps({'message': 'dump data', 'bucket': 's3://' + self.options['target_bucket'] + '/' + self.options['target_name']}))
         print(json.dumps(result))
         print(json.dumps(table_result))
@@ -158,7 +225,8 @@ ORDER BY count DESC
                 'version': 2
             },
             'result': result,
-            'table': table_result
+            'table': table_result,
+            'swagger_sample': swagger
         }, ensure_ascii=False), ContentType='application/json; charset=utf-8')
 
 def main():
