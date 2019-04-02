@@ -117,9 +117,8 @@ class DataRetriever:
 
         q = ''
         q += " tid = '%s'" % self.options['query_tid']
-        q += ' AND year >= %s AND year <= %s' % (stime.strftime('%Y'), etime.strftime('%Y'))
-        q += ' AND month >= %s AND month <= %s' % (int(stime.strftime('%m')), int(etime.strftime('%m')))
-        q += ' AND day >= %s AND day <= %s' % (int(stime.strftime('%d')), int(etime.strftime('%d')))
+        q += ' AND year * 10000 + month * 100 + day >= %s' % stime.strftime('%Y%m%d')
+        q += ' AND year * 10000 + month * 100 + day <= %s' % etime.strftime('%Y%m%d')
         q += " AND datetime >= timestamp '%s'" % (stime.strftime('%Y-%m-%d %H:%M:%S'))
         q += " AND datetime <= timestamp '%s'" % (etime.strftime('%Y-%m-%d %H:%M:%S'))
 
