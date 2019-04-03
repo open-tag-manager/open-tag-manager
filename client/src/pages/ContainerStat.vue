@@ -148,4 +148,16 @@
     stroke: #333;
     stroke-width: 1.5px;
   }
+
+  #graph .node.hover ellipse {
+    stroke: #d9534f;
+  }
+
+  #graph .edgePath.hover path {
+    stroke: #d9534f;
+  }
+
+  #graph .edgeLabel.hover {
+    color: #d9534f;
+  }
 </style>

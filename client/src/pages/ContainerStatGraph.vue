@@ -449,6 +449,7 @@
         cl.selectAll('*').remove()
         const svg = cl.append('svg').attr('width', width).attr('height', height)
         const inner = svg.append('g')
+        const linksData = []
 
         if (!this.urlGraph) {
           this.filter()
@@ -491,7 +492,7 @@
             if (t === -1) {
               t = this.urls.length
             }
-
+            linksData.push({source: p, target: t})
             g.setEdge(p, t, {
               label: u.count,
               arrowheadClass: 'arrowhead',
@@ -515,6 +516,26 @@
           if (id !== this.urls.length) {
             this.url = this.urls[id]
             this.render()
+          }
+        })
+        svg.selectAll('g.node').on('mouseover', (id) => {
+          d3.select(svg.selectAll('g.node').nodes()[id]).classed('hover', true)
+          const keys = _.keys(_.pickBy(linksData, {source: parseInt(id)})).concat(_.keys(_.pickBy(linksData, {target: parseInt(id)})))
+          const edgePaths = svg.selectAll('g.edgePath').nodes()
+          const edgeLabels = svg.selectAll('g.edgeLabel').nodes()
+          for (let key of keys) {
+            d3.select(edgePaths[parseInt(key)]).classed('hover', true)
+            d3.select(edgeLabels[parseInt(key)]).classed('hover', true)
+          }
+        })
+        svg.selectAll('g.node').on('mouseout', (id) => {
+          d3.select(svg.selectAll('g.node').nodes()[id]).classed('hover', false)
+          const keys = _.keys(_.pickBy(linksData, {source: parseInt(id)})).concat(_.keys(_.pickBy(linksData, {target: parseInt(id)})))
+          const edgePaths = svg.selectAll('g.edgePath').nodes()
+          const edgeLabels = svg.selectAll('g.edgeLabel').nodes()
+          for (let key of keys) {
+            d3.select(edgePaths[parseInt(key)]).classed('hover', false)
+            d3.select(edgeLabels[parseInt(key)]).classed('hover', false)
           }
         })
       },
@@ -668,6 +689,27 @@
         svg.call(zoom)
         const initialScale = 0.75
         svg.call(zoom.transform, d3.zoomIdentity.translate((svg.attr('width') - g.graph().width * initialScale) / 2, 20).scale(initialScale))
+
+        svg.selectAll('g.node').on('mouseover', (id) => {
+          d3.select(svg.selectAll('g.node').nodes()[id]).classed('hover', true)
+          const keys = _.keys(_.pickBy(linksData, {source: parseInt(id)})).concat(_.keys(_.pickBy(linksData, {target: parseInt(id)})))
+          const edgePaths = svg.selectAll('g.edgePath').nodes()
+          const edgeLabels = svg.selectAll('g.edgeLabel').nodes()
+          for (let key of keys) {
+            d3.select(edgePaths[parseInt(key)]).classed('hover', true)
+            d3.select(edgeLabels[parseInt(key)]).classed('hover', true)
+          }
+        })
+        svg.selectAll('g.node').on('mouseout', (id) => {
+          d3.select(svg.selectAll('g.node').nodes()[id]).classed('hover', false)
+          const keys = _.keys(_.pickBy(linksData, {source: parseInt(id)})).concat(_.keys(_.pickBy(linksData, {target: parseInt(id)})))
+          const edgePaths = svg.selectAll('g.edgePath').nodes()
+          const edgeLabels = svg.selectAll('g.edgeLabel').nodes()
+          for (let key of keys) {
+            d3.select(edgePaths[parseInt(key)]).classed('hover', false)
+            d3.select(edgeLabels[parseInt(key)]).classed('hover', false)
+          }
+        })
         svg.selectAll('g.node').on('click', (id) => {
           this.node = nodesData[id]
         })
