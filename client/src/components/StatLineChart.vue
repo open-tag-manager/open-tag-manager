@@ -35,9 +35,12 @@
       return {
         yItem: 'count',
         options: [
-          {value: 'count', text: 'Count'},
+          {value: 'count', text: 'PV'},
           {value: 'session_count', text: 'Session'},
           {value: 'user_count', text: 'User'},
+          {value: 'event_count', text: 'Event'},
+          {value: 'w_click_count', text: 'Widget Click'},
+          {value: 't_click_count', text: 'Trivial Click'},
           {value: 'avg_scroll_y', text: 'Scroll(AVG)'},
           {value: 'max_scroll_y', text: 'Scroll(MAX)'}
         ],
@@ -67,7 +70,10 @@
             session_count: _.sumBy(d, 'session_count'),
             user_count: _.sumBy(d, 'user_count'),
             avg_scroll_y: null,
-            max_scroll_y: null
+            max_scroll_y: null,
+            event_count: _.sumBy(d, 'event_count'),
+            w_click_count: _.sumBy(d, 'w_click_count'),
+            t_click_count: _.sumBy(d, 't_click_count')
           }
 
           if (scrollCount > 0) {

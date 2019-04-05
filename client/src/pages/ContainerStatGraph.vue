@@ -381,6 +381,9 @@
             count: _.sumBy(d, 'count'),
             session_count: _.sumBy(d, 'session_count'),
             user_count: _.sumBy(d, 'user_count'),
+            event_count: _.sumBy(d, 'event_count'),
+            t_click_count: _.sumBy(d, 't_click_count'),
+            w_click_count: _.sumBy(d, 'w_click_count'),
             avg_scroll_y: null,
             max_scroll_y: null
           }
@@ -399,6 +402,7 @@
 
           return data
         }).value()
+        console.log(this.summaryTableData)
 
         /*
         this.rawGraphData = [

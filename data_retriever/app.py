@@ -159,7 +159,7 @@ JSON_EXTRACT_SCALAR(qs, '$.o_a_id')
             result.append(json.loads(row.to_json()))
 
         sql2 = """
-WITH scroll  as (
+WITH scroll as (
 SELECT 
 datet, url, COUNT(y) as s_count, AVG(CAST(y as decimal)) as avg_scroll_y, MAX(CAST(y as decimal)) as max_scroll_y
 FROM 
@@ -169,12 +169,43 @@ format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ') as datet,
 JSON_EXTRACT_SCALAR(qs, '$.dl') as url,
 MAX(JSON_EXTRACT_SCALAR(qs, '$.o_e_y')) as y,
 JSON_EXTRACT_SCALAR(qs, '$.cid') as uid
-FROM %s.%s
-WHERE JSON_EXTRACT_SCALAR(qs, '$.o_s') LIKE 'scroll_%%'
+FROM {0}.{1}
+WHERE JSON_EXTRACT_SCALAR(qs, '$.o_s') LIKE 'scroll_%' AND {2}
 GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), JSON_EXTRACT_SCALAR(qs, '$.dl'),  JSON_EXTRACT_SCALAR(qs, '$.cid')
 ) tmp 
 GROUP BY datet, url  
+),
+
+event as (
+SELECT 
+format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ') as datet,
+JSON_EXTRACT_SCALAR(qs, '$.dl') as url,
+COUNT(datetime) as event_count
+FROM {0}.{1}
+WHERE {2}
+GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), JSON_EXTRACT_SCALAR(qs, '$.dl')
+),
+
+widget_click as (
+SELECT 
+format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ') as datet,
+JSON_EXTRACT_SCALAR(qs, '$.dl') as url,
+COUNT(datetime) as w_click_count
+FROM {0}.{1}
+WHERE JSON_EXTRACT_SCALAR(qs, '$.o_s') LIKE 'click_widget_%' AND {2}
+GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), JSON_EXTRACT_SCALAR(qs, '$.dl')
+),
+
+trivial_click as (
+SELECT 
+format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ') as datet,
+JSON_EXTRACT_SCALAR(qs, '$.dl') as url,
+COUNT(datetime) as t_click_count
+FROM {0}.{1}
+WHERE JSON_EXTRACT_SCALAR(qs, '$.o_s') LIKE 'click_trivial_%' AND {2}
+GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), JSON_EXTRACT_SCALAR(qs, '$.dl')
 )
+
 SELECT
 format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ') as datetime,
 JSON_EXTRACT_SCALAR(qs, '$.dl') as url,
@@ -183,14 +214,24 @@ COUNT(DISTINCT JSON_EXTRACT_SCALAR(qs, '$.o_psid')) as session_count,
 COUNT(DISTINCT JSON_EXTRACT_SCALAR(qs, '$.cid')) as user_count,
 scroll.s_count,
 scroll.avg_scroll_y,
-scroll.max_scroll_y
+scroll.max_scroll_y,
+event.event_count,
+widget_click.w_click_count,
+trivial_click.t_click_count
 FROM 
-%s.%s LEFT OUTER JOIN 
+{0}.{1}
+LEFT OUTER JOIN 
 scroll ON (scroll.url = JSON_EXTRACT_SCALAR(qs, '$.dl') AND scroll.datet = format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'))
-WHERE JSON_EXTRACT_SCALAR(qs, '$.o_s') = 'pageview' AND %s
-GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), JSON_EXTRACT_SCALAR(qs, '$.dl'), s_count, avg_scroll_y, max_scroll_y
+LEFT OUTER JOIN 
+event ON (event.url = JSON_EXTRACT_SCALAR(qs, '$.dl') AND event.datet = format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'))
+LEFT OUTER JOIN 
+widget_click ON (widget_click.url = JSON_EXTRACT_SCALAR(qs, '$.dl') AND widget_click.datet = format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'))
+LEFT OUTER JOIN 
+trivial_click ON (trivial_click.url = JSON_EXTRACT_SCALAR(qs, '$.dl') AND trivial_click.datet = format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'))
+WHERE JSON_EXTRACT_SCALAR(qs, '$.o_s') = 'pageview' AND {2}
+GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), JSON_EXTRACT_SCALAR(qs, '$.dl'), s_count, avg_scroll_y, max_scroll_y, event_count, w_click_count, t_click_count
 ORDER BY count DESC
-""" % (self.options['athena_database'], self.options['athena_table'], self.options['athena_database'], self.options['athena_table'], q)
+""".format(self.options['athena_database'], self.options['athena_table'], q)
 
         result_athena = self._execute_athena_query(sql2)
         if result_athena['QueryExecution']['Status']['State'] != 'SUCCEEDED':
