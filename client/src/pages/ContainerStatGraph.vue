@@ -467,7 +467,7 @@
             const parsedUrl = url.parse(u)
             label += parsedUrl.path + '\n'
             const e = _.find(this.graphData, {url: u})
-            label += strimwidth(e.title)
+            label += strimwidth(e.title, 12)
             g.setNode(idx, {shape: 'ellipse', label: label})
           })
 
