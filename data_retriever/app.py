@@ -122,8 +122,7 @@ class DataRetriever:
         q += " AND datetime >= timestamp '%s'" % (stime.strftime('%Y-%m-%d %H:%M:%S'))
         q += " AND datetime <= timestamp '%s'" % (etime.strftime('%Y-%m-%d %H:%M:%S'))
 
-        sql = """
-SELECT 
+        sql = """SELECT 
 JSON_EXTRACT_SCALAR(qs, '$.dl') AS url,
 JSON_EXTRACT_SCALAR(qs, '$.o_pl') AS p_url,
 JSON_EXTRACT_SCALAR(qs, '$.dt') AS title,
@@ -134,8 +133,8 @@ JSON_EXTRACT_SCALAR(qs, '$.o_a_id') AS a_id,
 arbitrary(JSON_EXTRACT_SCALAR(qs, '$.o_xpath')) AS xpath,
 arbitrary(JSON_EXTRACT_SCALAR(qs, '$.o_a_class')) AS class,
 COUNT(*) as count
-FROM %s.%s
-WHERE %s
+FROM {0}.{1}
+WHERE {2}
 GROUP BY 
 JSON_EXTRACT_SCALAR(qs, '$.dl'), 
 JSON_EXTRACT_SCALAR(qs, '$.o_pl'),
@@ -144,7 +143,7 @@ JSON_EXTRACT_SCALAR(qs, '$.o_s'),
 JSON_EXTRACT_SCALAR(qs, '$.o_ps'),
 JSON_EXTRACT_SCALAR(qs, '$.el'),
 JSON_EXTRACT_SCALAR(qs, '$.o_a_id')
-""" % (self.options['athena_database'], self.options['athena_table'], q)
+""".format(self.options['athena_database'], self.options['athena_table'], q)
 
         result_athena = self._execute_athena_query(sql)
         if result_athena['QueryExecution']['Status']['State'] != 'SUCCEEDED':
@@ -158,8 +157,7 @@ JSON_EXTRACT_SCALAR(qs, '$.o_a_id')
         for index, row in pd_data.iterrows():
             result.append(json.loads(row.to_json()))
 
-        sql2 = """
-WITH scroll as (
+        sql2 = """WITH scroll as (
 SELECT 
 datet, url, COUNT(y) as s_count, AVG(CAST(y as decimal)) as avg_scroll_y, MAX(CAST(y as decimal)) as max_scroll_y
 FROM 
@@ -248,14 +246,17 @@ ORDER BY count DESC
             table_result.append(json.loads(row.to_json()))
 
         urls = []
-        for index, row in pd_data['url'].iteritems():
-            urls.append(row)
+        for row in result:
+            urls.append(row['url'])
+            urls.append(row['p_url'])
+        urls = list(set(urls))
 
         swagger = self._get_swagger_helper(urls)
 
         print(json.dumps({'message': 'dump data', 'bucket': 's3://' + self.options['target_bucket'] + '/' + self.options['target_name']}))
         print(json.dumps(result))
         print(json.dumps(table_result))
+        print(json.dumps(swagger))
 
         target.put(Body=json.dumps({
             'meta': {
