@@ -340,6 +340,7 @@
         swaggerDoc: '',
         mergeSameId: true,
         urlGraph: null,
+        urlLinksData: null,
         isLoading: false
       }
     },
@@ -449,9 +450,9 @@
         cl.selectAll('*').remove()
         const svg = cl.append('svg').attr('width', width).attr('height', height)
         const inner = svg.append('g')
-        const linksData = []
 
         if (!this.urlGraph) {
+          this.urlLinksData = []
           this.filter()
           const g = new DagreD3.graphlib.Graph({compound: true}).setGraph({}).setDefaultEdgeLabel(function () {
             return {}
@@ -492,7 +493,7 @@
             if (t === -1) {
               t = this.urls.length
             }
-            linksData.push({source: p, target: t})
+            this.urlLinksData.push({source: p, target: t})
             g.setEdge(p, t, {
               label: u.count,
               arrowheadClass: 'arrowhead',
@@ -520,7 +521,7 @@
         })
         svg.selectAll('g.node').on('mouseover', (id) => {
           d3.select(svg.selectAll('g.node').nodes()[id]).classed('hover', true)
-          const keys = _.keys(_.pickBy(linksData, {source: parseInt(id)})).concat(_.keys(_.pickBy(linksData, {target: parseInt(id)})))
+          const keys = _.keys(_.pickBy(this.urlLinksData, {source: parseInt(id)})).concat(_.keys(_.pickBy(this.urlLinksData, {target: parseInt(id)})))
           const edgePaths = svg.selectAll('g.edgePath').nodes()
           const edgeLabels = svg.selectAll('g.edgeLabel').nodes()
           for (let key of keys) {
@@ -530,7 +531,7 @@
         })
         svg.selectAll('g.node').on('mouseout', (id) => {
           d3.select(svg.selectAll('g.node').nodes()[id]).classed('hover', false)
-          const keys = _.keys(_.pickBy(linksData, {source: parseInt(id)})).concat(_.keys(_.pickBy(linksData, {target: parseInt(id)})))
+          const keys = _.keys(_.pickBy(this.urlLinksData, {source: parseInt(id)})).concat(_.keys(_.pickBy(this.urlLinksData, {target: parseInt(id)})))
           const edgePaths = svg.selectAll('g.edgePath').nodes()
           const edgeLabels = svg.selectAll('g.edgeLabel').nodes()
           for (let key of keys) {
@@ -723,6 +724,7 @@
         })
       },
       r () {
+        this.urlGraph = null
         this.render()
       }
     }
