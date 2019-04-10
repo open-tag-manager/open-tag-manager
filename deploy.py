@@ -48,6 +48,9 @@ def main():
     athena_bucket = tfresource['aws_s3_bucket.otm_athena']['primary']['id']
     collect_log_bucket = tfresource['aws_s3_bucket.otm_collect_log']['primary']['id']
 
+    script_distribution = tfresource['aws_cloudfront_distribution.otm_script_distribution']['primary']['id']
+    client_distribution = tfresource['aws_cloudfront_distribution.otm_client_distribution']['primary']['id']
+
     script_domain = tfresource['aws_cloudfront_distribution.otm_script_distribution']['primary']['attributes']['domain_name']
     if 'aws_route53_record.otm' in tfresource:
         script_domain = tfresource['aws_route53_record.otm']['primary']['attributes']['name']
@@ -153,7 +156,11 @@ def main():
     }, cwd='./client')
     subprocess.call(['aws', 's3', 'sync', './client/dist/', 's3://%s/' % client_bucket, '--acl=public-read'])
 
-    print('5. deploy log_formatter')
+    print('5. invalidate client / otm.js')
+    subprocess.call(['aws', 'cloudfront', 'create-invalidation', '--distribution-id', script_distribution, '--paths', '/otm.js'])
+    subprocess.call(['aws', 'cloudfront', 'create-invalidation', '--distribution-id', client_distribution, '--paths', '/', '/index.html'])
+
+    print('6. deploy log_formatter')
     with open('./log_formatter/.chalice/config.json', 'r') as f:
         config = json.load(f)
         env = config['environment_variables']
@@ -177,7 +184,7 @@ def main():
     local_env['OTM_LOG_SNS'] = sns_topic
     subprocess.call(['chalice', 'deploy', '--no-autogen-policy', '--stage=%s' % environment], cwd='./log_formatter', env=local_env)
 
-    print('6. make athena table')
+    print('7. make athena table')
     athena_query = '''
 CREATE EXTERNAL TABLE IF NOT EXISTS %s.otm_collect2(
   `datetime` timestamp, 
