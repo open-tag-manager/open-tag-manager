@@ -2,21 +2,39 @@
   <table class="table table-striped">
     <thead>
     <tr>
-      <th scope="col">URL</th>
+      <th scope="col" @click="sort('url')">URL
+        <stat-table-sort-order-allow v-if="sortBy === 'url'" :order="order"></stat-table-sort-order-allow>
+      </th>
       <th scope="col"></th>
       <th scope="col"></th>
-      <th scope="col">PV</th>
-      <th scope="col">Session</th>
-      <th scope="col">User</th>
-      <th scope="col">Event</th>
-      <th scope="col">Widget Click</th>
-      <th scope="col">Trivial Click</th>
-      <th scope="col">Scroll(AVG)</th>
-      <th scope="col">Scroll(MAX)</th>
+      <th scope="col" @click="sort('count')">PV
+        <stat-table-sort-order-allow v-if="sortBy === 'count'" :order="order"></stat-table-sort-order-allow>
+      </th>
+      <th scope="col" @click="sort('session_count')">Session
+        <stat-table-sort-order-allow v-if="sortBy === 'session_count'" :order="order"></stat-table-sort-order-allow>
+      </th>
+      <th scope="col" @click="sort('user_count')">User
+        <stat-table-sort-order-allow v-if="sortBy === 'user_count'" :order="order"></stat-table-sort-order-allow>
+      </th>
+      <th scope="col" @click="sort('event_count')">Event
+        <stat-table-sort-order-allow v-if="sortBy === 'event_count'" :order="order"></stat-table-sort-order-allow>
+      </th>
+      <th scope="col" @click="sort('w_click_count')">Widget Click
+        <stat-table-sort-order-allow v-if="sortBy === 'w_click_count'" :order="order"></stat-table-sort-order-allow>
+      </th>
+      <th scope="col" @click="sort('t_click_count')">Trivial Click
+        <stat-table-sort-order-allow v-if="sortBy === 't_click_count'" :order="order"></stat-table-sort-order-allow>
+      </th>
+      <th scope="col" @click="sort('avg_scroll_y')">Scroll(AVG)
+        <stat-table-sort-order-allow v-if="sortBy === 'avg_scroll_y'" :order="order"></stat-table-sort-order-allow>
+      </th>
+      <th scope="col" @click="sort('max_scroll_y')">Scroll(MAX)
+        <stat-table-sort-order-allow v-if="sortBy === 'max_scroll_y'" :order="order"></stat-table-sort-order-allow>
+      </th>
     </tr>
     </thead>
     <tbody>
-    <tr v-for="col in data">
+    <tr v-for="col in sortedData">
       <td class="url">{{col.url}}</td>
       <td><a @click.prevent="clickUrl(col.url)" href="#">Show Graph</a></td>
       <td><a @click.prevent="filterUrl(col.url)" href="#">Filter in Line Chart</a></td>
@@ -34,19 +52,65 @@
 </template>
 
 <script>
+  import _ from 'lodash'
+  import StatTableSortOrderAllow from './StatTableSortOrderAllow'
+
   export default {
+    components: {StatTableSortOrderAllow},
+    data() {
+      return {
+        sortBy: null,
+        order: 'asc'
+      }
+    },
     props: {
       data: {
         type: Array,
         required: true
       }
     },
+    computed: {
+      sortedData() {
+        if (!this.sortBy) {
+          return this.data
+        }
+
+        return _.clone(this.data).sort((a, b) => {
+          const bi = this.order === 'asc' ? 1 : -1
+
+          if (a[this.sortBy] === null) {
+            return 1
+          }
+          if (b[this.sortBy] === null) {
+            return -1
+          }
+
+          if (a[this.sortBy] > b[this.sortBy]) {
+            return 1 * bi
+          }
+
+          if (a[this.sortBy] < b[this.sortBy]) {
+            return -1 * bi
+          }
+
+          return 0
+        })
+      }
+    },
     methods: {
-      clickUrl (url) {
+      clickUrl(url) {
         this.$emit('clickGraphUrl', url)
       },
-      filterUrl (url) {
+      filterUrl(url) {
         this.$emit('clickFilterUrl', url)
+      },
+      sort(field) {
+        if (this.sortBy === field) {
+          this.order = this.order === 'asc' ? 'desc' : 'asc'
+        } else {
+          this.order = 'desc'
+          this.sortBy = field
+        }
       }
     }
   }
