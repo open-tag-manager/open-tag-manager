@@ -45,9 +45,9 @@
       <button class="btn btn-primary" @click="showGraph">Graph</button>
     </div>
     <b-modal id="swagger-sample" title="Swagger Sample" hide-footer>
-      <textarea class="form-control" readonly rows="20" v-model="prettifySwaggerSample"></textarea>
+      <swagger-sample :url-tree="urlTree" v-if="urlTree"></swagger-sample>
     </b-modal>
-    <button v-if="swaggerSample" type="button" class="btn btn-primary m-2" v-b-modal.swagger-sample>Swagger Sample</button>
+    <button type="button" class="btn btn-primary m-2" v-b-modal.swagger-sample>Swagger Sample</button>
   </div>
 </template>
 
@@ -56,11 +56,13 @@
   import _ from 'lodash'
   import * as d3 from 'd3'
   import * as DagreD3 from 'dagre-d3'
+  import {getTree} from '../lib/UrlTree'
   import url from 'url'
   import querystring from 'querystring'
   import NodeDetail from '../components/NodeDetail'
   import StatTable from '../components/StatTable'
   import StatLineChart from '../components/StatLineChart'
+  import SwaggerSample from '../components/SwaggerSample'
 
   const statusPatterns = {
     pageview: /^pageview$/,
@@ -320,7 +322,7 @@
   }
 
   export default {
-    components: {StatTable, NodeDetail, StatLineChart},
+    components: {StatTable, NodeDetail, StatLineChart, SwaggerSample},
     data () {
       return {
         isGraph: true,
@@ -328,7 +330,6 @@
         rawGraphData: null,
         tableData: null,
         summaryTableData: null,
-        swaggerSample: null,
         lineChartFilterUrl: null,
         node: null,
         statuses: _.keys(statusPatterns),
@@ -339,6 +340,7 @@
         thresholdCount: 1,
         swaggerDoc: '',
         mergeSameId: true,
+        urlTree: null,
         urlGraph: null,
         urlLinksData: null,
         isLoading: false
@@ -351,9 +353,6 @@
         } else {
           return 400
         }
-      },
-      prettifySwaggerSample () {
-        return JSON.stringify(this.swaggerSample, null, 2)
       }
     },
     async created () {
@@ -372,7 +371,6 @@
         const data = await axios.get(stat.url)
         this.rawGraphData = data.data.result
         this.tableData = convertUrlForTableData(data.data.table, this.swaggerDoc)
-        this.swaggerSample = data.data.swagger_sample
         this.summaryTableData = _(this.tableData).groupBy('url').map((d, url) => {
           const scrollCount = _.sumBy(d, 's_count')
 
@@ -402,7 +400,6 @@
 
           return data
         }).value()
-        console.log(this.summaryTableData)
 
         /*
         this.rawGraphData = [
@@ -414,6 +411,9 @@
         this.node = null
         this.urls = getUrls(this.rawGraphData)
         this.url = null
+
+        this.urlTree = getTree(this.rawGraphData)
+
         this.render()
         this.isLoading = false
       },

@@ -57,7 +57,7 @@
 
   export default {
     components: {StatTableSortOrderAllow},
-    data() {
+    data () {
       return {
         sortBy: null,
         order: 'asc'
@@ -70,7 +70,7 @@
       }
     },
     computed: {
-      sortedData() {
+      sortedData () {
         if (!this.sortBy) {
           return this.data
         }
@@ -98,13 +98,13 @@
       }
     },
     methods: {
-      clickUrl(url) {
+      clickUrl (url) {
         this.$emit('clickGraphUrl', url)
       },
-      filterUrl(url) {
+      filterUrl (url) {
         this.$emit('clickFilterUrl', url)
       },
-      sort(field) {
+      sort (field) {
         if (this.sortBy === field) {
           this.order = this.order === 'asc' ? 'desc' : 'asc'
         } else {

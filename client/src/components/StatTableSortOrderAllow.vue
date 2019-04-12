@@ -12,10 +12,10 @@
       }
     },
     computed: {
-      isAsc() {
+      isAsc () {
         return this.order === 'asc'
       },
-      isDesc() {
+      isDesc () {
         return this.order === 'desc'
       }
     }
