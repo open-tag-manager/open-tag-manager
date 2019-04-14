@@ -487,6 +487,10 @@
 
           g.setNode(this.urls.length, {label: 'Undefined', shape: 'ellipse'})
 
+          const minmax = d3.extent(urlLinks, function (o) {
+            return parseInt(o['count'])
+          })
+
           urlLinks.forEach((u) => {
             let p = _.indexOf(this.urls, u.p_url)
             let t = _.indexOf(this.urls, u.url)
@@ -497,9 +501,16 @@
             if (t === -1) {
               t = this.urls.length
             }
+
+            let w = 0
+            if (minmax[1] - minmax[0] > 0) {
+              w = (parseInt(u.count) - minmax[0]) / (minmax[1] - minmax[0])
+            }
+            let width = 3 * w + 1
             this.urlLinksData.push({source: p, target: t})
             g.setEdge(p, t, {
               label: u.count,
+              style: `stroke-width: ${width}px;`,
               arrowheadClass: 'arrowhead',
               curve: d3.curveBasis
             })
