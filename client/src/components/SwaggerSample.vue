@@ -7,6 +7,7 @@
       v-if="tree && tree.children.length > 0"
       :children="tree.children"
       @aggregate="aggregate" v-show="!isSample"
+      @changeCheck="changeCheck"
     ></swagger-sample-children>
     <div v-if="isSample">
       <textarea readonly :value="sampleJson" class="form-control" rows="15"></textarea>
@@ -47,7 +48,8 @@
       return {
         tree: null,
         isSample: false,
-        sample: null
+        sample: null,
+        ignoredNodes: []
       }
     },
     props: {
@@ -68,14 +70,22 @@
       reset () {
         this.tree = _.cloneDeep(this.urlTree)
       },
+      changeCheck (d) {
+        if (!d.check) {
+          if (!_.find(this.ignoredNodes, {id: d.node.id})) {
+            this.ignoredNodes.push(d.node)
+          }
+        } else {
+          this.ignoredNodes = _.reject(this.ignoredNodes, {id: d.node.id})
+        }
+      },
       aggregate (d) {
         const tree = _.cloneDeep(this.tree)
-        console.log(d.node.id)
         const node = findNode(tree.children, d.node.id)
-        console.log(node)
         if (!node) {
           return null
         }
+        const newChildren = []
         const newNode = {
           path: `{${d.name}}`,
           id: `${node.id}/${d.name}`,
@@ -83,21 +93,26 @@
           level: node.level + 1,
           exists: true
         }
-        let newChildren = []
+        newChildren.push(newNode)
+        let newGrandChildren = []
         node.children.forEach((c) => {
-          c.children.forEach((gc) => {
-            if (!_.find(newChildren, {path: gc.path})) {
-              newChildren.push(gc)
-            }
-          })
+          const node = _.find(this.ignoredNodes, {id: c.id})
+          if (node) {
+            newChildren.push(c)
+          } else {
+            c.children.forEach((gc) => {
+              if (!_.find(newGrandChildren, {path: gc.path})) {
+                newGrandChildren.push(gc)
+              }
+            })
+          }
         })
-        newNode.children = newChildren
-        node.children = [newNode]
+        newNode.children = newGrandChildren
+        node.children = newChildren
         this.tree = tree
       },
       showSample () {
         this.sample = getPathSample(this.tree)
-        console.log(this.sample)
         this.isSample = true
       }
     }
