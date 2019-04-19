@@ -1,5 +1,4 @@
 from retrying import retry
-from urllib.parse import urlparse
 import pandas as pd
 import json
 import time
@@ -90,12 +89,30 @@ JSON_EXTRACT_SCALAR(qs, '$.o_a_id')
             raise Exception('Cannot execute query')
 
         result_data = self.s3.Bucket(self.options['athena_result_bucket']).Object(
-            '%s%s.csv' % (self.options['athena_result_prefix'], result_athena['QueryExecution']['QueryExecutionId'])).get()
+            '%s%s.csv' % (
+                self.options['athena_result_prefix'], result_athena['QueryExecution']['QueryExecutionId'])).get()
         pd_data = pd.read_csv(result_data['Body'], encoding='utf-8')
 
+        urls = []
+        url_links_map = {}
         result = []
         for index, row in pd_data.iterrows():
-            result.append(json.loads(row.to_json()))
+            event = json.loads(row.to_json())
+            result.append(event)
+            if event['url'] and event['url'] not in urls:
+                urls.append(event['url'])
+
+        for index, row in pd_data.iterrows():
+            key = "{0}-{1}".format(row['url'], row['p_url'])
+            if key in url_links_map:
+                url_links_map[key]['count'] += row['count']
+            else:
+                url_links_map[key] = {'count': row['count'], 'url': row['url'], 'p_url': row['p_url'],
+                                      'title': row['title']}
+
+        url_links = []
+        for key in url_links_map:
+            url_links.append(url_links_map[key])
 
         sql2 = """WITH scroll as (
 SELECT 
@@ -176,16 +193,19 @@ ORDER BY count DESC
             raise Exception('Cannot execute query')
 
         result_data = self.s3.Bucket(self.options['athena_result_bucket']).Object(
-            '%s%s.csv' % (self.options['athena_result_prefix'], result_athena['QueryExecution']['QueryExecutionId'])).get()
+            '%s%s.csv' % (
+                self.options['athena_result_prefix'], result_athena['QueryExecution']['QueryExecutionId'])).get()
         pd_data = pd.read_csv(result_data['Body'], encoding='utf-8')
 
         target = self.s3.Object(self.options['target_bucket'], self.options['target_name'])
+        target_raw = self.s3.Object(self.options['target_bucket'], self.options['target_name_raw'])
 
         table_result = []
         for index, row in pd_data.iterrows():
             table_result.append(json.loads(row.to_json()))
 
-        print(json.dumps({'message': 'dump data', 'bucket': 's3://' + self.options['target_bucket'] + '/' + self.options['target_name']}))
+        print(json.dumps({'message': 'dump data',
+                          'bucket': 's3://' + self.options['target_bucket'] + '/' + self.options['target_name']}))
         print(json.dumps(result))
         print(json.dumps(table_result))
 
@@ -194,11 +214,24 @@ ORDER BY count DESC
                 'stime': self.options['query_stime'],
                 'etime': self.options['query_etime'],
                 'tid': self.options['query_tid'],
-                'version': 2
+                'version': 3,
+                'type': 'summary'
             },
-            'result': result,
+            'urls': urls,
+            'url_links': url_links,
             'table': table_result
         }, ensure_ascii=False), ContentType='application/json; charset=utf-8')
+        target_raw.put(Body=json.dumps({
+            'meta': {
+                'stime': self.options['query_stime'],
+                'etime': self.options['query_etime'],
+                'tid': self.options['query_tid'],
+                'version': 3,
+                'type': 'raw'
+            },
+            'result': result
+        }, ensure_ascii=False), ContentType='application/json; charset=utf-8')
+
 
 def main():
     parser = argparse.ArgumentParser(description='Make stats from Athena')
@@ -208,6 +241,7 @@ def main():
     parser.add_argument('--result-prefix', dest='athena_result_prefix', help='athena result object prefix', default='')
     parser.add_argument('-t', '--target-bucket', dest='target_bucket', required=True, help='target bucket')
     parser.add_argument('-n', '--target-prefix', dest='target_prefix', required=True, help='target key prefix')
+    parser.add_argument('-r', '--target-prefix-raw', dest='target_prefix_raw', required=True, help='target key prefix')
     parser.add_argument('--target-suffix', dest='target_suffix', required=False, help='target key suffix')
     parser.add_argument('--query-tid', dest='query_tid', required=True, help='tid (Container Name)')
     parser.add_argument('--query-stime', dest='query_stime', type=int, required=True,
@@ -217,14 +251,15 @@ def main():
 
     args = vars(parser.parse_args())
 
-    target_name = args['target_prefix'] + time.strftime("%Y%m%d%H%M%S") + '_'
+    target_name = time.strftime("%Y%m%d%H%M%S") + '_'
     target_name += datetime.datetime.utcfromtimestamp(int(args['query_stime'] / 1000)).strftime('%Y%m%d%H%M%S') + '_'
     target_name += datetime.datetime.utcfromtimestamp(int(args['query_etime'] / 1000)).strftime('%Y%m%d%H%M%S') + '_'
     if args['target_suffix']:
         target_name += args['target_suffix'] + '_'
-    target_name += str(uuid.uuid4()) + '.json'
+    target_name += str(uuid.uuid4())
 
-    args['target_name'] = target_name
+    args['target_name'] = args['target_prefix'] + target_name + '.json'
+    args['target_name_raw'] = args['target_prefix_raw'] + target_name + '.json'
 
     retriever = DataRetriever(**args)
     retriever.execute()

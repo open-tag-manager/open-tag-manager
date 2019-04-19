@@ -1,17 +1,7 @@
 import _ from 'lodash'
 import urlparse from 'url'
 
-export function getTree (nodes) {
-  const urls = []
-  for (let node of nodes) {
-    if (!urls.includes(node.url)) {
-      urls.push(node.url)
-    }
-    if (!urls.includes(node.p_url)) {
-      urls.push(node.p_url)
-    }
-  }
-
+export function getTree (urls) {
   const tree = {
     path: '',
     exists: false,
