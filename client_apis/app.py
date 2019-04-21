@@ -377,6 +377,8 @@ def make_container_stats(org, name):
         os.environ.get('OTM_STATS_BUCKET'),
         '-n',
         (os.environ.get('OTM_STATS_PREFIX') or '') + o_prefix + name + '/',
+        '-r',
+        (os.environ.get('OTM_STATS_PREFIX') or '') + o_prefix + name + '_raw/',
         '--result-bucket',
         os.environ.get('STATS_ATHENA_RESULT_BUCKET'),
         '--query-tid',
