@@ -242,11 +242,11 @@ ORDER BY count DESC
                 rj['t_click_count'] = rj['t_click_count'] or 0
                 table_result.append(rj)
 
-        for result in table_result:
-            if result['s_count'] and result['s_count'] > 0:
-                result['avg_scroll_y'] = result['sum_scroll_y'] / result['s_count']
+        for t_result in table_result:
+            if t_result['s_count'] and t_result['s_count'] > 0:
+                t_result['avg_scroll_y'] = t_result['sum_scroll_y'] / t_result['s_count']
             else:
-                result['avg_scroll_y'] = None
+                t_result['avg_scroll_y'] = None
 
         print(json.dumps({'message': 'dump data',
                           'bucket': 's3://' + self.options['target_bucket'] + '/' + self.options['target_name']}))
