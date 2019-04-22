@@ -1,4 +1,5 @@
 from retrying import retry
+from urllib.parse import urlparse
 import pandas as pd
 import json
 import time
@@ -29,6 +30,14 @@ class DataRetriever:
             return result
         else:
             raise Exception
+
+    @staticmethod
+    def _normalizeUrl(url):
+        if url:
+            parsedurl = urlparse(url)
+            return "{0}://{1}{2}".format(parsedurl.scheme, parsedurl.netloc, parsedurl.path)
+
+        return None
 
     def _execute_athena_query(self, query):
         print(json.dumps({'message': 'execute athena', 'query': query}))
@@ -99,15 +108,18 @@ JSON_EXTRACT_SCALAR(qs, '$.o_a_id')
         for index, row in pd_data.iterrows():
             event = json.loads(row.to_json())
             result.append(event)
-            if event['url'] and event['url'] not in urls:
-                urls.append(event['url'])
+            url = self._normalizeUrl(event['url'])
+            if url and url not in urls:
+                urls.append(url)
 
         for index, row in pd_data.iterrows():
-            key = "{0}-{1}".format(row['url'], row['p_url'])
+            url = self._normalizeUrl(row['url'])
+            p_url = self._normalizeUrl(row['p_url'])
+            key = "{0}-{1}".format(url, p_url)
             if key in url_links_map:
                 url_links_map[key]['count'] += row['count']
             else:
-                url_links_map[key] = {'count': row['count'], 'url': row['url'], 'p_url': row['p_url'],
+                url_links_map[key] = {'count': row['count'], 'url': url, 'p_url': p_url,
                                       'title': row['title']}
 
         url_links = []
@@ -116,7 +128,7 @@ JSON_EXTRACT_SCALAR(qs, '$.o_a_id')
 
         sql2 = """WITH scroll as (
 SELECT 
-datet, url, COUNT(y) as s_count, AVG(CAST(y as decimal)) as avg_scroll_y, MAX(CAST(y as decimal)) as max_scroll_y
+datet, url, COUNT(y) as s_count, SUM(CAST(y as decimal)) as sum_scroll_y, MAX(CAST(y as decimal)) as max_scroll_y
 FROM 
 (
 SELECT
@@ -168,7 +180,7 @@ COUNT(qs) as count,
 COUNT(DISTINCT JSON_EXTRACT_SCALAR(qs, '$.o_psid')) as session_count,
 COUNT(DISTINCT JSON_EXTRACT_SCALAR(qs, '$.cid')) as user_count,
 scroll.s_count,
-scroll.avg_scroll_y,
+scroll.sum_scroll_y,
 scroll.max_scroll_y,
 event.event_count,
 widget_click.w_click_count,
@@ -184,7 +196,7 @@ widget_click ON (widget_click.url = JSON_EXTRACT_SCALAR(qs, '$.dl') AND widget_c
 LEFT OUTER JOIN 
 trivial_click ON (trivial_click.url = JSON_EXTRACT_SCALAR(qs, '$.dl') AND trivial_click.datet = format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'))
 WHERE JSON_EXTRACT_SCALAR(qs, '$.o_s') = 'pageview' AND {2}
-GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), JSON_EXTRACT_SCALAR(qs, '$.dl'), s_count, avg_scroll_y, max_scroll_y, event_count, w_click_count, t_click_count
+GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), JSON_EXTRACT_SCALAR(qs, '$.dl'), s_count, sum_scroll_y, max_scroll_y, event_count, w_click_count, t_click_count
 ORDER BY count DESC
 """.format(self.options['athena_database'], self.options['athena_table'], q)
 
@@ -202,7 +214,28 @@ ORDER BY count DESC
 
         table_result = []
         for index, row in pd_data.iterrows():
-            table_result.append(json.loads(row.to_json()))
+            url = self._normalizeUrl(row['url'])
+            rj = json.loads(row.to_json())
+            r = [d for d in table_result if d['url'] == url and d['datetime'] == rj['datetime']]
+            if len(r) > 0:
+                r[0]['count'] += rj['count'] or 0
+                r[0]['session_count'] += rj['session_count'] or 0
+                r[0]['user_count'] += rj['user_count'] or 0
+                r[0]['s_count'] += rj['s_count'] or 0
+                r[0]['sum_scroll_y'] += rj['sum_scroll_y'] or 0
+                r[0]['max_scroll_y'] = max(r[0]['max_scroll_y'], rj['max_scroll_y'] or 0)
+                r[0]['event_count'] += rj['event_count'] or 0
+                r[0]['w_click_count'] += rj['w_click_count'] or 0
+                r[0]['t_click_count'] += rj['t_click_count'] or 0
+            else:
+                rj['url'] = url
+                table_result.append(rj)
+
+        for result in table_result:
+            if result['s_count'] and result['s_count'] > 0:
+                result['avg_scroll_y'] = result['sum_scroll_y'] / result['s_count']
+            else:
+                result['avg_scroll_y'] = None
 
         print(json.dumps({'message': 'dump data',
                           'bucket': 's3://' + self.options['target_bucket'] + '/' + self.options['target_name']}))
