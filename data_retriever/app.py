@@ -218,6 +218,7 @@ ORDER BY count DESC
             rj = json.loads(row.to_json())
             r = [d for d in table_result if d['url'] == url and d['datetime'] == rj['datetime']]
             if len(r) > 0:
+                # merge data
                 r[0]['count'] += rj['count'] or 0
                 r[0]['session_count'] += rj['session_count'] or 0
                 r[0]['user_count'] += rj['user_count'] or 0
@@ -228,7 +229,17 @@ ORDER BY count DESC
                 r[0]['w_click_count'] += rj['w_click_count'] or 0
                 r[0]['t_click_count'] += rj['t_click_count'] or 0
             else:
+                # initialize data
                 rj['url'] = url
+                rj['count'] = rj['count'] or 0
+                rj['session_count'] = rj['session_count'] or 0
+                rj['user_count'] = rj['user_count'] or 0
+                rj['s_count'] = rj['s_count'] or 0
+                rj['sum_scroll_y'] = rj['sum_scroll_y'] or 0
+                rj['max_scroll_y'] = rj['max_scroll_y'] or 0
+                rj['event_count'] = rj['event_count'] or 0
+                rj['w_click_count'] = rj['w_click_count'] or 0
+                rj['t_click_count'] = rj['t_click_count'] or 0
                 table_result.append(rj)
 
         for result in table_result:
