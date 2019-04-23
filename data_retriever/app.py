@@ -33,6 +33,9 @@ class DataRetriever:
 
     @staticmethod
     def _normalizeUrl(url):
+        if url and url.lower() == 'undefined':
+            return url
+
         if url:
             parsedurl = urlparse(url)
             return "{0}://{1}{2}".format(parsedurl.scheme, parsedurl.netloc, parsedurl.path)

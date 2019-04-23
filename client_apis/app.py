@@ -2,6 +2,7 @@ from chalice import Chalice, Response, CognitoUserPoolAuthorizer
 from botocore.errorfactory import ClientError
 from chalicelib import ScriptGenerator, S3Uploader
 from boto3.dynamodb.conditions import Key
+from urllib.parse import urlparse
 import boto3
 import os
 import uuid
@@ -23,6 +24,19 @@ batch_client = boto3.client('batch')
 
 authorizer = CognitoUserPoolAuthorizer('UserPool', provider_arns=[str(os.environ.get('OTM_COGNITO_USER_POOL_ARN'))])
 
+def _normalizeUrl(url):
+    if url and url.lower() == 'undefined':
+        return url
+
+    if url:
+        parsedurl = urlparse(url)
+        return "{0}://{1}{2}".format(parsedurl.scheme, parsedurl.netloc, parsedurl.path)
+
+    return None
+
+def _match_url(pattern, url):
+    p = re.sub('\\\\{[^}]+\\\\}', '[^/]+', re.escape(pattern))
+    return re.match('^' + p + '$', url)
 
 def get_role_table():
     return dynamodb.Table(str(os.environ.get('OTM_ROLE_DYNAMODB_TABLE')))
@@ -335,6 +349,59 @@ def get_container_stats(org, name):
         result.append({'url': url, 'key': content['Key'], 'name': file_name})
 
     return result
+
+
+@app.route('/orgs/{org}/containers/{name}/stats/{file}', methods=['GET'], cors=True, authorizer=authorizer)
+def get_container_stats_data(org, name, file):
+    if not has_role(org, 'read'):
+        return Response(body={'error': 'permission error'}, status_code=401)
+
+    config = get_config_data(org)
+    (data, container) = get_container_data(org, name, config)
+
+    if data is None:
+        return Response(body={'error': 'not found'}, status_code=404)
+
+    o_prefix = ''
+    if org != 'root':
+        o_prefix = org + '/'
+
+    bucket = os.environ.get('OTM_STATS_BUCKET')
+    prefix = (os.environ.get('OTM_STATS_PREFIX') or '') + o_prefix + name + '_raw/'
+    object = s3.Object(bucket, prefix + file)
+    query_params = app.current_request.query_params
+    url_filter = None
+
+    if query_params and 'url_filter' in query_params:
+        url_filter = query_params['url_filter']
+
+    try:
+        response = object.get()
+        data = json.loads(response['Body'].read())
+
+        if url_filter:
+            new_result = []
+            result = data['result']
+
+            for r in result:
+                url = _normalizeUrl(r['url'])
+                p_url = _normalizeUrl(r['p_url'])
+
+                if _match_url(url_filter, url) or _match_url(url_filter, p_url):
+                    r['url'] = url
+                    r['p_url'] = p_url
+
+                    dr = [r2 for r2 in new_result if r2['url'] == url and r2['p_url'] == p_url and r2['state'] == r['state'] and r2['p_state'] == r['p_state']]
+                    if len(dr) > 0:
+                        dr[0]['count'] += r['count']
+                    else:
+                        new_result.append(r)
+
+            data['result'] = new_result
+
+        return data
+    except ClientError:
+        return Response(body={'error': 'not found'}, status_code=404)
 
 
 @app.route('/orgs/{org}/containers/{name}/stats', methods=['POST'], cors=True, authorizer=authorizer)

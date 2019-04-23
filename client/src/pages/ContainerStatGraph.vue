@@ -57,7 +57,7 @@
   import * as d3 from 'd3'
   import * as DagreD3 from 'dagre-d3'
   import {getTree} from '../lib/UrlTree'
-  import {getUrls, filterByUrl, mergeSameId, convertUrl, convertUrlForTableData, skipData} from '../lib/GraphUril'
+  import {getUrls, mergeSameId, convertUrl, convertUrlForTableData, skipData} from '../lib/GraphUril'
   import url from 'url'
   import NodeDetail from '../components/NodeDetail'
   import StatTable from '../components/StatTable'
@@ -202,7 +202,7 @@
 
         this.urlTree = getTree(this.urls)
 
-        this.render()
+        await this.render()
         this.isLoading = false
       },
       async getSwaggerDoc () {
@@ -229,9 +229,6 @@
         if (this.mergeSameId) {
           this.graphData = mergeSameId(this.graphData)
         }
-
-        // 4. filter by url
-        this.urls = getUrls(this.graphData)
       },
       renderUrls () {
         console.log('render URLs')
@@ -354,15 +351,24 @@
       filterLineChartUrl (url) {
         this.lineChartFilterUrl = url
       },
-      render () {
+      async render () {
         if (!this.url) {
-          return this.renderUrls()
+          this.renderUrls()
+          return
         }
 
         console.log('render')
 
+        const statId = this.$route.params.statid
+        const file = statId.match(/\/([^/]+\.json)$/)[1]
+        const data = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.$route.params.name}/stats/${encodeURIComponent(file)}`, {
+          queryStringParameters: {
+            url_filter: this.url
+          }
+        })
+        this.rawGraphData = data.result
+
         this.filter()
-        this.graphData = filterByUrl(this.graphData, this.url)
 
         const cl = d3.select('#graph')
         const width = cl.node().clientWidth
@@ -515,9 +521,9 @@
           }
         })
       },
-      r () {
+      async r () {
         this.urlGraph = null
-        this.render()
+        await this.render()
       }
     }
   }
