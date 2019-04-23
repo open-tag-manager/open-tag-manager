@@ -116,14 +116,15 @@ JSON_EXTRACT_SCALAR(qs, '$.o_a_id')
                 urls.append(url)
 
         for index, row in pd_data.iterrows():
-            url = self._normalizeUrl(row['url'])
-            p_url = self._normalizeUrl(row['p_url'])
+            event = json.loads(row.to_json())
+            url = self._normalizeUrl(event['url'])
+            p_url = self._normalizeUrl(event['p_url'])
             key = "{0}-{1}".format(url, p_url)
             if key in url_links_map:
-                url_links_map[key]['count'] += row['count']
+                url_links_map[key]['count'] += event['count']
             else:
-                url_links_map[key] = {'count': row['count'], 'url': url, 'p_url': p_url,
-                                      'title': row['title']}
+                url_links_map[key] = {'count': event['count'], 'url': url, 'p_url': p_url,
+                                      'title': event['title']}
 
         url_links = []
         for key in url_links_map:
