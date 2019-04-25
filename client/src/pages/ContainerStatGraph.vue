@@ -261,9 +261,12 @@
 
           g.setNode(this.urls.length, {label: 'Undefined', shape: 'ellipse'})
 
-          const minmax = d3.extent(this.urlLinks, function (o) {
+          const min = d3.min(this.urlLinks, function (o) {
             return parseInt(o['count'])
           })
+          const max = d3.quantile(this.urlLinks.map(function(d) {
+            return parseInt(d['count'])
+          }), 0.95)
 
           this.urlLinks.forEach((u) => {
             let p = _.indexOf(this.urls, u.p_url)
@@ -277,8 +280,12 @@
             }
 
             let w = 0
-            if (minmax[1] - minmax[0] > 0) {
-              w = (parseInt(u.count) - minmax[0]) / (minmax[1] - minmax[0])
+            if (max - min > 0) {
+              if (max < parseInt(u.count)) {
+                w = 1
+              } else {
+                w = (parseInt(u.count) - min) / (max - min)
+              }
             }
             let width = 3 * w + 1
             this.urlLinksData.push({source: p, target: t})
@@ -391,9 +398,12 @@
 
         const color = d3.scaleOrdinal(d3.schemeCategory20)
 
-        const minmax = d3.extent(this.graphData, function (o) {
+        const min = d3.min(this.urlLinks, function (o) {
           return parseInt(o['count'])
         })
+        const max = d3.quantile(this.urlLinks.map(function(d) {
+          return parseInt(d['count'])
+        }), 0.95)
 
         this.graphData.forEach(function (o) {
           if (!o.label) {
@@ -461,8 +471,12 @@
           }
 
           let w = 0
-          if (minmax[1] - minmax[0] > 0) {
-            w = (parseInt(o['count']) - minmax[0]) / (minmax[1] - minmax[0])
+          if (max - min > 0) {
+            if (max < parseInt(o.count)) {
+              w = 1
+            } else {
+              w = (parseInt(o.count) - min) / (max - min)
+            }
           }
           linksData.push({
             source: sourceIdx,
