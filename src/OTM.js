@@ -232,6 +232,20 @@ class OTM {
     return false
   }
 
+  _getParentId (target) {
+    const id = target.id
+
+    if (id) {
+      return id
+    }
+
+    if (target.parentElement) {
+      return this._getParentId(target.parentElement)
+    }
+
+    return null
+  }
+
   _getLabel (target, attributes) {
     if (target.innerText) {
       return target.innerText.replace(/[\n\r]/, '')
@@ -245,6 +259,10 @@ class OTM {
       return attributes['href'].value
     } else if (attributes['src']) {
       return attributes['src'].value
+    }
+
+    if (target.parentElement) {
+      return this._getLabel(target.parentElement, target.parentElement.attributes)
     }
 
     return null
@@ -290,11 +308,16 @@ class OTM {
       const target = e.target
       const tagName = target.tagName.toLowerCase()
       const attributes = target.attributes
+      const parentId = this._getParentId(target)
       let label = this._getLabel(target, attributes)
       const params = {}
 
       if (label) {
-        params.el = label.slice(0, 100)
+        if (parentId) {
+          params.el = `${parentId}/${label.slice(0, 100)}`
+        } else {
+          params.el = label.slice(0, 100)
+        }
       }
 
       for (let attribute of attributes) {
@@ -317,7 +340,7 @@ class OTM {
       } else {
         const shaObj = new JsSHA('SHA-1', 'TEXT')
         if (label) {
-          shaObj.update(label)
+          shaObj.update(`${parentId}${label}`)
           stateSuffix += '_lhash=' + shaObj.getHash('HEX')
         } else {
           shaObj.update(this.url + '_' + params.o_xpath + '_' + JSON.stringify(params))
@@ -333,7 +356,16 @@ class OTM {
       const tagName = e.target.tagName.toLowerCase()
       const attributes = e.target.attributes
       let label = this._getLabel(e.target, attributes)
+      const parentId = this._getParentId(target)
       const params = {}
+      if (label) {
+        if (parentId) {
+          params.el = `${parentId}/${label.slice(0, 100)}`
+        } else {
+          params.el = label.slice(0, 100)
+        }
+      }
+
       for (let attribute of attributes) {
         params['o_a_' + attribute.name] = attribute.value
       }
@@ -345,7 +377,7 @@ class OTM {
       } else {
         const shaObj = new JsSHA('SHA-1', 'TEXT')
         if (label) {
-          shaObj.update(label)
+          shaObj.update(`${parentId}${label}`)
           stateSuffix += '_lhash=' + shaObj.getHash('HEX')
         } else {
           shaObj.update(this.url + '_' + params.o_xpath + '_' + JSON.stringify(params))

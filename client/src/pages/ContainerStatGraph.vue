@@ -264,7 +264,7 @@
           const min = d3.min(this.urlLinks, function (o) {
             return parseInt(o['count'])
           })
-          const max = d3.quantile(this.urlLinks.map(function(d) {
+          const max = d3.quantile(this.urlLinks.map(function (d) {
             return parseInt(d['count'])
           }), 0.95)
 
@@ -401,7 +401,7 @@
         const min = d3.min(this.urlLinks, function (o) {
           return parseInt(o['count'])
         })
-        const max = d3.quantile(this.urlLinks.map(function(d) {
+        const max = d3.quantile(this.urlLinks.map(function (d) {
           return parseInt(d['count'])
         }), 0.95)
 
