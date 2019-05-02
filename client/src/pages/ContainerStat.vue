@@ -56,7 +56,6 @@
         Loading..
       </div>
     </div>
-
   </div>
 </template>
 
@@ -76,7 +75,6 @@
         node: null,
         timezone: 'UTC',
         timezones: moment.tz.names(),
-        swaggerDoc: '',
         thresholdCount: 1
       }
     },
@@ -84,7 +82,17 @@
       const name = this.$route.params.name
       this.name = name
       await this.reload()
-      await this.getSwaggerDoc()
+      await this.$store.dispatch('container/fetchSwaggerDoc', {org: this.$route.params.org, container: this.name})
+    },
+    computed: {
+      swaggerDoc: {
+        get () {
+          return this.$store.state.container.editableSwaggerDoc
+        },
+        set (v) {
+          this.$store.dispatch('container/editSwaggerDoc', {swaggerDoc: v})
+        }
+      }
     },
     methods: {
       async makeReport () {
@@ -110,12 +118,8 @@
         const stats = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.name}/stats`)
         this.stats = stats
       },
-      async getSwaggerDoc () {
-        const data = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.name}/swagger_doc`)
-        this.swaggerDoc = JSON.stringify(data)
-      },
       async saveSwaggerDoc () {
-        await this.$Amplify.API.put('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.name}/swagger_doc`, {body: JSON.parse(this.swaggerDoc)})
+        await this.$store.dispatch('container/saveSwaggerDoc', {org: this.$route.params.org, container: this.name})
       },
       async saveSetting () {
         await this.saveSwaggerDoc()

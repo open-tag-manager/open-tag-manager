@@ -3,6 +3,7 @@
     <button class="btn btn-primary" @click="reset" v-if="!isSample">Reset</button>
     <button class="btn btn-primary" @click="showSample" v-if="!isSample">Swagger Sample</button>
     <button class="btn btn-primary" @click="isSample = false" v-if="isSample">Edit</button>
+    <button class="btn btn-primary" @click="save" v-if="isSample">Save</button>
     <swagger-sample-children
       v-if="tree && tree.children.length > 0"
       :children="tree.children"
@@ -114,6 +115,9 @@
       showSample () {
         this.sample = getPathSample(this.tree)
         this.isSample = true
+      },
+      save () {
+        this.$emit('save', {sample: this.sample})
       }
     }
   }

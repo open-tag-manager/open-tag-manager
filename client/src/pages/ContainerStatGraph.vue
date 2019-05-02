@@ -27,7 +27,7 @@
         </b-form-group>
       </div>
 
-      <div v-if="isGraph" class="graph-operation m-2">
+      <div v-if="urls.length > 0" class="graph-operation m-2">
         <button class="wide-button btn btn-primary" @click="expand">
           <fa-icon icon="expand"></fa-icon>
         </button>
@@ -44,8 +44,8 @@
       </div>
       <button class="btn btn-primary" @click="showGraph">Graph</button>
     </div>
-    <b-modal id="swagger-sample" title="Swagger Sample" hide-footer>
-      <swagger-sample :url-tree="urlTree" v-if="urlTree"></swagger-sample>
+    <b-modal id="swagger-sample" title="Swagger Sample" hide-footer ref="swaggerSampleModal">
+      <swagger-sample :url-tree="urlTree" v-if="urlTree" @save="saveSwaggerSample"></swagger-sample>
     </b-modal>
     <button type="button" class="btn btn-primary m-2" v-b-modal.swagger-sample>Swagger Sample</button>
   </div>
@@ -118,7 +118,6 @@
         url: null,
 
         // swagger
-        swaggerDoc: '',
         urlTree: null,
 
         // UI
@@ -135,11 +134,18 @@
         } else {
           return 400
         }
+      },
+      swaggerDoc () {
+        return this.$store.state.container.swaggerDoc
+      }
+    },
+    watch: {
+      async swaggerDoc () {
+        await this.renderGraph()
       }
     },
     async created () {
-      await this.getSwaggerDoc()
-      await this.renderGraph()
+      await this.$store.dispatch('container/fetchSwaggerDoc', {org: this.$route.params.org, container: this.$route.params.name})
     },
     methods: {
       async renderGraph () {
@@ -204,10 +210,6 @@
 
         await this.render()
         this.isLoading = false
-      },
-      async getSwaggerDoc () {
-        const data = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.$route.params.name}/swagger_doc`)
-        this.swaggerDoc = JSON.stringify(data)
       },
       expand () {
         const cl = d3.select('#graph')
@@ -538,6 +540,11 @@
       async r () {
         this.urlGraph = null
         await this.render()
+      },
+      async saveSwaggerSample ({sample}) {
+        this.$store.dispatch('container/editSwaggerDoc', {swaggerDoc: JSON.stringify(sample)})
+        await this.$store.dispatch('container/saveSwaggerDoc', {org: this.$route.params.org, container: this.$route.params.name})
+        this.$refs.swaggerSampleModal.hide()
       }
     }
   }
