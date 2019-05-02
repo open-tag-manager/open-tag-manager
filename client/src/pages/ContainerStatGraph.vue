@@ -27,7 +27,7 @@
         </b-form-group>
       </div>
 
-      <div v-if="graphData" class="graph-operation m-2">
+      <div v-if="isGraph" class="graph-operation m-2">
         <button class="wide-button btn btn-primary" @click="expand">
           <fa-icon icon="expand"></fa-icon>
         </button>
