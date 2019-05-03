@@ -137,15 +137,19 @@
       },
       swaggerDoc () {
         return this.$store.state.container.swaggerDoc
+      },
+      swaggerDocRevision () {
+        return this.$store.state.container.swaggerDocRevision
       }
     },
     watch: {
-      async swaggerDoc () {
+      async swaggerDocRevision () {
         await this.renderGraph()
       }
     },
-    async created () {
+    async mounted () {
       await this.$store.dispatch('container/fetchSwaggerDoc', {org: this.$route.params.org, container: this.$route.params.name})
+      await this.renderGraph()
     },
     methods: {
       async renderGraph () {
