@@ -2,105 +2,94 @@
 
 ## (0) What is this
 
-Open Tag Manager is OpenSource Tag Manager and Action Tracker. You can reach raw data.
+Open Tag Manager (OTM for short) is OpenSource Tag Manager and Action Tracker. You can reach raw data.
 
 Copyright
 
 see ./LICENSE
 
-## (1) General Setup
+## (1) Installation
 
-### Upload basic contents
+### System Requirement
 
-Upload basic contents (`collect.html` and `otm.js`) to any CDN.
+- AWS: This product is using following stack.
+    - CloudFront: for tracker, to distribute scripts and client web apps.
+    - S3: to store scripts, logs, stat data and client web apps.
+    - Athena: to retrieve summary data from S3 log object.
+    - API Gateway / Lambda: to provide management APIs for client web apps.
+    - Amazon Cognito: to manage admin users for client web apps.
+    - Dynamo DB: to manage admin users roles.
+    - AWS Batch: to retrieve analytics data from Athena.
+    - Route 53 (Optional): to manage domains for OTM application stacks.
+- docker: It's required to deploy application.
 
-- `collect.html`: A blank HTML contents to track user behavior.
-- `otm.js`: Open Tag Manage base script file.
+### Configuration
 
-`script/upload.py` can upload to Amazon S3 easily. Make 2 buckets to S3, and execute following script.
+Firstly, you need make Amazon Cognito user pool to manage administrator.
+And get the user pool id and client id.
 
-```
-yarn install
-NODE_ENV=NODE_ENV npm run build
-python client_apis/chalicelib/upload.py --collect-bucket=COLLECT_BUCKET --script-bucket=SCRIPT_BUCKET
-```
+Copy `terraform.tfvars.sample` to `terraform.tfvars` and set your configuration.
 
-## (2) Web API Setup
+- `aws_profile`: Your AWS profiles that managed by AWS CLI.
+- `aws_region`: Your AWS region.
+- `aws_s3_bucket_prefix`: Bucket prefix for your S3 bucket.
+- `aws_cognito_user_pool_id`: AWS Cognito user pool ID.
+- `aws_cognito_user_pool_client_id`: AWS Cognito user pool client ID.
+- `aws_sources_tags` (Optional, Map): Attached tags for OTM related resources.
 
-### (2-1)  Make DynamoDB table
+(Optional) If you need to attach domain for OTM related service,
+create `${env}-terraform.tfvars`.
 
-Create client_apis/.chalice/config.json OTM_SESSION_DYNAMODB_TABLE DynamoDB Table to manage API session
-Primary key: session_id (STRING)
+The domain should be managed by Route53.
 
-### (2-2) Create Root User Password
+- `aws_cloudfront_collect_domain` (Array): tracker domain.
+- `aws_cloudfront_collect_acm_certificate_arn`: ACM certification's ARN for tacker.
+- `aws_route53_collect_zone_id`: tracker's domain Zone ID for Route53.
+- `aws_cloudfront_otm_domain` (Array): script distributor domain.
+- `aws_cloudfront_otm_acm_certificate_arn`: ACM certification's ARN for script distributor.
+- `aws_route53_otm_zone_id`: script distributor's domain Zone ID for Route53.
+- `aws_cloudfront_client_domain` (Array): client web apps domain.
+- `aws_cloudfront_client_acm_certificate_arn`: ACM certification's ARN for client.
+- `aws_route53_client_zone_id`: client's domain Zone ID for Route53.
 
-```
-python client_apis/set_root_password.py
-```
-
-and use this to ROOT_PASSWORD_HASH
-
-### (2-3) Create Chalice Config
-
-```
-cp client_apis/.chalice/config.json.sample client_apis/.chalice/config.json
-```
-
-and modifiy this.
-
-- `ROOT_PASSWORD_HASH`: set root password hash that is created by (2-2)
-- `OTM_BUCKET`: otm script bucket
-- `OTM_URL`: otm url
-- `COLLECT_URL`: collect url
-- `OTM_SESSION_DYNAMODB_TABLE`: otm session db table name (Dynamo)
-- `OTM_STATS_BUCKET`: otm stats bucket name
-- `OTM_STATS_PREFIX`: otm stats prefix
-- `STATS_BATCH_JOB_QUEUE`: otm job queue name
-- `STATS_BATCH_JOB_DEFINITION`: otm job definition
-- `STATS_CONFIG_BUCKET`: otm config bucket
-- `STATS_GCLOUD_KEY_NAME`: gcloud key name
-- `STATS_BQ_DATASET`: BigQuery dataset name
-- `STATS_BQ_TABLE_PREFIX`: BigQuery table prefix (e.g. `otm`)
-
-### (2-4) Create Chalice Policy
+example:
 
 ```
-cp client_apis/.chalice/policy-sample.json client_apis/.chalice/policy-ENV.json
+aws_cloudfront_collect_domain = ["collect.example.com"]
+aws_cloudfront_collect_acm_certificate_arn = "arn:aws:acm:us-east-1:xxx:certificate/xxx"
+aws_route53_collect_zone_id = "ZXXXXX"
+
+aws_cloudfront_otm_domain = ["otm.example.com"]
+aws_cloudfront_otm_acm_certificate_arn = "arn:aws:acm:us-east-1:xxx:certificate/xxx"
+aws_route53_otm_zone_id = "ZXXXXX"
+
+aws_cloudfront_client_domain = ["client.example,com"]
+aws_cloudfront_client_acm_certificate_arn = "arn:aws:acm:us-east-1:xxx:certificate/xxx"
+aws_route53_client_zone_id = "ZXXXXX"
 ```
 
-and modifiy this.
-
-### (2-5) Change app name and session table name
-
-modifiy client_apis/app.py following value to your environment.
+### Deploy
 
 ```
-app = Chalice(app_name=“open_tag_manager”)
-session_table = dynamodb.Table(‘otm_session’)
+docker build -t otm-setup .
+docker run -e 'AWS_PROFILE=YOUR_PROFILE' \
+          -e 'AWS_DEFAULT_REGION=YOUR_REGION' \
+          -v `pwd`:/otm  \
+          -v $HOME/.aws:/root/.aws \
+          -v /var/run/docker.sock:/var/run/docker.sock  \
+          -it otm-setup:latest python deploy.py
 ```
 
-### (2-6) Deploy Chalice
+### Add admin user
 
-```
-AWS_PROFILE=AWS_PROFILE chalice deploy --no-autogen-policy
-```
+1. Add an admin user from Cognito user pool
+2. Add DynamoDB following record to `${env}_otm_roles` table
 
-and get CHALICE_API_URL.
+- username: Your admin username
+- organization: Your organization. `root` is special organization to manage whole data.
+- roles (Array): Set roles by String array. `['read', 'write']`
 
-## (3) Web Client Setup
-
-### (3-1) Build
-NODE_ENV=NODE_ENV API_BASE_URL=CHALICE_API_URL ASSETS_PUBLIC_PATH=S3_WEB_URL BASE_PATH=URL_PATH npm run build
-
-### (3-2) Deploy
-AWS_PROFILE=AWS_PROFILE aws s3 sync ./dist/ s3://OTM_BUCKET/client/ --acl=public-read
-
-### (3-3) Access
-
-https://OTM_BUCKET/client/
-
-
-## (Z) for Development
+## (2) for Development
 
 ### Web API: Local Run
 
