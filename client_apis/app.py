@@ -24,6 +24,7 @@ batch_client = boto3.client('batch')
 
 authorizer = CognitoUserPoolAuthorizer('UserPool', provider_arns=[str(os.environ.get('OTM_COGNITO_USER_POOL_ARN'))])
 
+
 def _normalizeUrl(url):
     if url and url.lower() == 'undefined':
         return url
@@ -34,9 +35,11 @@ def _normalizeUrl(url):
 
     return None
 
+
 def _match_url(pattern, url):
     p = re.sub('\\\\{[^}]+\\\\}', '[^/]+', re.escape(pattern))
     return re.match('^' + p + '$', url)
+
 
 def get_role_table():
     return dynamodb.Table(str(os.environ.get('OTM_ROLE_DYNAMODB_TABLE')))
@@ -391,13 +394,47 @@ def get_container_stats_data(org, name, file):
                     r['url'] = url
                     r['p_url'] = p_url
 
-                    dr = [r2 for r2 in new_result if r2['url'] == url and r2['p_url'] == p_url and r2['state'] == r['state'] and r2['p_state'] == r['p_state']]
+                    dr = [r2 for r2 in new_result if
+                          r2['url'] == url and r2['p_url'] == p_url and r2['state'] == r['state'] and r2['p_state'] ==
+                          r['p_state']]
                     if len(dr) > 0:
                         dr[0]['count'] += r['count']
                     else:
                         new_result.append(r)
 
             data['result'] = new_result
+
+            if 'event_table' in data:
+                del data['event_table']
+
+        return data
+    except ClientError:
+        return Response(body={'error': 'not found'}, status_code=404)
+
+
+@app.route('/orgs/{org}/containers/{name}/stats/{file}/events', methods=['GET'], cors=True, authorizer=authorizer)
+def get_container_stats_data_event(org, name, file):
+    if not has_role(org, 'read'):
+        return Response(body={'error': 'permission error'}, status_code=401)
+
+    config = get_config_data(org)
+    (data, container) = get_container_data(org, name, config)
+
+    if data is None:
+        return Response(body={'error': 'not found'}, status_code=404)
+
+    o_prefix = ''
+    if org != 'root':
+        o_prefix = org + '/'
+
+    bucket = os.environ.get('OTM_STATS_BUCKET')
+    prefix = (os.environ.get('OTM_STATS_PREFIX') or '') + o_prefix + name + '_raw/'
+    object = s3.Object(bucket, prefix + file)
+    try:
+        response = object.get()
+        data = json.loads(response['Body'].read())
+
+        del data['result']
 
         return data
     except ClientError:

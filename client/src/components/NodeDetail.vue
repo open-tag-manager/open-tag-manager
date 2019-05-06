@@ -6,6 +6,7 @@
     <div><span class="label">XPath:</span> {{node.xpath}}</div>
     <div><span class="label">ID:</span> {{node.a_id}}</div>
     <div><span class="label">Class:</span> {{node.class}}</div>
+    <slot></slot>
   </div>
 </template>
 

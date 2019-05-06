@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="container-fluid graph-container" v-show="isGraph">
+    <div class="container-fluid graph-container" v-show="mode === 'graph'">
       <div id="graph">
         <div v-if="!isLoading" class="text-center">
           Select report
@@ -10,10 +10,13 @@
         </div>
       </div>
       <div class="node-info m-2" v-if="rawUrlLinks">
-        <node-detail v-if="node" :node="node"></node-detail>
+        <node-detail v-if="node" :node="node">
+          <button class="btn btn-primary btn-sm" @click="showEvent(node)">Event Table</button>
+        </node-detail>
 
         <button class="btn btn-primary" v-if="url" @click="back">URL Graph</button>
-        <button class="btn btn-primary" v-if="tableData" @click="showTable">Table & Line Chart</button>
+        <button class="btn btn-primary" v-if="tableData" @click="showTable">Table &amp; Line Chart</button>
+        <button class="btn btn-primary" @click="showEvent()">Event Table</button>
 
         <b-form-group label="Enabled Statuses" class="status-filter">
           <b-form-checkbox-group id="enabled-statuses" v-model="enabledStatues"
@@ -33,7 +36,11 @@
         </button>
       </div>
     </div>
-    <div v-if="!isGraph" class="p-2">
+    <div v-if="mode === 'table'" class="p-2">
+      <div class="mb-2">
+        <button class="btn btn-primary" @click="showGraph">Graph</button>
+        <button class="btn btn-primary" @click="showEvent()">Event Table</button>
+      </div>
       <div v-if="lineChartFilterUrl">
         Filtered by: {{lineChartFilterUrl}} <a href="#" @click="lineChartFilterUrl = null">x</a>
       </div>
@@ -42,7 +49,20 @@
         <stat-table :data="summaryTableData" @clickGraphUrl="goToUrlGraph"
                     @clickFilterUrl="filterLineChartUrl"></stat-table>
       </div>
-      <button class="btn btn-primary" @click="showGraph">Graph</button>
+
+    </div>
+    <div v-if="mode === 'event'" class="p-2">
+      <div class="mb-2">
+        <button class="btn btn-primary" @click="showGraph">Graph</button>
+        <button class="btn btn-primary" v-if="tableData" @click="showTable">Table &amp; Line Chart</button>
+      </div>
+      <div class="table-container">
+        <div v-if="eventTableFilterState">
+          Filtered by: {{eventTableFilterState}} <a href="#" @click="eventTableFilterState = null">x</a>
+        </div>
+        <event-table :data="eventTableData" :filter-state="eventTableFilterState">
+        </event-table>
+      </div>
     </div>
     <b-modal id="swagger-sample" title="Swagger Sample" hide-footer ref="swaggerSampleModal">
       <swagger-sample :url-tree="urlTree" v-if="urlTree" @save="saveSwaggerSample"></swagger-sample>
@@ -63,6 +83,7 @@
   import StatTable from '../components/StatTable'
   import StatLineChart from '../components/StatLineChart'
   import SwaggerSample from '../components/SwaggerSample'
+  import EventTable from '../components/EventTable'
 
   const statusPatterns = {
     pageview: /^pageview$/,
@@ -85,11 +106,11 @@
   }
 
   export default {
-    components: {StatTable, NodeDetail, StatLineChart, SwaggerSample},
+    components: {StatTable, NodeDetail, StatLineChart, SwaggerSample, EventTable},
     data () {
       return {
         // graph mode
-        isGraph: true,
+        mode: 'graph',
 
         // page graph data
         rawGraphData: null,
@@ -99,6 +120,11 @@
         tableData: null,
         summaryTableData: null,
         lineChartFilterUrl: null,
+
+        // event table data
+        rawEventTableData: null,
+        eventTableData: null,
+        eventTableFilterState: null,
 
         // selected node
         node: null,
@@ -148,7 +174,10 @@
       }
     },
     async mounted () {
-      await this.$store.dispatch('container/fetchSwaggerDoc', {org: this.$route.params.org, container: this.$route.params.name})
+      await this.$store.dispatch('container/fetchSwaggerDoc', {
+        org: this.$route.params.org,
+        container: this.$route.params.name
+      })
       await this.renderGraph()
     },
     methods: {
@@ -349,14 +378,42 @@
       },
       showTable () {
         this.lineChartFilterUrl = this.url
-        this.isGraph = false
+        this.mode = 'table'
       },
       showGraph () {
-        this.isGraph = true
+        this.mode = 'graph'
+      },
+      async showEvent (node = null) {
+        if (!this.rawEventTableData) {
+          const statId = this.$route.params.statid
+          const file = statId.match(/\/([^/]+\.json)$/)[1]
+          const data = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.$route.params.name}/stats/${encodeURIComponent(file)}/events`)
+          this.rawEventTableData = data
+        }
+        if (!this.rawEventTableData) {
+          return null
+        }
+
+        if (node) {
+          this.eventTableFilterState = node.name
+        } else {
+          this.eventTableFilterState = null
+        }
+        let eventTableData = convertUrlForTableData(this.rawEventTableData.event_table)
+        eventTableData = _(eventTableData).groupBy((d) => {
+          return `${d.url}-${d.state}`
+        }).map((d) => {
+          const data = d[0]
+          data['count'] = _.sumBy(d, 'count')
+          return data
+        }).value()
+
+        this.eventTableData = eventTableData
+        this.mode = 'event'
       },
       goToUrlGraph (url) {
         this.url = url
-        this.isGraph = true
+        this.mode = 'graph'
         setTimeout(() => {
           this.render()
         }, 500)
@@ -547,7 +604,10 @@
       },
       async saveSwaggerSample ({sample}) {
         this.$store.dispatch('container/editSwaggerDoc', {swaggerDoc: JSON.stringify(sample)})
-        await this.$store.dispatch('container/saveSwaggerDoc', {org: this.$route.params.org, container: this.$route.params.name})
+        await this.$store.dispatch('container/saveSwaggerDoc', {
+          org: this.$route.params.org,
+          container: this.$route.params.name
+        })
         this.$refs.swaggerSampleModal.hide()
       }
     }

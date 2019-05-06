@@ -252,6 +252,40 @@ ORDER BY count DESC
             else:
                 t_result['avg_scroll_y'] = None
 
+        sql3 = """SELECT 
+JSON_EXTRACT_SCALAR(qs, '$.dl') AS url,
+JSON_EXTRACT_SCALAR(qs, '$.dt') AS title,
+JSON_EXTRACT_SCALAR(qs, '$.o_s') AS state,
+JSON_EXTRACT_SCALAR(qs, '$.el') AS label,
+COUNT(*) as count
+FROM {0}.{1}
+WHERE {2}
+GROUP BY 
+JSON_EXTRACT_SCALAR(qs, '$.dl'), 
+JSON_EXTRACT_SCALAR(qs, '$.dt'),
+JSON_EXTRACT_SCALAR(qs, '$.o_s'),
+JSON_EXTRACT_SCALAR(qs, '$.el')
+""".format(self.options['athena_database'], self.options['athena_table'], q)
+
+        result_athena = self._execute_athena_query(sql3)
+        if result_athena['QueryExecution']['Status']['State'] != 'SUCCEEDED':
+            raise Exception('Cannot execute query')
+
+        result_data = self.s3.Bucket(self.options['athena_result_bucket']).Object(
+            '%s%s.csv' % (
+                self.options['athena_result_prefix'], result_athena['QueryExecution']['QueryExecutionId'])).get()
+        event_table_result = []
+        pd_data = pd.read_csv(result_data['Body'], encoding='utf-8')
+        for index, row in pd_data.iterrows():
+            event = json.loads(row.to_json())
+            url = self._normalizeUrl(event['url'])
+            r = [d for d in event_table_result if d['url'] == url and d['state'] == event['state']]
+            if r:
+                r[0]['count'] += event['count']
+            else:
+                event['url'] = url
+                event_table_result.append(event)
+
         print(json.dumps({'message': 'dump data',
                           'bucket': 's3://' + self.options['target_bucket'] + '/' + self.options['target_name']}))
         print(json.dumps(result))
@@ -277,7 +311,8 @@ ORDER BY count DESC
                 'version': 3,
                 'type': 'raw'
             },
-            'result': result
+            'result': result,
+            'event_table': event_table_result
         }, ensure_ascii=False), ContentType='application/json; charset=utf-8')
 
 
