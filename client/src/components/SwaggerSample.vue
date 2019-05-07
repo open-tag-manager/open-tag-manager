@@ -70,6 +70,7 @@
     methods: {
       reset () {
         this.tree = _.cloneDeep(this.urlTree)
+        this.ignoredNodes = []
       },
       changeCheck (d) {
         if (!d.check) {

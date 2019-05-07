@@ -1,7 +1,8 @@
 import _ from 'lodash'
 import urlparse from 'url'
+import {lookupPath} from './GraphUril'
 
-export function getTree (urls) {
+export function getTree (urls, currentConfig = {}) {
   const tree = {
     path: '',
     exists: false,
@@ -19,7 +20,9 @@ export function getTree (urls) {
       continue
     }
 
-    let paths = urlparse.parse(url).pathname.split('/')
+    url = lookupPath(currentConfig, urlparse.parse(url)) || url
+
+    let paths = urlparse.parse(url).pathname.replace(/%7b/gi, '{').replace(/%7d/gi, '}').split('/')
     if (paths.length === 1 || (paths.length === 2 && paths[1] === '')) {
       tree.exists = true
       continue

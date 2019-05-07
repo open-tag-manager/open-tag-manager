@@ -55,7 +55,7 @@ export function mergeSameId (data) {
   return cData
 }
 
-const lookupPath = function (paths, parsedUrl) {
+export const lookupPath = function (paths, parsedUrl) {
   if (!parsedUrl.path) {
     return null
   }

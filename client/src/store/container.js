@@ -29,9 +29,21 @@ const actions = {
   }
 }
 
+const getters = {
+  getSwaggetDocPaths (state) {
+    if (!state.swaggerDoc) {
+      return {}
+    }
+
+    const doc = JSON.parse(state.swaggerDoc)
+    return doc.paths || {}
+  }
+}
+
 export default {
   state,
   mutations,
   actions,
+  getters,
   namespaced: true
 }

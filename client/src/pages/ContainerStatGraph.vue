@@ -227,19 +227,22 @@
           return data
         }).value()
 
-        /*
-        this.rawGraphData = [
-          {count: 100, label: 'hello', state: 'pageview', p_state: null, url: 'urlA', p_url: null, xpath: ''},
-          {count: 50, label: 'hello', state: 'click_widget_a', p_state: 'pageview', url: 'urlA', p_url: 'urlA'},
-          {count: 30, label: 'hello', state: 'pageview', p_state: 'click_widget_a', url: 'urlB', p_url: 'urlA'}
-        ]
-        */
         this.node = null
         this.rawUrlLinks = data.data.url_links
         this.urls = data.data.urls
-        this.url = null
 
-        this.urlTree = getTree(this.urls)
+        /*
+        this.rawUrlLinks = [
+          {count: 100, url: 'https://example.com/', p_url: 'undefined', title: 'Home'},
+          {count: 100, url: 'https://example.com/1', p_url: 'https://example.com/', title: '1'},
+          {count: 100, url: 'https://example.com/2', p_url: 'https://example.com/', title: '1'},
+          {count: 100, url: 'https://example.com/1/hogehoge', p_url: 'https://example.com/1', title: '1-2'}
+        ]
+        this.urls = ['https://example.com/', 'https://example.com/1', 'https://example.com/2', 'https://example.com/1/hogehoge']
+         */
+
+        this.url = null
+        this.urlTree = getTree(this.urls, this.$store.getters['container/getSwaggetDocPaths'])
 
         await this.render()
         this.isLoading = false
@@ -288,7 +291,7 @@
           this.urls.forEach((u, idx) => {
             let label = ''
             const parsedUrl = url.parse(u)
-            label += parsedUrl.path + '\n'
+            label += parsedUrl.path.replace(/%7b/gi, '{').replace(/%7d/gi, '}') + '\n'
             const e = _.find(this.urlLinks, {url: u})
             label += strimwidth(e.title, 12)
             g.setNode(idx, {shape: 'ellipse', label: label})
