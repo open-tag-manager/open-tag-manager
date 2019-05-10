@@ -21,10 +21,10 @@
     </thead>
     <tbody>
     <tr v-for="r in sortedData" :key="r.url + ' ' + r.state">
-      <td>{{r.url}}</td>
-      <td>{{r.title}}</td>
-      <td>{{r.state}}</td>
-      <td>{{r.label}}</td>
+      <td class="url">{{r.url}}</td>
+      <td class="title">{{r.title}}</td>
+      <td class="state">{{r.state}}</td>
+      <td class="label">{{r.label}}</td>
       <td>{{r.count}}</td>
     </tr>
     </tbody>
@@ -99,4 +99,8 @@
 </script>
 
 <style scoped>
+  .url, .title, .state, .label {
+    font-size: 0.8em;
+    word-break: break-all;
+  }
 </style>
