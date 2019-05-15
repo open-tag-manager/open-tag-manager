@@ -11,7 +11,7 @@
   import _ from 'lodash'
 
   export default {
-    date () {
+    data () {
       return {
         noPermission: false
       }
