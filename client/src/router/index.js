@@ -10,6 +10,8 @@ import Container from '@/pages/Container'
 import ContainerSetting from '@/pages/ContainerSetting'
 import ContainerStat from '@/pages/ContainerStat'
 import ContainerStatGraph from '@/pages/ContainerStatGraph'
+import OrgSettings from '@/pages/OrgSettings'
+import OrgSettingsContainers from '@/pages/OrgSettingsContainers'
 
 import * as AmplifyModules from 'aws-amplify'
 import {AmplifyPlugin, AmplifyEventBus} from 'aws-amplify-vue'
@@ -102,6 +104,18 @@ const router = new Router({
                   component: ContainerStatGraph
                 }
               ]
+            }
+          ]
+        },
+        {
+          path: 'settings',
+          name: 'Org-Settings',
+          component: OrgSettings,
+          children: [
+            {
+              path: 'containers',
+              name: 'Org-Settings-Containers',
+              component: OrgSettingsContainers
             }
           ]
         }

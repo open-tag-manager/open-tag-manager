@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="container-fluid graph-container" v-show="mode === 'graph'">
+    <div class="graph-container" v-show="mode === 'graph'">
       <div id="graph">
         <div v-if="!isLoading" class="text-center">
           Select report

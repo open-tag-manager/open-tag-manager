@@ -1,31 +1,34 @@
 <template>
   <div id="app">
-    <header>
-      <b-navbar toggleable="md" type="dark" fixed class="bg-dark">
-        <router-link :to="{name: 'Top'}">
-          <b-navbar-brand>Open Tag Manager</b-navbar-brand>
-        </router-link>
+    <b-navbar toggleable="md" type="dark" sticky class="bg-dark">
+      <router-link :to="{name: 'Top'}">
+        <b-navbar-brand>Open Tag Manager</b-navbar-brand>
+      </router-link>
 
-        <b-navbar-nav class="ml-auto" v-if="$store.state.user.user">
-          <b-nav-text class="mr-2"><fa-icon icon="user"></fa-icon> {{$store.state.user.user.username}}
-          </b-nav-text>
-          <b-nav-text class="mr-1">
-            <fa-icon icon="building"></fa-icon>
-          </b-nav-text>
-          <b-nav-form class="mr-2">
-            <b-form-select v-model="currentOrg" @change="changeOrg">
-              <option :value="org" v-for="org in $store.state.user.orgs" :key="org.org">{{org.org}}</option>
-            </b-form-select>
-          </b-nav-form>
-          <b-nav-item href="#"><fa-icon icon="cog"></fa-icon> Setting</b-nav-item>
-          <b-nav-item href="#" @click.prevent="signOut">Sign out
-          </b-nav-item>
-        </b-navbar-nav>
-        <b-navbar-nav class="ml-auto" v-else>
-          <b-nav-item to="/login">Sign in</b-nav-item>
-        </b-navbar-nav>
-      </b-navbar>
-    </header>
+      <b-navbar-nav class="ml-auto" v-if="$store.state.user.user">
+        <b-nav-text class="mr-2">
+          <fa-icon icon="user"></fa-icon>
+          {{$store.state.user.user.username}}
+        </b-nav-text>
+        <b-nav-text class="mr-1">
+          <fa-icon icon="building"></fa-icon>
+        </b-nav-text>
+        <b-nav-form class="mr-2">
+          <b-form-select v-model="currentOrg" @change="changeOrg">
+            <option :value="org" v-for="org in $store.state.user.orgs" :key="org.org">{{org.org}}</option>
+          </b-form-select>
+        </b-nav-form>
+        <b-nav-item :to="'/orgs/' + currentOrg.org + '/settings'" v-if="currentOrg">
+          <fa-icon icon="cog"></fa-icon>
+          Setting
+        </b-nav-item>
+        <b-nav-item href="#" @click.prevent="signOut">Sign out
+        </b-nav-item>
+      </b-navbar-nav>
+      <b-navbar-nav class="ml-auto" v-else>
+        <b-nav-item to="/login">Sign in</b-nav-item>
+      </b-navbar-nav>
+    </b-navbar>
     <router-view/>
   </div>
 </template>

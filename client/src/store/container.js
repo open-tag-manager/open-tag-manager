@@ -1,7 +1,9 @@
 const state = {
   swaggerDoc: null,
   editableSwaggerDoc: null,
-  swaggerDocRevision: 0
+  swaggerDocRevision: 0,
+  container: null,
+  containers: []
 }
 
 const mutations = {
@@ -12,6 +14,12 @@ const mutations = {
   },
   EDIT_SWAGGER_DOC (state, {swaggerDoc}) {
     state.editableSwaggerDoc = swaggerDoc
+  },
+  SET_CONTAINER (state, {container}) {
+    state.container = container
+  },
+  SET_CONTAINERS (state, {containers}) {
+    state.containers = containers
   }
 }
 
@@ -26,6 +34,13 @@ const actions = {
   async saveSwaggerDoc (ctx, {org, container}) {
     await this.app.$Amplify.API.put('OTMClientAPI', `/orgs/${org}/containers/${container}/swagger_doc`, {body: JSON.parse(ctx.state.editableSwaggerDoc)})
     ctx.commit('SET_SWAGGER_DOC', {swaggerDoc: ctx.state.editableSwaggerDoc, r: ctx.state.swaggerDocRevision + 1})
+  },
+  setCurrentContainer (ctx, {container}) {
+    ctx.commit('SET_CONTAINER', {container})
+  },
+  async fetchContainers (ctx, {org}) {
+    const data = await this.app.$Amplify.API.get('OTMClientAPI', `/orgs/${org}/containers`)
+    ctx.commit('SET_CONTAINERS', {containers: data})
   }
 }
 
