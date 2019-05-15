@@ -4,6 +4,7 @@ import Router from 'vue-router'
 import Top from '@/pages/Top'
 import Auth from '@/pages/Auth'
 import Org from '@/pages/Org'
+import NoOrgError from '@/pages/NoOrgError'
 import Containers from '@/pages/Containers'
 import Container from '@/pages/Container'
 import ContainerSetting from '@/pages/ContainerSetting'
@@ -41,7 +42,11 @@ AmplifyEventBus.$on('authState', async (state) => {
     router.push('/')
   } else if (state === 'signedIn') {
     await getUser()
-    router.push('/')
+    if (store.state.user.orgs.length > 0) {
+      router.push(`/orgs/${store.state.user.orgs[0].org}/containers`)
+    } else {
+      router.push('/noorg')
+    }
   }
 })
 
@@ -50,13 +55,20 @@ const router = new Router({
     {
       path: '/',
       name: 'Top',
-      component: Top
+      component: Top,
+      meta: {anonymous: true}
     },
     {
       path: '/login',
       name: 'Auth',
       component: Auth,
       meta: {anonymous: true}
+    },
+    {
+      path: '/noorg',
+      name: 'NoOrg',
+      component: NoOrgError,
+      meta: {secret: true}
     },
     {
       path: '/orgs/:org',
@@ -108,7 +120,11 @@ router.beforeEach(async (to, from, next) => {
 
   const isAuthenticated = store.getters['user/isAuthenticated']
   if (to.meta.anonymous && isAuthenticated) {
-    return next('/')
+    if (store.state.user.orgs.length > 0) {
+      return next(`/orgs/${store.state.user.orgs[0].org}/containers`)
+    } else {
+      return next('/noorg')
+    }
   }
   if (to.meta.secret && !isAuthenticated) {
     return next('/login')

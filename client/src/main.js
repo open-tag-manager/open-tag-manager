@@ -15,7 +15,7 @@ import 'bootstrap-vue/dist/bootstrap-vue.css'
 import 'flatpickr/dist/flatpickr.css'
 
 import { library } from '@fortawesome/fontawesome-svg-core'
-import { faExpand } from '@fortawesome/free-solid-svg-icons'
+import { faExpand, faCog, faUser, faBuilding, faExclamationTriangle } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
 Vue.config.productionTip = false
@@ -54,7 +54,7 @@ Vue.use(Vuelidate)
 Vue.use(BootstrapVue)
 Vue.use(VueToasted)
 
-library.add(faExpand)
+library.add(faExpand, faCog, faUser, faBuilding, faExclamationTriangle)
 Vue.component('fa-icon', FontAwesomeIcon)
 
 /* eslint-disable no-new */

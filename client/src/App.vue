@@ -6,11 +6,23 @@
           <b-navbar-brand>Open Tag Manager</b-navbar-brand>
         </router-link>
 
-        <b-navbar-nav class="ml-auto">
-          <b-nav-text v-if="$store.state.user.user" class="mr-2">Username: {{$store.state.user.user.username}}</b-nav-text>
-          <b-nav-text v-if="$store.state.user.currentOrg" class="mr-2">Org: {{$store.state.user.currentOrg.org}}</b-nav-text>
-          <b-nav-item href="#" @click.prevent="signOut" v-if="$store.getters['user/isAuthenticated']">Sign out</b-nav-item>
-          <b-nav-item to="/login" v-else>Sign in</b-nav-item>
+        <b-navbar-nav class="ml-auto" v-if="$store.state.user.user">
+          <b-nav-text class="mr-2"><fa-icon icon="user"></fa-icon> {{$store.state.user.user.username}}
+          </b-nav-text>
+          <b-nav-text class="mr-1">
+            <fa-icon icon="building"></fa-icon>
+          </b-nav-text>
+          <b-nav-form class="mr-2">
+            <b-form-select v-model="currentOrg" @change="changeOrg">
+              <option :value="org" v-for="org in $store.state.user.orgs" :key="org.org">{{org.org}}</option>
+            </b-form-select>
+          </b-nav-form>
+          <b-nav-item href="#"><fa-icon icon="cog"></fa-icon> Setting</b-nav-item>
+          <b-nav-item href="#" @click.prevent="signOut">Sign out
+          </b-nav-item>
+        </b-navbar-nav>
+        <b-navbar-nav class="ml-auto" v-else>
+          <b-nav-item to="/login">Sign in</b-nav-item>
         </b-navbar-nav>
       </b-navbar>
     </header>
@@ -25,14 +37,24 @@
         selected: null
       }
     },
+    computed: {
+      currentOrg: {
+        get () {
+          return this.$store.state.user.currentOrg
+        },
+        set (org) {
+          this.$store.dispatch('user/setCurrentOrg', org)
+        }
+      }
+    },
     methods: {
       async signOut () {
         await this.$store.dispatch('user/signOut')
         this.$router.push('/')
+      },
+      changeOrg () {
+        this.$router.push(`/orgs/${this.currentOrg.org}/containers`)
       }
     }
   }
 </script>
-
-<style>
-</style>
