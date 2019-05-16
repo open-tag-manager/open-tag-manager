@@ -1,10 +1,8 @@
 <template>
-  <div>
+  <div :key="$router.fullPath">
+    <button type="button" class="btn btn-primary m-2" v-b-modal.swagger-sample>Swagger Sample</button>
     <div class="graph-container" v-show="mode === 'graph'">
       <div id="graph">
-        <div v-if="!isLoading" class="text-center">
-          Select report
-        </div>
         <div v-if="isLoading" class="text-center">
           <b-spinner label="Loading..." variant="primary"/>
         </div>
@@ -28,12 +26,6 @@
         <b-form-group label="Threshold Count" horizontal>
           <b-form-input v-model.number="thresholdCount" type="number" required @change="r"></b-form-input>
         </b-form-group>
-      </div>
-
-      <div v-if="urls.length > 0" class="graph-operation m-2">
-        <button class="wide-button btn btn-primary" @click="expand">
-          <fa-icon icon="expand"></fa-icon>
-        </button>
       </div>
     </div>
     <div v-if="mode === 'table'" class="p-2">
@@ -67,7 +59,6 @@
     <b-modal id="swagger-sample" title="Swagger Sample" hide-footer ref="swaggerSampleModal">
       <swagger-sample :url-tree="urlTree" v-if="urlTree" @save="saveSwaggerSample"></swagger-sample>
     </b-modal>
-    <button type="button" class="btn btn-primary m-2" v-b-modal.swagger-sample>Swagger Sample</button>
   </div>
 </template>
 
@@ -147,7 +138,6 @@
         urlTree: null,
 
         // UI
-        isExpanded: false,
         thresholdCount: 1,
         mergeSameId: true,
         isLoading: false
@@ -155,11 +145,7 @@
     },
     computed: {
       svgHeight () {
-        if (this.isExpanded) {
-          return window.innerHeight - 60
-        } else {
-          return 400
-        }
+        return window.innerHeight - 120
       },
       swaggerDoc () {
         return this.$store.state.container.swaggerDoc
@@ -246,12 +232,6 @@
 
         await this.render()
         this.isLoading = false
-      },
-      expand () {
-        const cl = d3.select('#graph')
-        const svg = cl.select('#graph svg')
-        this.isExpanded = !this.isExpanded
-        svg.attr('height', this.svgHeight)
       },
       filter () {
         this.graphData = _.cloneDeep(this.rawGraphData)
@@ -617,14 +597,47 @@
   }
 </script>
 
+<style>
+  #graph .node rect, #graph .node ellipse {
+    stroke: #333;
+    fill: #fff;
+    stroke-width: 1.5px;
+  }
+
+  #graph path {
+    stroke: #333;
+    fill: none;
+    stroke-width: 1.5px;
+  }
+
+  #graph .arrowhead {
+    stroke: #333;
+    fill: #333;
+    stroke-width: 1.5px;
+  }
+
+  #graph .clusters rect {
+    fill: #fff;
+    stroke: #333;
+    stroke-width: 1.5px;
+  }
+
+  #graph .node.hover ellipse {
+    stroke: #d9534f;
+  }
+
+  #graph .edgePath.hover path {
+    stroke: #d9534f;
+  }
+
+  #graph .edgeLabel.hover {
+    color: #d9534f;
+  }
+</style>
+
 <style scoped>
   .graph-container {
     position: relative;
-  }
-
-  .table-container {
-    height: 300px;
-    overflow: scroll;
   }
 
   .node-info {

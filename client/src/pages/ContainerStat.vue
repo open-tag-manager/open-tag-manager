@@ -1,7 +1,5 @@
 <template>
   <div>
-    <router-view :key="$route.fullPath"></router-view>
-
     <div class="container py-2">
       <div v-if="stats">
         <h3>Make New Stats</h3>
@@ -144,40 +142,4 @@
   }
 </script>
 
-<style>
-  #graph .node rect, #graph .node ellipse {
-    stroke: #333;
-    fill: #fff;
-    stroke-width: 1.5px;
-  }
 
-  #graph path {
-    stroke: #333;
-    fill: none;
-    stroke-width: 1.5px;
-  }
-
-  #graph .arrowhead {
-    stroke: #333;
-    fill: #333;
-    stroke-width: 1.5px;
-  }
-
-  #graph .clusters rect {
-    fill: #fff;
-    stroke: #333;
-    stroke-width: 1.5px;
-  }
-
-  #graph .node.hover ellipse {
-    stroke: #d9534f;
-  }
-
-  #graph .edgePath.hover path {
-    stroke: #d9534f;
-  }
-
-  #graph .edgeLabel.hover {
-    color: #d9534f;
-  }
-</style>

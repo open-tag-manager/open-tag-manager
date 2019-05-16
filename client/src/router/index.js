@@ -96,14 +96,12 @@ const router = new Router({
             {
               path: 'stat',
               name: 'Container-Stat',
-              component: ContainerStat,
-              children: [
-                {
-                  path: ':statid',
-                  name: 'Container-Stat-Graph',
-                  component: ContainerStatGraph
-                }
-              ]
+              component: ContainerStat
+            },
+            {
+              path: 'stat/:statid',
+              name: 'Container-Stat-Graph',
+              component: ContainerStatGraph
             }
           ]
         },
