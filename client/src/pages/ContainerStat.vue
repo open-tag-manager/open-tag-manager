@@ -2,17 +2,9 @@
   <div>
     <router-view :key="$route.fullPath"></router-view>
 
-    <b-modal id="setting-modal" title="Setting" @ok="saveSetting">
-      <div class="form-group">
-        <label for="swagger-doc">Swagger Doc (JSON)</label>
-        <textarea id="swagger-doc" class="form-control" v-model="swaggerDoc" rows="10"></textarea>
-      </div>
-    </b-modal>
-
     <div class="container py-2">
       <div v-if="stats">
-        <button type="button" class="btn btn-primary" v-b-modal.setting-modal>Setting</button>
-
+        <h3>Make New Stats</h3>
         <form @submit.prevent="makeReport">
           <div class="d-flex align-items-center">
             <div class="form-group">
@@ -48,9 +40,21 @@
           </b-button>
         </div>
 
-        <ul>
-          <li v-for="stat in stats"><router-link :to="{name: 'Container-Stat-Graph', params: {org: $route.params.org, name: $route.params.name, statid: stat.key}}">{{ stat.key }}</router-link></li>
-        </ul>
+        <h3>Stats History</h3>
+        <table class="table">
+          <thead>
+          <tr>
+            <th>Report Term</th>
+            <th>Label</th>
+          </tr>
+          </thead>
+          <tbody>
+            <tr v-for="stat in formattedStats">
+              <td><router-link :to="{name: 'Container-Stat-Graph', params: {org: $route.params.org, name: $route.params.name, statid: stat.name}}">{{ stat.term || stat.name }}</router-link></td>
+              <td>{{stat.label}}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
       <div class="col-3" v-else>
         Loading..
@@ -82,16 +86,34 @@
       const name = this.$route.params.name
       this.name = name
       await this.reload()
-      await this.$store.dispatch('container/fetchSwaggerDoc', {org: this.$route.params.org, container: this.name})
     },
     computed: {
-      swaggerDoc: {
-        get () {
-          return this.$store.state.container.editableSwaggerDoc
-        },
-        set (v) {
-          this.$store.dispatch('container/editSwaggerDoc', {swaggerDoc: v})
+      formattedStats () {
+        if (!this.stats) {
+          return []
         }
+
+        return this.stats.map((s) => {
+          const file = s.key.match(/\/([^/]+\.json)$/)
+
+          let term = null
+          let label = null
+          if (file) {
+            const m = file[1].match(/([0-9]+)_([0-9]+)_([0-9]+)_(([a-zA-Z0-9]+)_)?([0-9a-f-]+)\.json/)
+            if (m) {
+              const start = moment.utc(m[2], 'YYYYMMDDHHmmss')
+              const end = moment.utc(m[3], 'YYYYMMDDHHmmss')
+              term = `${start.format('YYYY/MM/DD HH:mm:ss')}〜${end.format('YYYY/MM/DD HH:mm:ss')}`
+              label = m[5]
+            }
+          }
+
+          return {
+            name: s.key,
+            term,
+            label
+          }
+        })
       }
     },
     methods: {
@@ -117,12 +139,6 @@
         this.stats = null
         const stats = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.name}/stats`)
         this.stats = stats
-      },
-      async saveSwaggerDoc () {
-        await this.$store.dispatch('container/saveSwaggerDoc', {org: this.$route.params.org, container: this.name})
-      },
-      async saveSetting () {
-        await this.saveSwaggerDoc()
       }
     }
   }

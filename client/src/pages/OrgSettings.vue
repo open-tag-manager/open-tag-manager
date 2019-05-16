@@ -3,7 +3,7 @@
     <div class="row">
       <div class="col-2 bg-light sidebar py-4">
         <b-nav vertical>
-          <b-nav-item :to="{name: 'Container-Stat', params: {org: $route.params.org, name: $route.params.name}}">
+          <b-nav-item :to="{name: 'Org-Settings-Containers', params: {org: $route.params.org, name: $route.params.name}}">
             Containers
           </b-nav-item>
         </b-nav>

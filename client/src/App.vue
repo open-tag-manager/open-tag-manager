@@ -18,7 +18,7 @@
             <option :value="org" v-for="org in $store.state.user.orgs" :key="org.org">{{org.org}}</option>
           </b-form-select>
         </b-nav-form>
-        <b-nav-item :to="'/orgs/' + currentOrg.org + '/settings'" v-if="currentOrg">
+        <b-nav-item :to="'/orgs/' + currentOrg.org + '/settings/containers'" v-if="currentOrg">
           <fa-icon icon="cog"></fa-icon>
           Setting
         </b-nav-item>

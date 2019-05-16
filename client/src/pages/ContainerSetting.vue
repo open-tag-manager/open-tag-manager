@@ -4,7 +4,8 @@
       <h2>{{container.label || container.name}}'s configuration</h2>
 
       <div>
-        Script URL: <input type="text" readonly v-model="container.script">
+        Script URL: <input type="text" readonly v-model="container.script" class="form-control">
+        <textarea readonly class="form-control" v-model="tag"></textarea>
       </div>
 
       <form @submit.prevent="deploy">
@@ -91,6 +92,17 @@
 
         <b-button variant="primary" @click="addBlankTrigger">New Trigger</b-button>
       </form>
+
+      <hr>
+
+      <form @submit.prevent="saveSwaggerDoc">
+        <div class="form-group">
+          <label for="swagger-doc">Swagger Doc (JSON)</label>
+          <textarea id="swagger-doc" class="form-control" v-model="swaggerDoc" rows="10">
+          </textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Save SwaggerDoc</button>
+      </form>
     </div>
     <div v-else>
       Loading...
@@ -152,11 +164,23 @@
             }
           ]
         }
+      },
+      tag () {
+        return '<script src="' + this.container.script + '"><' + '/script>'
+      },
+      swaggerDoc: {
+        get () {
+          return this.$store.state.container.editableSwaggerDoc
+        },
+        set (v) {
+          this.$store.dispatch('container/editSwaggerDoc', {swaggerDoc: v})
+        }
       }
     },
     async created () {
       const name = this.$route.params.name
       const container = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${name}`)
+      await this.$store.dispatch('container/fetchSwaggerDoc', {org: this.$route.params.org, container: name})
       if (!container.observers) {
         container.observers = []
       }
@@ -222,6 +246,9 @@
             triggers: this.container.triggers
           }
         })
+      },
+      async saveSwaggerDoc () {
+        await this.$store.dispatch('container/saveSwaggerDoc', {org: this.$route.params.org, container: this.$route.params.name})
       }
     }
   }
