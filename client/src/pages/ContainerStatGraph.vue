@@ -263,6 +263,9 @@
           // filter
           this.urlLinks = _.cloneDeep(this.rawUrlLinks)
           this.urlLinks = convertUrl(this.urlLinks, this.swaggerDoc)
+          this.urlLinks = _.filter(this.urlLinks, (d) => {
+            return d.count >= this.thresholdCount
+          })
           this.urls = getUrls(this.urlLinks)
           const g = new DagreD3.graphlib.Graph({compound: true}).setGraph({}).setDefaultEdgeLabel(function () {
             return {}
