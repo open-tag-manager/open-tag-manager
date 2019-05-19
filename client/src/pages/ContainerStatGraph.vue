@@ -279,13 +279,6 @@
 
           g.setNode(this.urls.length, {label: 'Undefined', shape: 'ellipse'})
 
-          const min = d3.min(this.urlLinks, function (o) {
-            return parseInt(o['count'])
-          })
-          const max = d3.quantile(this.urlLinks.map(function (d) {
-            return parseInt(d['count'])
-          }), 0.95)
-
           this.urlLinks.forEach((u) => {
             let p = _.indexOf(this.urls, u.p_url)
             let t = _.indexOf(this.urls, u.url)
@@ -297,15 +290,7 @@
               t = this.urls.length
             }
 
-            let w = 0
-            if (max - min > 0) {
-              if (max < parseInt(u.count)) {
-                w = 1
-              } else {
-                w = (parseInt(u.count) - min) / (max - min)
-              }
-            }
-            let width = 3 * w + 1
+            let width = 2 * Math.log10(u.count) + 1
             this.urlLinksData.push({source: p, target: t})
             g.setEdge(p, t, {
               label: u.count,
@@ -444,13 +429,6 @@
 
         const color = d3.scaleOrdinal(d3.schemeCategory20)
 
-        const min = d3.min(this.urlLinks, function (o) {
-          return parseInt(o['count'])
-        })
-        const max = d3.quantile(this.urlLinks.map(function (d) {
-          return parseInt(d['count'])
-        }), 0.95)
-
         this.graphData.forEach(function (o) {
           if (!o.label) {
             o.label = ''
@@ -516,21 +494,13 @@
             return
           }
 
-          let w = 0
-          if (max - min > 0) {
-            if (max < parseInt(o.count)) {
-              w = 1
-            } else {
-              w = (parseInt(o.count) - min) / (max - min)
-            }
-          }
           linksData.push({
             source: sourceIdx,
             target: targetIdx,
             count: o['count'],
-            w
+            w: Math.log10(o.count)
           })
-          let width = 3 * w + 1
+          let width = 2 * Math.log10(o.count) + 1
           g.setEdge(sourceIdx, targetIdx, {
             label: o['count'],
             style: `stroke-width: ${width}px;`,
