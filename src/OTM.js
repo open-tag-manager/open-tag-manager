@@ -249,6 +249,8 @@ class OTM {
   _getLabel (target, attributes) {
     if (target.innerText) {
       return target.innerText.replace(/[\n\r]/, '')
+    } else if (attributes['s_objectid']) {
+      return attributes['s_objectid'].value
     } else if (attributes['aria-label']) {
       return attributes['aria-label'].value
     } else if (attributes['alt']) {
