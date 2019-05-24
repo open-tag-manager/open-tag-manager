@@ -14,6 +14,7 @@
 - `ec`: event category name
 - `ea`: event action name
 - `el` (optional): event label
+- `o_cts`: client timestamp (ms, unix timestamp)
 - `o_pl`: previous page URL
 - `o_psid`: page view session UUID
 - `o_ps`: previous state, see state format spec

@@ -107,6 +107,7 @@ class OTM {
     params.cid = this.userUUID
     params.ec = target
     params.ea = name
+    params.o_cts = (new Date()).getTime()
     params.o_pl = this.prevUrl
     params.o_psid = this.viewUUID
     params.o_ps = this.prevState
@@ -350,6 +351,8 @@ class OTM {
         }
       }
       params.stateSuffix = stateSuffix
+      params.o_e_x = e.pageX
+      params.o_e_y = e.pageY
 
       this.notify('click', params)
     })
