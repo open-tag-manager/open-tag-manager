@@ -130,15 +130,6 @@ resource "aws_s3_bucket" "otm_script" {
   tags = "${var.aws_resource_tags}"
 }
 
-resource "aws_s3_bucket_object" "otm_otm" {
-  bucket = "${aws_s3_bucket.otm_script.id}"
-  key = "otm.js"
-  source = "../../dist/otm.js"
-  acl = "public-read"
-  content_type = "text/javascript"
-  etag = "${md5(file("../../dist/otm.js"))}"
-}
-
 resource "aws_cloudfront_distribution" "otm_script_distribution" {
   origin {
     domain_name = "${aws_s3_bucket.otm_script.bucket_regional_domain_name}"

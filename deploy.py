@@ -9,8 +9,6 @@ def main():
     s_environment = os.environ.get('S_ENV') or 'shared'
 
     print('1. deploy infra')
-    subprocess.call(['yarn', 'install'])
-    subprocess.call(['npm', 'run', 'build'], env={'NODE_ENV': 'production', 'PATH': os.environ.get('PATH')})
 
     print('1.1. deploy shared infra')
     subprocess.call(['terraform', 'init'], cwd='./infra/aws-batch')
@@ -88,7 +86,12 @@ def main():
     shutil.copy('./client_apis/.chalice/config.json.sample', './client_apis/.chalice/config.json')
     shutil.copy('./log_formatter/.chalice/config.json.sample', './log_formatter/.chalice/config.json')
 
-    print('2. deploy client API')
+    print('2. deploy otm.js')
+    subprocess.call(['yarn', 'install'])
+    subprocess.call(['npm', 'run', 'build'], env={'NODE_ENV': 'production', 'PATH': os.environ.get('PATH')})
+    subprocess.call(['aws', 's3', 'cp', './dist/otm.js', 's3://%s/otm.js' % script_bucket, '--acl=public-read'])
+
+    print('3. deploy client API')
     with open('./client_apis/.chalice/config.json', 'r') as f:
         config = json.load(f)
         env = config['environment_variables']
@@ -126,7 +129,7 @@ def main():
     subprocess.call(['pip', 'install', '-r', 'requirements.txt'], cwd='./client_apis')
     subprocess.call(['chalice', 'deploy', '--no-autogen-policy', '--stage=%s' % environment], cwd='./client_apis')
 
-    print('3. deploy data_retriever')
+    print('4. deploy data_retriever')
     repository_url = tfresource['aws_ecr_repository.otm_data_retriever']['primary']['attributes']['repository_url']
     p = subprocess.Popen(['aws', 'ecr', 'get-login', '--no-include-email'], stdout=subprocess.PIPE)
     p.wait()
@@ -135,7 +138,7 @@ def main():
     subprocess.call(['docker', 'tag', 'otm-data-retriever:latest', '%s:latest' % repository_url], cwd='./data_retriever')
     subprocess.call(['docker', 'push', '%s:latest' % repository_url], cwd='./data_retriever')
 
-    print('4. deploy client frontend')
+    print('5. deploy client frontend')
     with open('./client_apis/.chalice/deployed/%s.json' % environment, 'r') as f:
         api_resource = json.load(f)
 
@@ -156,11 +159,11 @@ def main():
     }, cwd='./client')
     subprocess.call(['aws', 's3', 'sync', './client/dist/', 's3://%s/' % client_bucket, '--acl=public-read'])
 
-    print('5. invalidate client / otm.js')
+    print('6. invalidate client / otm.js')
     subprocess.call(['aws', 'cloudfront', 'create-invalidation', '--distribution-id', script_distribution, '--paths', '/otm.js'])
     subprocess.call(['aws', 'cloudfront', 'create-invalidation', '--distribution-id', client_distribution, '--paths', '/', '/index.html'])
 
-    print('6. deploy log_formatter')
+    print('7. deploy log_formatter')
     with open('./log_formatter/.chalice/config.json', 'r') as f:
         config = json.load(f)
         env = config['environment_variables']
@@ -184,7 +187,7 @@ def main():
     local_env['OTM_LOG_SNS'] = sns_topic
     subprocess.call(['chalice', 'deploy', '--no-autogen-policy', '--stage=%s' % environment], cwd='./log_formatter', env=local_env)
 
-    print('7. make athena table')
+    print('8. make athena table')
     athena_query = '''
 CREATE EXTERNAL TABLE IF NOT EXISTS %s.otm_collect2(
   `datetime` timestamp, 
