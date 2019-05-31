@@ -69,6 +69,11 @@ export const lookupPath = function (paths, parsedUrl) {
     }
   }
 
+  let m = path.match(/^(.*)\/$/)
+  if (m) {
+    path = m[1]
+  }
+
   const targetUrl = url.parse(path)
   const targetQs = querystring.parse(targetUrl.query)
 
