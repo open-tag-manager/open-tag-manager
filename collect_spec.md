@@ -26,6 +26,10 @@
 - `o_e_*` (optional): event data
   - `x`
   - `y`
+  - `rl`: target rect left (px)
+  - `rt`: target rect top (px)
+  - `rw`: target rect width (px)
+  - `rh`: target rect height (px)
 
 ## State Format Spec
 

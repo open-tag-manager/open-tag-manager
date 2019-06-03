@@ -353,6 +353,11 @@ class OTM {
       params.stateSuffix = stateSuffix
       params.o_e_x = e.pageX
       params.o_e_y = e.pageY
+      const rect = target.getBoundingClientRect()
+      params.o_e_rl = rect.left + window.pageXOffset
+      params.o_e_rt = rect.top + window.pageYOffset
+      params.o_e_rw = rect.width
+      params.o_e_rh = rect.height
 
       this.notify('click', params)
     })
