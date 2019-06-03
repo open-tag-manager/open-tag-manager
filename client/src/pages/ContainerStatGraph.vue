@@ -478,7 +478,15 @@
         nodesData.forEach(function (node, idx) {
           let label = 'Undefined'
           if (node.name && node.name !== 'undefined') {
-            label = strimwidth(node.name, 20) + '\n' + node.title + '\n' + strimwidth(node.label, 20)
+            let lCaption = node.label
+            if (lCaption) {
+              const m = lCaption.match(/\/(.+)$/)
+              if (m) {
+                lCaption = m[1]
+              }
+            }
+
+            label = strimwidth(node.name, 20) + '\n' + strimwidth(lCaption, 20)
           }
           g.setNode(idx, {shape: 'ellipse', label})
         })
