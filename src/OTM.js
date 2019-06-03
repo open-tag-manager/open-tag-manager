@@ -93,7 +93,7 @@ class OTM {
     params.v = OTM_VERSION
     params.tid = this.name
     params.dl = document.URL
-    params.dt = document.title
+    params.dt = document.title.substring(0, 120)
     params.de = document.charset
     params.sd = window.screen.colorDepth + '-bit'
     params.ul = navigator.language
