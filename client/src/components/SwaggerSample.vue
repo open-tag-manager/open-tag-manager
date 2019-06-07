@@ -1,6 +1,6 @@
 <template>
   <div>
-    <button class="btn btn-primary" @click="reset" v-if="!isSample">Reset</button>
+    <button class="btn btn-primary" @click="resetAll" v-if="!isSample">Reset</button>
     <button class="btn btn-primary" @click="showSample" v-if="!isSample">Swagger Sample</button>
     <button class="btn btn-primary" @click="isSample = false" v-if="isSample">Edit</button>
     <button class="btn btn-primary" @click="save" v-if="isSample">Save</button>
@@ -57,6 +57,10 @@
       urlTree: {
         type: Object,
         required: true
+      },
+      originalUrlTree: {
+        type: Object,
+        required: true
       }
     },
     mounted () {
@@ -70,6 +74,10 @@
     methods: {
       reset () {
         this.tree = _.cloneDeep(this.urlTree)
+        this.ignoredNodes = []
+      },
+      resetAll () {
+        this.tree = _.cloneDeep(this.originalUrlTree)
         this.ignoredNodes = []
       },
       changeCheck (d) {

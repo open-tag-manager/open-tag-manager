@@ -57,7 +57,7 @@
       </div>
     </div>
     <b-modal id="swagger-sample" title="Swagger Sample" hide-footer ref="swaggerSampleModal">
-      <swagger-sample :url-tree="urlTree" v-if="urlTree" @save="saveSwaggerSample"></swagger-sample>
+      <swagger-sample :url-tree="urlTree" :original-url-tree="originalUrlTree" v-if="urlTree" @save="saveSwaggerSample"></swagger-sample>
     </b-modal>
   </div>
 </template>
@@ -136,6 +136,7 @@
 
         // swagger
         urlTree: null,
+        originalUrlTree: null,
 
         // UI
         thresholdCount: 1,
@@ -229,6 +230,7 @@
 
         this.url = null
         this.urlTree = getTree(this.urls, this.$store.getters['container/getSwaggetDocPaths'])
+        this.originalUrlTree = getTree(this.urls)
 
         await this.render()
         this.isLoading = false
