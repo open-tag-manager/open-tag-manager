@@ -296,7 +296,7 @@
             }
 
             let width = 2 * Math.log10(u.count) + 1
-            this.urlLinksData.push({source: p, target: t})
+            this.urlLinksData.push({source: p, target: t, count: u.count})
             g.setEdge(p, t, {
               label: u.count,
               style: `stroke-width: ${width}px;`,
@@ -412,6 +412,13 @@
         this.rawGraphData = data.result
 
         this.filter()
+
+        if (this.graphData.length >= 2000 && this.thresholdCount < 5) {
+          console.log('too many data')
+          this.urlGraph = null
+          this.thresholdCount = 5
+          this.filter()
+        }
 
         const cl = d3.select('#graph')
         const width = cl.node().clientWidth
