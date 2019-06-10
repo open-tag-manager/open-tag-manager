@@ -57,7 +57,8 @@
       </div>
     </div>
     <b-modal id="swagger-sample" title="Swagger Sample" hide-footer ref="swaggerSampleModal">
-      <swagger-sample :url-tree="urlTree" :original-url-tree="originalUrlTree" v-if="urlTree" @save="saveSwaggerSample"></swagger-sample>
+      <swagger-sample :url-tree="urlTree" :original-url-tree="originalUrlTree" v-if="urlTree"
+                      @save="saveSwaggerSample"></swagger-sample>
     </b-modal>
   </div>
 </template>
@@ -268,6 +269,31 @@
           this.urlLinks = _.filter(this.urlLinks, (d) => {
             return d.count >= this.thresholdCount
           })
+          if (this.swaggerDoc) {
+            const swaggerPaths = JSON.parse(this.swaggerDoc).paths
+
+            if (swaggerPaths) {
+              this.urlLinks = _.filter(this.urlLinks, (d) => {
+                if (d.url) {
+                  const parsedUrl = url.parse(d.url)
+                  const sObj = swaggerPaths[parsedUrl.path.replace(/%7b/gi, '{').replace(/%7d/gi, '}')]
+                  if (sObj && sObj.otmHideNode) {
+                    return false
+                  }
+                }
+
+                if (d.p_url) {
+                  const parsedUrl = url.parse(d.p_url)
+                  const sObj = swaggerPaths[parsedUrl.path.replace(/%7b/gi, '{').replace(/%7d/gi, '}')]
+                  if (sObj && sObj.otmHideNode) {
+                    return false
+                  }
+                }
+
+                return true
+              })
+            }
+          }
           this.urls = getUrls(this.urlLinks)
           const g = new DagreD3.graphlib.Graph({compound: true}).setGraph({}).setDefaultEdgeLabel(function () {
             return {}

@@ -1,8 +1,31 @@
 <template>
   <ul>
     <li v-for="child in children" :key="child.path">
-      <div class="mr-2" v-if="child.level === 1">/{{child.path}}</div>
-      <b-checkbox v-if="child.level > 1" :checked="!check[child.path]" @input="changeCheck(child)">/{{child.path}}</b-checkbox>
+      <div class="d-flex" v-if="child.level === 1" :class="{hide: child.hide}">
+        <div class="mr-2">/{{child.path}}</div>
+        <div class="mx-auto"></div>
+        <button class="btn btn-primary btn-sm" type="button" @click="partialReset(child)">Reset</button>
+        <div>
+          <button v-if="!child.hide" type="button" class="btn btn-primary btn-sm" @click="child.hide = true">
+            Hide
+          </button>
+          <button v-else type="button" class="btn btn-primary btn-sm" @click="child.hide = false">
+            Show
+          </button>
+        </div>
+      </div>
+      <div v-if="child.level > 1" class="d-flex" :class="{hide: child.hide}">
+        <b-checkbox :checked="!check[child.path]" @input="changeCheck(child)">/{{child.path}}</b-checkbox>
+        <div class="mx-auto"></div>
+        <div>
+          <button v-if="!child.hide" type="button" class="btn btn-primary btn-sm" @click="child.hide = true">
+            Hide
+          </button>
+          <button v-else type="button" class="btn btn-primary btn-sm" @click="child.hide = false">
+            Show
+          </button>
+        </div>
+      </div>
 
       <ul v-if="child.children.length > 0">
         <li>
@@ -56,3 +79,13 @@
     }
   }
 </script>
+
+<style scoped>
+  .custom-checkbox >>> .custom-control-label {
+    word-break: break-all;
+  }
+
+  .hide {
+    opacity: 0.5;
+  }
+</style>

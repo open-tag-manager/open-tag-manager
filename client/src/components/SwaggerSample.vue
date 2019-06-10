@@ -9,6 +9,7 @@
       :children="tree.children"
       @aggregate="aggregate" v-show="!isSample"
       @changeCheck="changeCheck"
+      @reset="partialReset"
     ></swagger-sample-children>
     <div v-if="isSample">
       <textarea readonly :value="sampleJson" class="form-control" rows="15"></textarea>
@@ -88,6 +89,17 @@
         } else {
           this.ignoredNodes = _.reject(this.ignoredNodes, {id: d.node.id})
         }
+      },
+      partialReset (d) {
+        const original = _.cloneDeep(findNode(this.originalUrlTree.children, d.id))
+        if (original) {
+          for (let v in this.tree.children) {
+            if (this.tree.children[v].id === d.id) {
+              this.tree.children[v] = original
+            }
+          }
+        }
+        this.tree = _.cloneDeep(this.tree)
       },
       aggregate (d) {
         const tree = _.cloneDeep(this.tree)

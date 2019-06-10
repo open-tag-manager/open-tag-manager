@@ -50,7 +50,8 @@ export function getTree (urls, currentConfig = {}) {
           exists: false,
           children: [],
           level: parseInt(i),
-          id: pId.join('/')
+          id: pId.join('/'),
+          hide: false
         }
         current.children.push(newChild)
         c = newChild
@@ -59,6 +60,12 @@ export function getTree (urls, currentConfig = {}) {
 
       if (paths.length - 1 === parseInt(i)) {
         c.exists = true
+        let sObj = currentConfig['/' + pId.join('/')]
+        if (sObj) {
+          if (sObj.otmHideNode) {
+            c.hide = true
+          }
+        }
       }
     }
   }
@@ -72,20 +79,24 @@ export function getPathSample (tree) {
   const checkChild = function (path, children) {
     for (let child of children) {
       if (child.exists) {
-        result.push(path + child.path)
+        result.push({path: path + child.path, hide: child.hide})
       }
       checkChild(path + child.path + '/', child.children)
     }
   }
 
   if (tree.exists) {
-    result.push('/')
+    result.push({path: '/'})
   }
 
   checkChild('/', tree.children)
   const swagger = {'paths': {}}
   for (let path of result.reverse()) {
-    swagger.paths[path] = {}
+    let o = {}
+    if (path.hide) {
+      o.otmHideNode = path.hide
+    }
+    swagger.paths[path.path] = o
   }
 
   return swagger
