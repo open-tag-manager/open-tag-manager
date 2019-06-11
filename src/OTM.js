@@ -199,7 +199,7 @@ class OTM {
     return '/' + stacker.join('/').toLowerCase()
   }
 
-  _isImportantClick (eNode) {
+  _getWidgetElement (eNode) {
     const NODE_TYPE_ELEMENT_NODE = 1
 
     if (eNode instanceof Array) {
@@ -207,7 +207,7 @@ class OTM {
     }
 
     if (eNode.nodeType !== NODE_TYPE_ELEMENT_NODE) {
-      return ''
+      return null
     }
 
     do {
@@ -217,20 +217,20 @@ class OTM {
 
       let nodeName = eNode.nodeName.toLowerCase()
       if (nodeName === 'a' || nodeName === 'button') {
-        return true
+        return eNode
       }
 
       if (eNode.attributes) {
         for (let attribute of eNode.attributes) {
           let attributeName = attribute.name.toLowerCase()
           if (attributeName === 'onclick' || attributeName === 'ng-click' || attributeName === '@click' || attributeName === 'v-on:click') {
-            return true
+            return eNode
           }
         }
       }
     } while (((eNode = eNode.parentNode) !== null && eNode.nodeName !== '#document'))
 
-    return false
+    return null
   }
 
   _getParentId (target) {
@@ -308,7 +308,8 @@ class OTM {
     this.state = Cookies.get('_st')
 
     document.addEventListener('click', (e) => {
-      const target = e.target
+      const wTarget = this._getWidgetElement(e.target)
+      const target = wTarget || e.target
       const tagName = target.tagName.toLowerCase()
       const attributes = target.attributes
       const parentId = this._getParentId(target)
@@ -328,10 +329,10 @@ class OTM {
         params['o_a_' + attributeName] = attribute.value
       }
       params.o_tag = tagName
-      params.o_xpath = this._getXpathByElementNode(e.target)
+      params.o_xpath = this._getXpathByElementNode(target)
 
       let stateSuffix = ''
-      if (this._isImportantClick(e.target)) {
+      if (wTarget) {
         stateSuffix += 'widget'
       } else {
         stateSuffix += 'trivial'
@@ -363,9 +364,11 @@ class OTM {
     })
 
     document.addEventListener('touchstart', (e) => {
-      const tagName = e.target.tagName.toLowerCase()
-      const attributes = e.target.attributes
-      let label = this._getLabel(e.target, attributes)
+      const wTarget = this._getWidgetElement(e.target)
+      const target = wTarget || e.target
+      const tagName = target.tagName.toLowerCase()
+      const attributes = target.attributes
+      let label = this._getLabel(target, attributes)
       const parentId = this._getParentId(target)
       const params = {}
       if (label) {
@@ -380,7 +383,7 @@ class OTM {
         params['o_a_' + attribute.name] = attribute.value
       }
       params.o_tag = tagName
-      params.o_xpath = this._getXpathByElementNode(e.target)
+      params.o_xpath = this._getXpathByElementNode(target)
       let stateSuffix = tagName
       if (params.o_a_id) {
         stateSuffix = tagName + '_id=' + params.o_a_id
