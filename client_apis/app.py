@@ -48,7 +48,7 @@ def get_role_table():
 def get_roles():
     if not 'authorizer' in app.current_request.context:
         # for local test environment
-        return [{'org': 'root', 'roles': ['write', 'read']}]
+        return [{'org': 'root', 'roles': ['write', 'read']}, {'org': 'sample', 'roles': ['write', 'read']}]
 
     username = app.current_request.context['authorizer']['claims']['cognito:username']
 
@@ -383,6 +383,8 @@ def get_container_stats_data(org, name, file):
         data = json.loads(response['Body'].read())
 
         if url_filter:
+            states = []
+            p_states = []
             new_result = []
             result = data['result']
 
@@ -400,7 +402,24 @@ def get_container_stats_data(org, name, file):
                     if len(dr) > 0:
                         dr[0]['count'] += r['count']
                     else:
+                        states.append(r['state'])
+                        p_states.append(r['p_state'])
                         new_result.append(r)
+
+            diff_states = list(set(p_states) - set(states))
+            for st in diff_states:
+                if not re.match(r'^click_', st):
+                    continue
+
+                sdata = [r2 for r2 in result if r2['state'] == st]
+
+                if len(sdata) > 0:
+                    dr = [r2 for r2 in new_result if r2['p_state'] == st]
+                    for node in dr:
+                        node['p_label'] = sdata[0]['label']
+                        node['p_xpath'] = sdata[0]['xpath']
+                        node['p_a_id'] = sdata[0]['a_id']
+                        node['p_class'] = sdata[0]['class']
 
             data['result'] = new_result
 

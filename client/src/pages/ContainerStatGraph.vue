@@ -473,7 +473,7 @@
           }
           let sourceIdx = _.findIndex(nodesData, {name: o['p_state'], url: o.p_url})
           if (sourceIdx === -1) {
-            nodesData.push({name: o['p_state'], url: o.p_url})
+            nodesData.push({name: o['p_state'], url: o.p_url, label: o.p_label, xpath: o.p_xpath, a_id: o.p_a_id, class: o.p_class})
           }
           let targetIdx = _.findIndex(nodesData, {name: o['state'], url: o.url})
           if (targetIdx === -1) {
