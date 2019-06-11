@@ -519,9 +519,11 @@
               if (m) {
                 lCaption = m[1]
               }
+            } else {
+              lCaption = node.name
             }
 
-            label = strimwidth(node.name, 20) + '\n' + strimwidth(lCaption, 20)
+            label = strimwidth(lCaption, 20)
           }
           g.setNode(idx, {shape: 'ellipse', label})
         })
