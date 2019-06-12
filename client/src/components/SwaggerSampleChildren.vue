@@ -6,10 +6,10 @@
         <div class="mx-auto"></div>
         <button class="btn btn-primary btn-sm" type="button" @click="partialReset(child)">Reset</button>
         <div>
-          <button v-if="!child.hide" type="button" class="btn btn-primary btn-sm" @click="child.hide = true">
+          <button v-if="!child.hide" type="button" class="btn btn-primary btn-sm" @click="hideChildren(child)">
             Hide
           </button>
-          <button v-else type="button" class="btn btn-primary btn-sm" @click="child.hide = false">
+          <button v-else type="button" class="btn btn-primary btn-sm" @click="showChildren(child)">
             Show
           </button>
         </div>
@@ -18,10 +18,10 @@
         <b-checkbox :checked="!check[child.path]" @input="changeCheck(child)">/{{child.path}}</b-checkbox>
         <div class="mx-auto"></div>
         <div>
-          <button v-if="!child.hide" type="button" class="btn btn-primary btn-sm" @click="child.hide = true">
+          <button v-if="!child.hide" type="button" class="btn btn-primary btn-sm" @click="hideChildren(child)">
             Hide
           </button>
-          <button v-else type="button" class="btn btn-primary btn-sm" @click="child.hide = false">
+          <button v-else type="button" class="btn btn-primary btn-sm" @click="showChildren(child)">
             Show
           </button>
         </div>
@@ -75,6 +75,20 @@
       },
       childChangeCheck (d) {
         this.$emit('changeCheck', d)
+      },
+      hideChildren (d) {
+        d.hide = true
+        d.children.forEach((c) => {
+          c.hide = true
+          this.hideChildren(c)
+        })
+      },
+      showChildren (d) {
+        d.hide = false
+        d.children.forEach((c) => {
+          c.hide = false
+          this.showChildren(c)
+        })
       }
     }
   }
