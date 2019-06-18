@@ -1,6 +1,7 @@
 <template>
   <div>
     <button class="btn btn-primary" @click="resetAll" v-if="!isSample">Reset</button>
+    <button class="btn btn-primary" @click="autoAggregate" v-if="!isSample">Aggregate All Children</button>
     <button class="btn btn-primary" @click="showSample" v-if="!isSample">Swagger Sample</button>
     <button class="btn btn-primary" @click="isSample = false" v-if="isSample">Edit</button>
     <button class="btn btn-primary" @click="save" v-if="isSample">Save</button>
@@ -80,6 +81,40 @@
       resetAll () {
         this.tree = _.cloneDeep(this.originalUrlTree)
         this.ignoredNodes = []
+      },
+      autoAggregate () {
+        const tree = _.cloneDeep(this.tree)
+
+        const aggregate = (child) => {
+          if (child.children.length <= 0) {
+            return
+          }
+
+          const newNode = {
+            path: '{child}',
+            id: `${child.id}/child`,
+            children: null,
+            level: child.level + 1,
+            exists: true
+          }
+          const newGrandChildren = []
+          child.children.forEach((c) => {
+            c.children.forEach((gc) => {
+              if (!_.find(newGrandChildren, {path: gc.path})) {
+                newGrandChildren.push(gc)
+              }
+            })
+          })
+          newNode.children = newGrandChildren
+          child.children = [newNode]
+          aggregate(newNode)
+        }
+
+        for (let child of tree.children) {
+          aggregate(child)
+        }
+
+        this.tree = tree
       },
       changeCheck (d) {
         if (!d.check) {
