@@ -416,6 +416,7 @@ def get_container_stats_data(org, name, file):
                 if len(sdata) > 0:
                     dr = [r2 for r2 in new_result if r2['p_state'] == st]
                     for node in dr:
+                        node['p_title'] = sdata[0]['label']
                         node['p_label'] = sdata[0]['label']
                         node['p_xpath'] = sdata[0]['xpath']
                         node['p_a_id'] = sdata[0]['a_id']

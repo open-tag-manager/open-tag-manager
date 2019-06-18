@@ -473,7 +473,7 @@
           }
           let sourceIdx = _.findIndex(nodesData, {name: o['p_state'], url: o.p_url})
           if (sourceIdx === -1) {
-            nodesData.push({name: o['p_state'], url: o.p_url, label: o.p_label, xpath: o.p_xpath, a_id: o.p_a_id, class: o.p_class})
+            nodesData.push({name: o['p_state'], url: o.p_url, title: o.p_title, label: o.p_label, xpath: o.p_xpath, a_id: o.p_a_id, class: o.p_class})
           }
           let targetIdx = _.findIndex(nodesData, {name: o['state'], url: o.url})
           if (targetIdx === -1) {
@@ -501,12 +501,14 @@
         })
 
         urls.forEach((url, idx) => {
-          if (_.find(nodesData, {url})) {
+          const node = _.find(nodesData, {url})
+          if (node) {
             let style = 'fill:' + color(url) + ';rx:5px;ry:5px'
             if (url === this.url) {
               style += ';stroke-width:5px'
             }
-            g.setNode(`url-${idx}`, {label: url, clusterLabelPos: 'top', style})
+            let label = `${url}\n${strimwidth(node.title, 20)}`
+            g.setNode(`url-${idx}`, {label, clusterLabelPos: 'top', style})
           }
         })
 
