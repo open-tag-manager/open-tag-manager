@@ -10,7 +10,7 @@
       :children="tree.children"
       @aggregate="aggregate" v-show="!isSample"
       @changeCheck="changeCheck"
-      @reset="partialReset"
+      @partialReset="partialReset"
     ></swagger-sample-children>
     <div v-if="isSample">
       <textarea readonly :value="sampleJson" class="form-control" rows="15"></textarea>
