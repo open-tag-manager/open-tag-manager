@@ -50,6 +50,9 @@
       },
       filterState: {
         type: String
+      },
+      filterStates: {
+        type: Array
       }
     },
     computed: {
@@ -57,6 +60,18 @@
         let data = this.data
         if (this.filterState) {
           data = _.filter(data, {state: this.filterState})
+        } else {
+          data = _.filter(data, (d) => {
+            if (d.state) {
+              for (let pattern of this.filterStates) {
+                if (d.state.match(pattern)) {
+                  return true
+                }
+              }
+            }
+
+            return false
+          })
         }
 
         if (!this.sortBy) {

@@ -52,7 +52,11 @@
         <div v-if="eventTableFilterState">
           Filtered by: {{eventTableFilterState}} <a href="#" @click="eventTableFilterState = null">x</a>
         </div>
-        <event-table :data="eventTableData" :filter-state="eventTableFilterState">
+        <b-form-group label="Enabled Statuses" class="status-filter" v-else>
+          <b-form-checkbox-group id="enabled-statuses-event" v-model="enabledStatues"
+                                 :options="statuses"></b-form-checkbox-group>
+        </b-form-group>
+        <event-table :data="eventTableData" :filter-state="eventTableFilterState" :filter-states="enabledStatues">
         </event-table>
       </div>
     </div>
