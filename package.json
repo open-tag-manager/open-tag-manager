@@ -30,9 +30,8 @@
   },
   "dependencies": {
     "cookies-js": "^1.2.3",
-    "d3": "^5.4.0",
-    "fetch-ie8": "^1.5.0",
     "jssha": "^2.3.1",
+    "navigator.sendbeacon": "^0.0.14",
     "url": "^0.11.0",
     "uuid": "^3.0.1"
   }
