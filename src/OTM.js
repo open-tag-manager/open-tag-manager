@@ -1,4 +1,4 @@
-import 'navigator.sendbeacon'
+import 'fetch-ie8'
 import Cookies from 'cookies-js'
 import uuidV4 from 'uuid/v4'
 import JsSHA from 'jssha'
@@ -117,8 +117,12 @@ class OTM {
     const esc = encodeURIComponent
     const query = Object.keys(params).map(k => `${esc(k)}=${esc(params[k])}`).join('&')
 
-    const url = `${this.endpoint}?${query}`
-    navigator.sendBeacon(url)
+    const myRequest = new Request(`${this.endpoint}?${query}`)
+
+    fetch(myRequest, {
+      method: 'GET',
+      mode: 'cors'
+    })
   }
 
   _scrollTop (targetElement = null) {
