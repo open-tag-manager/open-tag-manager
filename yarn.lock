@@ -1682,10 +1682,6 @@ faye-websocket@~0.11.0:
   dependencies:
     websocket-driver ">=0.5.1"
 
-fetch-ie8@^1.5.0:
-  version "1.5.0"
-  resolved "https://registry.yarnpkg.com/fetch-ie8/-/fetch-ie8-1.5.0.tgz#f1141c3f96cbc8937aa31b0fbc1a770220fbc15b"
-
 figures@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/figures/-/figures-2.0.0.tgz#3ab1a2d2a62c8bfb431a0c94cb797a2fce27c962"
@@ -2593,6 +2589,11 @@ nan@^2.3.0:
 natural-compare@^1.4.0:
   version "1.4.0"
   resolved "https://registry.yarnpkg.com/natural-compare/-/natural-compare-1.4.0.tgz#4abebfeed7541f2c27acfb29bdbbd15c8d5ba4f7"
+
+navigator.sendbeacon@^0.0.14:
+  version "0.0.14"
+  resolved "https://registry.yarnpkg.com/navigator.sendbeacon/-/navigator.sendbeacon-0.0.14.tgz#5a98d0d0ebe20b724bed561606c4f2f4811dcf40"
+  integrity sha512-u7IOrFfC0FSvgymi7legqrmB+3ygOWmbt6JIkzTc7uexcQySuTd4+0ucFG/hO+YQC40jEt2CWB1nMmFsiODDdA==
 
 ncname@1.0.x:
   version "1.0.0"
