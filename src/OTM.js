@@ -216,6 +216,10 @@ class OTM {
         return eNode
       }
 
+      if (eNode.style.cursor && eNode.style.cursor === 'pointer') {
+        return eNode
+      }
+
       if (eNode.attributes) {
         for (let attribute of eNode.attributes) {
           let attributeName = attribute.name.toLowerCase()
