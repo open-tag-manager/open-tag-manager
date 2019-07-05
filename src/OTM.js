@@ -347,7 +347,7 @@ class OTM {
           shaObj.update(`${parentId}${label}`)
           stateSuffix += '_lhash=' + shaObj.getHash('HEX')
         } else {
-          shaObj.update(this.url + '_' + params.o_xpath + '_' + JSON.stringify(params))
+          shaObj.update(this.url + '_' + params.o_xpath)
           stateSuffix += '_hash=' + shaObj.getHash('HEX')
         }
       }
@@ -393,7 +393,7 @@ class OTM {
           shaObj.update(`${parentId}${label}`)
           stateSuffix += '_lhash=' + shaObj.getHash('HEX')
         } else {
-          shaObj.update(this.url + '_' + params.o_xpath + '_' + JSON.stringify(params))
+          shaObj.update(this.url + '_' + params.o_xpath)
           stateSuffix += '_hash=' + shaObj.getHash('HEX')
         }
       }
