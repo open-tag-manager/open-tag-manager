@@ -121,3 +121,14 @@ docker run -e 'AWS_PROFILE=YOUR_PROFILE' \
           -v /var/run/docker.sock:/var/run/docker.sock  \
           -it otm-setup:latest python delete.py
 ```
+
+Dry-run
+
+```
+docker run -e 'AWS_PROFILE=YOUR_PROFILE' \
+          -e 'AWS_DEFAULT_REGION=YOUR_REGION' \
+          -v `pwd`:/otm  \
+          -v $HOME/.aws:/root/.aws \
+          -v /var/run/docker.sock:/var/run/docker.sock  \
+          -it otm-setup:latest python delete.py --dry-run
+```
