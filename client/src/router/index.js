@@ -141,7 +141,18 @@ router.beforeEach(async (to, from, next) => {
   if (to.meta.secret && !isAuthenticated) {
     return next('/login')
   }
+
+  if (window.OTM) {
+    window.OTM.notify('router-before')
+  }
+
   next()
+})
+
+router.afterEach(() => {
+  if (window.OTM) {
+    window.OTM.notify('router-before')
+  }
 })
 
 export default router
