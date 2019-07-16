@@ -23,6 +23,11 @@
             </b-form-select>
           </div>
 
+          <div class="form-group" v-if="observer.target === 'custom'">
+            <label :for="observer.id + '_event'">Custom Target</label>
+            <input type="text" :id="observer.id + '_event'" v-model="observer.custom" class="form-control" required>
+          </div>
+
           <div class="form-group" v-if="getTriggerById(observer.target).tag">
             <label :for="observer.id + '_tag'">Trigger Target Tag</label>
             <input type="text" :id="observer.id + '_tag'" v-model="observer.options.tag" class="form-control">
@@ -141,6 +146,10 @@
             {
               id: 'change-url',
               name: 'change-url'
+            },
+            {
+              id: 'custom',
+              name: 'custom'
             }
           ]
           return preset.concat(this.container.triggers)

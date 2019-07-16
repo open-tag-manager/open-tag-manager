@@ -20,7 +20,10 @@ class OTM {
   }
 
   notify (target, params = {}) {
-    for (let observer of this.observers.filter(observer => observer.target === target)) {
+    const observers = this.observers.filter((observer) => {
+      return observer.target === target || (observer.target === 'custom' && observer.custom === target)
+    })
+    for (let observer of observers) {
       if (observer.options.tag && observer.options.tag !== params.o_tag) {
         // skip notify event, because there is tag criteria
         return
