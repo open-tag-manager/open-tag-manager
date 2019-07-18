@@ -432,6 +432,68 @@ def get_container_stats_data(org, name, file):
         return Response(body={'error': 'not found'}, status_code=404)
 
 
+@app.route('/orgs/{org}/containers/{name}/goals', methods=['GET'], cors=True, authorizer=authorizer)
+def get_container_goals(org, name):
+    if not has_role(org, 'read'):
+        return Response(body={'error': 'permission error'}, status_code=401)
+
+    config = get_config_data(org)
+    (data, container) = get_container_data(org, name, config)
+
+    if data is None:
+        return Response(body={'error': 'not found'}, status_code=404)
+
+    o_prefix = ''
+    if org != 'root':
+        o_prefix = org + '/'
+
+    bucket = os.environ.get('OTM_STATS_BUCKET')
+    file = (os.environ.get('OTM_STATS_PREFIX') or '') + o_prefix + name + '_goals.json'
+    object = s3.Object(bucket, file)
+    try:
+        response = object.get()
+        data = json.loads(response['Body'].read())
+
+        return data
+    except ClientError:
+        return Response(body=[], status_code=200)
+
+
+@app.route('/orgs/{org}/containers/{name}/goals', methods=['POST'], cors=True, authorizer=authorizer)
+def create_container_goals(org, name):
+    if not has_role(org, 'read'):
+        return Response(body={'error': 'permission error'}, status_code=401)
+
+    config = get_config_data(org)
+    (data, container) = get_container_data(org, name, config)
+
+    if data is None:
+        return Response(body={'error': 'not found'}, status_code=404)
+
+    o_prefix = ''
+    if org != 'root':
+        o_prefix = org + '/'
+
+    bucket = os.environ.get('OTM_STATS_BUCKET')
+    file = (os.environ.get('OTM_STATS_PREFIX') or '') + o_prefix + name + '_goals.json'
+    object = s3.Object(bucket, file)
+
+    request = app.current_request
+    body = request.json_body
+    if not 'name' in body or not 'target' in body:
+        return Response(body={'error': 'name or target is required'}, status_code=400)
+
+    try:
+        response = object.get()
+        data = json.loads(response['Body'].read())
+    except ClientError:
+        data = []
+
+    data.append({'id': uuid.uuid4(), 'name': body['name'], 'target': body['target']})
+
+    s3.Object(bucket, file).put(Body=json.dumps(data), ContentType='application/json')
+    return data
+
 @app.route('/orgs/{org}/containers/{name}/stats/{file}/events', methods=['GET'], cors=True, authorizer=authorizer)
 def get_container_stats_data_event(org, name, file):
     if not has_role(org, 'read'):
