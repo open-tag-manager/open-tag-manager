@@ -448,7 +448,29 @@ class OTM {
       }
     }, 1000)
 
-    this.notify('pageview')
+    if (window.PerformanceObserver) {
+      const observer = new PerformanceObserver((list) => {
+        const entries = list.getEntries()
+
+        const params = {}
+        for (let entry of entries) {
+          let key = null
+          if (entry.name === 'first-paint') {
+            key = 'o_fp'
+          } else if (entry.name === 'first-contentful-paint') {
+            key = 'o_fcp'
+          }
+
+          if (key) {
+            params[key] = Math.round(entry.startTime + entry.duration);
+          }
+        }
+        this.notify('pageview', params)
+      })
+      observer.observe({entryTypes: ['paint']})
+    } else {
+      this.notify('pageview')
+    }
   }
 
   loadScript (src, attributes = {}) {
