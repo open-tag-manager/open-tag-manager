@@ -448,10 +448,8 @@ class OTM {
       }
     }, 1000)
 
-    if (window.PerformanceObserver) {
-      const observer = new PerformanceObserver((list) => {
-        const entries = list.getEntries()
-
+    if (window.PerformanceObserver && window.performance) {
+      const pageview = (entries) => {
         const params = {}
         for (let entry of entries) {
           let key = null
@@ -466,8 +464,19 @@ class OTM {
           }
         }
         this.notify('pageview', params)
-      })
-      observer.observe({entryTypes: ['paint']})
+      }
+
+      const currentEntries = window.performance.getEntriesByType('paint')
+      if (currentEntries.length > 0) {
+        pageview(currentEntries)
+      } else {
+        const observer = new PerformanceObserver((list) => {
+          const entries = list.getEntries()
+          pageview(entries)
+        })
+
+        observer.observe({entryTypes: ['paint']})
+      }
     } else {
       this.notify('pageview')
     }

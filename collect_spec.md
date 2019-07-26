@@ -30,6 +30,8 @@
   - `rt`: target rect top (px)
   - `rw`: target rect width (px)
   - `rh`: target rect height (px)
+- `o_fp` (optional): first paint (ms)
+- `o_fcp` (optional): first contentful paint (ms)
 
 ## State Format Spec
 
