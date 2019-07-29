@@ -45,14 +45,16 @@ class OTM {
         case 'collect':
           // manage state for collect
           this.prevState = this.state
-          let newState = target
-          if (params.statePrefix) {
-            newState = params.statePrefix + '_' + newState
-            delete params.statePrefix
-          }
-          if (params.stateSuffix) {
-            newState += '_' + params.stateSuffix
-            delete params.stateSuffix
+          let newState = observer.options.pageview ? 'pageview' : target
+          if (newState !== 'pageview') {
+            if (params.statePrefix) {
+              newState = params.statePrefix + '_' + newState
+              delete params.statePrefix
+            }
+            if (params.stateSuffix) {
+              newState += '_' + params.stateSuffix
+              delete params.stateSuffix
+            }
           }
           this.state = newState
           Cookies.set('_st', newState, {expires: 20})

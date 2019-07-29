@@ -59,6 +59,7 @@
             </textarea>
           </div>
 
+          <b-checkbox v-model="observer.options.pageview" v-if="observer.type === 'collect' && observer.target !== 'pageview'">Pageview event</b-checkbox>
           <b-checkbox v-model="observer.once">Once only</b-checkbox>
 
           <div class="my-2">
