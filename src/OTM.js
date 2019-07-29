@@ -65,7 +65,7 @@ class OTM {
           if (this.org) {
             params['org'] = this.org
           }
-          this.call(observer.name, target, params)
+          this.call(observer.name, observer.options.pageview ? 'pageview' : target, params)
 
           this.prevUrl = this.url
           Cookies.set('_pu', window.document.URL, {expires: 20})
