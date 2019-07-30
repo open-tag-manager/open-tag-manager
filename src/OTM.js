@@ -44,6 +44,7 @@ class OTM {
           break
         case 'collect':
           // manage state for collect
+          this.prevTime = (new Date()).getTime()
           this.prevState = this.state
           let newState = observer.options.pageview ? 'pageview' : target
           if (newState !== 'pageview') {
@@ -54,6 +55,10 @@ class OTM {
             if (params.stateSuffix) {
               newState += '_' + params.stateSuffix
               delete params.stateSuffix
+            }
+          } else {
+            if (observer.options.pageview && this.prevState.match(/^click_widget_/)) {
+              params.plt = (new Date()).getTime() - this.prevTime
             }
           }
           this.state = newState
@@ -282,6 +287,7 @@ class OTM {
     this.viewUUID = uuid()
     this.url = window.document.URL
     this.prevState = null
+    this.prevTime = null
     this.state = null
     this.name = options.name || ''
     this.org = options.org || ''
@@ -443,12 +449,15 @@ class OTM {
       }
     }
 
-    setInterval(() => {
+    const changeUrl = () => {
       if (this.url !== window.document.URL) {
         this.url = window.document.URL
         this.notify('change-url', {stateSuffix: '_url=' + window.document.URL})
       }
-    }, 1000)
+    }
+
+    window.addEventListener('hashchange', changeUrl)
+    window.addEventListener('popstate', changeUrl)
 
     if (window.PerformanceObserver && window.performance) {
       const pageview = (entries) => {
@@ -462,8 +471,11 @@ class OTM {
           }
 
           if (key) {
-            params[key] = Math.round(entry.startTime + entry.duration);
+            params[key] = Math.round(entry.startTime + entry.duration)
           }
+        }
+        if (params.o_fp) {
+          params.plt = params.o_fp
         }
         this.notify('pageview', params)
       }
