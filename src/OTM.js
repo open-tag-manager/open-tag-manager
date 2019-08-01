@@ -449,6 +449,7 @@ class OTM {
       }
     }
 
+    // observer url change on SPA
     const changeUrl = () => {
       if (this.url !== window.document.URL) {
         this.url = window.document.URL
@@ -457,7 +458,7 @@ class OTM {
     }
 
     window.addEventListener('hashchange', changeUrl)
-    window.addEventListener('popstate', changeUrl)
+    setInterval(changeUrl, 50)
 
     if (window.PerformanceObserver && window.performance) {
       const pageview = (entries) => {
