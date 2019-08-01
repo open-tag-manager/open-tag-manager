@@ -31,6 +31,12 @@
       <th scope="col" @click="sort('max_scroll_y')">Scroll(MAX)
         <stat-table-sort-order-allow v-if="sortBy === 'max_scroll_y'" :order="order"></stat-table-sort-order-allow>
       </th>
+      <th scope="col" @click="sort('avg_plt')">FP (AVG)
+        <stat-table-sort-order-allow v-if="sortBy === 'avg_plt'" :order="order"></stat-table-sort-order-allow>
+      </th>
+      <th scope="col" @click="sort('max_plt')">FP (MAX)
+        <stat-table-sort-order-allow v-if="sortBy === 'max_plt'" :order="order"></stat-table-sort-order-allow>
+      </th>
     </tr>
     </thead>
     <tbody>
@@ -46,6 +52,8 @@
       <td>{{col.t_click_count}}</td>
       <td>{{col.avg_scroll_y}}</td>
       <td>{{col.max_scroll_y}}</td>
+      <td>{{col.avg_plt}}</td>
+      <td>{{col.max_plt}}</td>
     </tr>
     </tbody>
   </table>

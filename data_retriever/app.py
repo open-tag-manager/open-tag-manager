@@ -188,7 +188,10 @@ scroll.sum_scroll_y,
 scroll.max_scroll_y,
 event.event_count,
 widget_click.w_click_count,
-trivial_click.t_click_count
+trivial_click.t_click_count,
+COUNT(JSON_EXTRACT_SCALAR(qs, '$.plt')) as plt_count,
+SUM(CAST(JSON_EXTRACT_SCALAR(qs, '$.plt') as decimal)) as sum_plt,
+MAX(CAST(JSON_EXTRACT_SCALAR(qs, '$.plt') as decimal)) as max_plt
 FROM 
 {0}.{1}
 LEFT OUTER JOIN 
@@ -232,6 +235,9 @@ ORDER BY count DESC
                 r[0]['event_count'] += rj['event_count'] or 0
                 r[0]['w_click_count'] += rj['w_click_count'] or 0
                 r[0]['t_click_count'] += rj['t_click_count'] or 0
+                r[0]['plt_count'] += rj['plt_count'] or 0
+                r[0]['sum_plt'] += rj['sum_plt'] or 0
+                r[0]['max_plt'] += rj['max_plt'] or 0
             else:
                 # initialize data
                 rj['url'] = url
@@ -244,6 +250,9 @@ ORDER BY count DESC
                 rj['event_count'] = rj['event_count'] or 0
                 rj['w_click_count'] = rj['w_click_count'] or 0
                 rj['t_click_count'] = rj['t_click_count'] or 0
+                rj['plt_count'] = rj['plt_count'] or 0
+                rj['sum_plt'] = rj['sum_plt'] or 0
+                rj['max_plt'] = rj['max_plt'] or 0
                 table_result.append(rj)
 
         for t_result in table_result:
@@ -251,6 +260,11 @@ ORDER BY count DESC
                 t_result['avg_scroll_y'] = t_result['sum_scroll_y'] / t_result['s_count']
             else:
                 t_result['avg_scroll_y'] = None
+
+            if t_result['plt_count'] and t_result['plt_count'] > 0:
+                t_result['avg_plt'] = t_result['avg_plt'] / t_result['plt_count']
+            else:
+                t_result['svg_plt'] = None
 
         sql3 = """SELECT 
 JSON_EXTRACT_SCALAR(qs, '$.dl') AS url,

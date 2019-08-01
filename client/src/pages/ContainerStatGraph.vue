@@ -191,6 +191,7 @@
         this.tableData = convertUrlForTableData(data.data.table, this.swaggerDoc)
         this.summaryTableData = _(this.tableData).groupBy('url').map((d, url) => {
           const scrollCount = _.sumBy(d, 's_count')
+          const pltCount = _.sumBy(d, 'plt_count')
 
           const data = {
             url,
@@ -201,7 +202,9 @@
             t_click_count: _.sumBy(d, 't_click_count'),
             w_click_count: _.sumBy(d, 'w_click_count'),
             avg_scroll_y: null,
-            max_scroll_y: null
+            max_scroll_y: null,
+            avg_plt: null,
+            max_plt: null
           }
 
           if (scrollCount > 0) {
@@ -214,6 +217,18 @@
               return result
             }, 0) / scrollCount
             data.max_scroll_y = _.maxBy(d, 'max_scroll_y').max_scroll_y
+          }
+
+          if (pltCount > 0) {
+            data.avg_plt = _.reduce(d, (result, o) => {
+              if (!o.plt_count) {
+                return result
+              }
+
+              result += o.avg_plt * o.plt_count
+              return result
+            }, 0) / pltCount
+            data.max_plt = _.maxBy(d, 'max_plt').max_plt
           }
 
           return data
