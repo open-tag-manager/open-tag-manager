@@ -262,9 +262,9 @@ ORDER BY count DESC
                 t_result['avg_scroll_y'] = None
 
             if t_result['plt_count'] and t_result['plt_count'] > 0:
-                t_result['avg_plt'] = t_result['avg_plt'] / t_result['plt_count']
+                t_result['avg_plt'] = t_result['sum_plt'] / t_result['plt_count']
             else:
-                t_result['svg_plt'] = None
+                t_result['avg_plt'] = None
 
         sql3 = """SELECT 
 JSON_EXTRACT_SCALAR(qs, '$.dl') AS url,
