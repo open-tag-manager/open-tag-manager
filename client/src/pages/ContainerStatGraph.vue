@@ -27,6 +27,12 @@
           <b-form-input v-model.number="thresholdCount" type="number" required @change="r"></b-form-input>
         </b-form-group>
       </div>
+      <div class="rb-menu">
+        <div class="btn-group" role="group">
+          <button id="zoom-in-button" @click="zoomIn" type="button" class="btn btn-primary">+</button>
+          <button id="zoom-out-button" @click="zoomOut" type="button" class="btn btn-primary">-</button>
+        </div>
+      </div>
     </div>
     <div v-if="mode === 'table'" class="p-2">
       <div class="mb-2">
@@ -146,7 +152,10 @@
         // UI
         thresholdCount: 1,
         mergeSameId: true,
-        isLoading: false
+        isLoading: false,
+
+        svg: null,
+        zoom: null
       }
     },
     computed: {
@@ -317,17 +326,26 @@
           const g = new DagreD3.graphlib.Graph({compound: true}).setGraph({}).setDefaultEdgeLabel(function () {
             return {}
           })
-
+          const maxCount = _.max(_.values(_.groupBy(this.urlLinks, 'url')).map((d) => {
+            return _.sumBy(d, 'count')
+          }))
           this.urls.forEach((u, idx) => {
             let label = ''
             const parsedUrl = url.parse(u)
             label += parsedUrl.path.replace(/%7b/gi, '{').replace(/%7d/gi, '}') + '\n'
             const e = _.find(this.urlLinks, {url: u})
+
+            const count = _.sumBy(_.filter(this.urlLinks, {url: u}), 'count')
+            let labelSize = 10 * (count / maxCount)
+            if (labelSize < 1) {
+              labelSize = 1
+            }
+
             label += strimwidth(e.title, 12)
-            g.setNode(idx, {shape: 'ellipse', label: label})
+            g.setNode(idx, {shape: 'ellipse', label: label, labelStyle: `font-size: ${labelSize}em`})
           })
 
-          g.setNode(this.urls.length, {label: 'Undefined', shape: 'ellipse'})
+          g.setNode(this.urls.length, {label: 'Undefined', shape: 'ellipse', labelStyle: 'font-size: 5em'})
 
           this.urlLinks.forEach((u) => {
             let p = _.indexOf(this.urls, u.p_url)
@@ -361,7 +379,6 @@
         svg.call(zoom)
         const initialScale = 0.75
         svg.call(zoom.transform, d3.zoomIdentity.translate((svg.attr('width') - this.urlGraph.graph().width * initialScale) / 2, 20).scale(initialScale))
-
         svg.selectAll('g.node').on('click', (id) => {
           if (id !== this.urls.length) {
             this.url = this.urls[id]
@@ -388,6 +405,9 @@
             d3.select(edgeLabels[parseInt(key)]).classed('hover', false)
           }
         })
+
+        this.svg = svg
+        this.zoom = zoom
       },
       back () {
         this.url = null
@@ -619,6 +639,8 @@
             this.render()
           }
         })
+        this.svg = svg
+        this.zoom = zoom
       },
       async r () {
         this.urlGraph = null
@@ -631,6 +653,12 @@
           container: this.$route.params.name
         })
         this.$refs.swaggerSampleModal.hide()
+      },
+      zoomIn () {
+        this.zoom.scaleBy(this.svg.transition().duration(750), 1.3)
+      },
+      zoomOut () {
+        this.zoom.scaleBy(this.svg.transition().duration(750), 1 / 1.3)
       }
     }
   }
@@ -686,6 +714,12 @@
     background: #fff;
     max-width: 50vw;
     opacity: 0.8;
+  }
+
+  .rb-menu {
+    position: absolute;
+    right: 20px;
+    bottom: 20px;
   }
 
   .graph-operation {
