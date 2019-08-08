@@ -68,6 +68,7 @@ class DataRetriever:
 
         q = ''
         q += " tid = '%s'" % self.options['query_tid']
+        q += " AND cs_uri_stem LIKE '/collect%'"
         q += ' AND year * 10000 + month * 100 + day >= %s' % stime.strftime('%Y%m%d')
         q += ' AND year * 10000 + month * 100 + day <= %s' % etime.strftime('%Y%m%d')
         q += " AND datetime >= timestamp '%s'" % (stime.strftime('%Y-%m-%d %H:%M:%S'))
