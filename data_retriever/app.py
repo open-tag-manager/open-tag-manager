@@ -68,11 +68,11 @@ class DataRetriever:
 
         q = ''
         q += " tid = '%s'" % self.options['query_tid']
-        q += " AND cs_uri_stem LIKE '/collect%'"
         q += ' AND year * 10000 + month * 100 + day >= %s' % stime.strftime('%Y%m%d')
         q += ' AND year * 10000 + month * 100 + day <= %s' % etime.strftime('%Y%m%d')
         q += " AND datetime >= timestamp '%s'" % (stime.strftime('%Y-%m-%d %H:%M:%S'))
         q += " AND datetime <= timestamp '%s'" % (etime.strftime('%Y-%m-%d %H:%M:%S'))
+        q += " AND JSON_EXTRACT_SCALAR(qs, '$.o_s') IS NOT NULL"
 
         sql = """SELECT 
 JSON_EXTRACT_SCALAR(qs, '$.dl') AS url,

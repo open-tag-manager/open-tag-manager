@@ -3,6 +3,15 @@ import Cookies from 'cookies-js'
 import uuidV4 from 'uuid/v4'
 import JsSHA from 'jssha'
 import url from 'url'
+import ttiPolyfill from 'tti-polyfill'
+
+if ('PerformanceLongTaskTiming' in window) {
+  let g = window.__tti = {e: []}
+  g.o = new PerformanceObserver(function (l) {
+    g.e = g.e.concat(l.getEntries())
+  })
+  g.o.observe({entryTypes: ['longtask']})
+}
 
 const OTM_VERSION = 1
 
@@ -92,6 +101,28 @@ class OTM {
 
       observer.isNotified = true
     }
+  }
+
+  performance (category, variable, params = {}) {
+    if (this.preview) {
+      console.log('performance', name, params)
+      return
+    }
+    params.v = OTM_VERSION
+    params.tid = this.name
+    params.dl = document.URL
+    params.dt = document.title.substring(0, 120)
+    params.t = 'timing'
+    params.o_cts = (new Date()).getTime()
+    params.o_psid = this.viewUUID
+    params.o_ps = this.prevState
+    params.o_r = uuid()
+    params.utc = category
+    params.utv = variable
+    const esc = encodeURIComponent
+    const query = Object.keys(params).map(k => `${esc(k)}=${esc(params[k])}`).join('&')
+    const url = `${this.endpoint}?${query}`
+    navigator.sendBeacon(url)
   }
 
   call (name, target, params = {}) {
@@ -495,6 +526,10 @@ class OTM {
     } else {
       this.notify('pageview')
     }
+
+    ttiPolyfill.getFirstConsistentlyInteractive().then((tti) => {
+      this.performance('pageview', 'ttl', {o_ttl: parseInt(tti)})
+    })
   }
 
   loadScript (src, attributes = {}) {
