@@ -336,7 +336,7 @@
             const e = _.find(this.urlLinks, {url: u})
 
             const count = _.sumBy(_.filter(this.urlLinks, {url: u}), 'count')
-            let labelSize = 10 * (count / maxCount)
+            let labelSize = 5 * (count / maxCount)
             if (labelSize < 1) {
               labelSize = 1
             }
@@ -437,7 +437,7 @@
         } else {
           this.eventTableFilterState = null
         }
-        let eventTableData = convertUrlForTableData(this.rawEventTableData.event_table)
+        let eventTableData = convertUrlForTableData(this.rawEventTableData.event_table, this.swaggerDoc)
         eventTableData = _(eventTableData).groupBy((d) => {
           return `${d.url}-${d.state}`
         }).map((d) => {
