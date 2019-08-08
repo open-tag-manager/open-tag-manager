@@ -176,6 +176,19 @@ COUNT(datetime) as t_click_count
 FROM {0}.{1}
 WHERE JSON_EXTRACT_SCALAR(qs, '$.o_s') LIKE 'click_trivial_%' AND {2}
 GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), JSON_EXTRACT_SCALAR(qs, '$.dl')
+),
+
+plt as (
+SELECT 
+format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ') as datet,
+JSON_EXTRACT_SCALAR(qs, '$.dl') as url,
+COUNT(JSON_EXTRACT_SCALAR(qs, '$.plt')) as plt_count,
+SUM(CAST(JSON_EXTRACT_SCALAR(qs, '$.plt') as decimal)) as sum_plt,
+MAX(CAST(JSON_EXTRACT_SCALAR(qs, '$.plt') as decimal)) as max_plt
+FROM {0}.{1}
+WHERE JSON_EXTRACT_SCALAR(qs, '$.o_s') = 'pageview'
+AND CAST(JSON_EXTRACT_SCALAR(qs, '$.plt') as decimal) > 0 AND {2}
+GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), JSON_EXTRACT_SCALAR(qs, '$.dl')
 )
 
 SELECT
@@ -190,9 +203,9 @@ scroll.max_scroll_y,
 event.event_count,
 widget_click.w_click_count,
 trivial_click.t_click_count,
-COUNT(JSON_EXTRACT_SCALAR(qs, '$.plt')) as plt_count,
-SUM(CAST(JSON_EXTRACT_SCALAR(qs, '$.plt') as decimal)) as sum_plt,
-MAX(CAST(JSON_EXTRACT_SCALAR(qs, '$.plt') as decimal)) as max_plt
+plt.plt_count,
+plt.sum_plt,
+plt.max_plt
 FROM 
 {0}.{1}
 LEFT OUTER JOIN 
@@ -203,8 +216,10 @@ LEFT OUTER JOIN
 widget_click ON (widget_click.url = JSON_EXTRACT_SCALAR(qs, '$.dl') AND widget_click.datet = format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'))
 LEFT OUTER JOIN 
 trivial_click ON (trivial_click.url = JSON_EXTRACT_SCALAR(qs, '$.dl') AND trivial_click.datet = format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'))
+LEFT OUTER JOIN
+plt ON (plt.url = JSON_EXTRACT_SCALAR(qs, '$.dl') AND plt.datet = format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'))
 WHERE JSON_EXTRACT_SCALAR(qs, '$.o_s') = 'pageview' AND {2}
-GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), JSON_EXTRACT_SCALAR(qs, '$.dl'), s_count, sum_scroll_y, max_scroll_y, event_count, w_click_count, t_click_count
+GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), JSON_EXTRACT_SCALAR(qs, '$.dl'), s_count, sum_scroll_y, max_scroll_y, event_count, w_click_count, t_click_count, plt_count, sum_plt, max_plt
 ORDER BY count DESC
 """.format(self.options['athena_database'], self.options['athena_table'], q)
 
