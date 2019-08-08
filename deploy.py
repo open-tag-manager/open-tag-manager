@@ -97,7 +97,7 @@ def main():
         env = config['environment_variables']
         env['OTM_BUCKET'] = script_bucket
         env['OTM_URL'] = 'https://%s/otm.js' % script_domain
-        env['COLLECT_URL'] = 'https://%s/collect.html' % collect_domain
+        env['COLLECT_URL'] = 'https://%s/collect' % collect_domain
         env['OTM_ROLE_DYNAMODB_TABLE'] = dynamo_db_table
         env['OTM_STATS_BUCKET'] = stat_bucket
         env['OTM_STATS_PREFIX'] = 'stats/'
