@@ -187,7 +187,9 @@ SUM(CAST(JSON_EXTRACT_SCALAR(qs, '$.plt') as decimal)) as sum_plt,
 MAX(CAST(JSON_EXTRACT_SCALAR(qs, '$.plt') as decimal)) as max_plt
 FROM {0}.{1}
 WHERE JSON_EXTRACT_SCALAR(qs, '$.o_s') = 'pageview'
-AND CAST(JSON_EXTRACT_SCALAR(qs, '$.plt') as decimal) > 0 AND {2}
+AND CAST(JSON_EXTRACT_SCALAR(qs, '$.plt') as decimal) > 0 
+AND CAST(JSON_EXTRACT_SCALAR(qs, '$.plt') as decimal) <= 30000 
+AND {2}
 GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), JSON_EXTRACT_SCALAR(qs, '$.dl')
 )
 
