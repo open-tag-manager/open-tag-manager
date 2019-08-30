@@ -6,6 +6,7 @@
         <div v-if="isLoading" class="text-center">
           <b-spinner label="Loading..." variant="primary"/>
         </div>
+        <div id="graph-c"></div>
       </div>
       <div class="node-info m-2" v-if="rawUrlLinks">
         <node-detail v-if="node" :node="node">
@@ -76,8 +77,7 @@
 <script>
   import axios from 'axios'
   import _ from 'lodash'
-  import * as d3 from 'd3'
-  import * as DagreD3 from 'dagre-d3'
+  import vis from 'vis-network'
   import {getTree} from '../lib/UrlTree'
   import {getUrls, mergeSameId, convertUrl, convertUrlForTableData, skipData} from '../lib/GraphUril'
   import url from 'url'
@@ -154,8 +154,7 @@
         mergeSameId: true,
         isLoading: false,
 
-        svg: null,
-        zoom: null
+        network: null
       }
     },
     computed: {
@@ -282,12 +281,12 @@
       renderUrls () {
         console.log('render URLs')
 
-        const cl = d3.select('#graph')
-        const width = cl.node().clientWidth
-        const height = this.svgHeight
-        cl.selectAll('*').remove()
-        const svg = cl.append('svg').attr('width', width).attr('height', height)
-        const inner = svg.append('g')
+        const container = document.getElementById('graph-c')
+        container.innerHTML = ''
+        const networkData = {
+          nodes: new vis.DataSet(),
+          edges: new vis.DataSet()
+        }
 
         if (!this.urlGraph) {
           this.urlLinksData = []
@@ -323,29 +322,10 @@
             }
           }
           this.urls = getUrls(this.urlLinks)
-          const g = new DagreD3.graphlib.Graph({compound: true}).setGraph({}).setDefaultEdgeLabel(function () {
-            return {}
-          })
-          const maxCount = _.max(_.values(_.groupBy(this.urlLinks, 'url')).map((d) => {
-            return _.sumBy(d, 'count')
-          }))
           this.urls.forEach((u, idx) => {
-            let label = ''
-            const parsedUrl = url.parse(u)
-            label += parsedUrl.path.replace(/%7b/gi, '{').replace(/%7d/gi, '}') + '\n'
-            const e = _.find(this.urlLinks, {url: u})
-
-            const count = _.sumBy(_.filter(this.urlLinks, {url: u}), 'count')
-            let labelSize = 5 * (count / maxCount)
-            if (labelSize < 1) {
-              labelSize = 1
-            }
-
-            label += strimwidth(e.title, 12)
-            g.setNode(idx, {shape: 'ellipse', label: label, labelStyle: `font-size: ${labelSize}em`})
+            networkData.nodes.add([{id: idx, label: u}])
           })
-
-          g.setNode(this.urls.length, {label: 'Undefined', shape: 'ellipse', labelStyle: 'font-size: 5em'})
+          networkData.nodes.add([{id: this.urls.length, label: 'Undefined'}])
 
           this.urlLinks.forEach((u) => {
             let p = _.indexOf(this.urls, u.p_url)
@@ -357,57 +337,45 @@
             if (t === -1) {
               t = this.urls.length
             }
-
-            let width = 2 * Math.log10(u.count) + 1
-            this.urlLinksData.push({source: p, target: t, count: u.count})
-            g.setEdge(p, t, {
-              label: u.count,
-              style: `stroke-width: ${width}px;`,
-              arrowheadClass: 'arrowhead',
-              curve: d3.curveBasis
-            })
+            networkData.edges.add([{from: p, to: t, label: u.count.toString()}])
           })
-          this.urlGraph = g
+
+          const network = new vis.Network(container, networkData, {
+            nodes: {
+              shape: 'dot',
+              size: 10,
+              font: {
+                size: 12
+              }
+            },
+            edges: {
+              arrows: 'to',
+              smooth: false,
+              font: {align: 'horizontal', size: 10}
+            },
+            physics: {
+              enabled: false
+            }
+          })
+
+          const radius = 300
+          const ids = networkData.nodes.getIds()
+          const d = 2 * Math.PI / ids.length
+          ids.forEach(function (id, i) {
+            let x = radius * Math.cos(d * i)
+            let y = radius * Math.sin(d * i)
+            network.moveNode(id, x, y)
+          })
+
+          network.on('zoom', this.onZoom)
+          network.on('doubleClick', (e) => {
+            if (e.nodes.length > 0 && e.nodes[0] !== this.urls.length) {
+              this.url = this.urls[e.nodes[0]]
+              this.render()
+            }
+          })
+          this.network = network
         }
-
-        const render = new DagreD3.render()
-        render(inner, this.urlGraph)
-
-        const zoom = d3.zoom().on('zoom', () => {
-          inner.attr('transform', d3.event.transform)
-        })
-        svg.call(zoom)
-        const initialScale = 0.75
-        svg.call(zoom.transform, d3.zoomIdentity.translate((svg.attr('width') - this.urlGraph.graph().width * initialScale) / 2, 20).scale(initialScale))
-        svg.selectAll('g.node').on('click', (id) => {
-          if (id !== this.urls.length) {
-            this.url = this.urls[id]
-            this.render()
-          }
-        })
-        svg.selectAll('g.node').on('mouseover', (id) => {
-          d3.select(svg.selectAll('g.node').nodes()[id]).classed('hover', true)
-          const keys = _.keys(_.pickBy(this.urlLinksData, {source: parseInt(id)})).concat(_.keys(_.pickBy(this.urlLinksData, {target: parseInt(id)})))
-          const edgePaths = svg.selectAll('g.edgePath').nodes()
-          const edgeLabels = svg.selectAll('g.edgeLabel').nodes()
-          for (let key of keys) {
-            d3.select(edgePaths[parseInt(key)]).classed('hover', true)
-            d3.select(edgeLabels[parseInt(key)]).classed('hover', true)
-          }
-        })
-        svg.selectAll('g.node').on('mouseout', (id) => {
-          d3.select(svg.selectAll('g.node').nodes()[id]).classed('hover', false)
-          const keys = _.keys(_.pickBy(this.urlLinksData, {source: parseInt(id)})).concat(_.keys(_.pickBy(this.urlLinksData, {target: parseInt(id)})))
-          const edgePaths = svg.selectAll('g.edgePath').nodes()
-          const edgeLabels = svg.selectAll('g.edgeLabel').nodes()
-          for (let key of keys) {
-            d3.select(edgePaths[parseInt(key)]).classed('hover', false)
-            d3.select(edgeLabels[parseInt(key)]).classed('hover', false)
-          }
-        })
-
-        this.svg = svg
-        this.zoom = zoom
       },
       back () {
         this.url = null
@@ -485,26 +453,22 @@
           this.filter()
         }
 
-        const cl = d3.select('#graph')
-        const width = cl.node().clientWidth
-        const height = this.svgHeight
-        cl.selectAll('*').remove()
-        const svg = cl.append('svg').attr('width', width).attr('height', height)
-        const inner = svg.append('g')
-        const g = new DagreD3.graphlib.Graph({compound: true}).setGraph({}).setDefaultEdgeLabel(function () {
-          return {}
-        })
+        const container = document.getElementById('graph-c')
+        container.innerHTML = ''
 
         if (this.graphData.length === 0) {
           console.log('no data to render')
           return
         }
 
+        const networkData = {
+          edges: new vis.DataSet(),
+          nodes: new vis.DataSet()
+        }
+
         const nodesData = []
         const linksData = []
         const urls = []
-
-        const color = d3.scaleOrdinal(d3.schemeCategory20)
 
         this.graphData.forEach(function (o) {
           if (!o.label) {
@@ -512,7 +476,15 @@
           }
           let sourceIdx = _.findIndex(nodesData, {name: o['p_state'], url: o.p_url})
           if (sourceIdx === -1) {
-            nodesData.push({name: o['p_state'], url: o.p_url, title: o.p_title, label: o.p_label, xpath: o.p_xpath, a_id: o.p_a_id, class: o.p_class})
+            nodesData.push({
+              name: o['p_state'],
+              url: o.p_url,
+              title: o.p_title,
+              label: o.p_label,
+              xpath: o.p_xpath,
+              a_id: o.p_a_id,
+              class: o.p_class
+            })
           }
           let targetIdx = _.findIndex(nodesData, {name: o['state'], url: o.url})
           if (targetIdx === -1) {
@@ -539,18 +511,6 @@
           nodesData[targetIdx].class = o.class
         })
 
-        urls.forEach((url, idx) => {
-          const node = _.find(nodesData, {url})
-          if (node) {
-            let style = 'fill:' + color(url) + ';rx:5px;ry:5px'
-            if (url === this.url) {
-              style += ';stroke-width:5px'
-            }
-            let label = `${url}\n${strimwidth(node.title, 20)}`
-            g.setNode(`url-${idx}`, {label, clusterLabelPos: 'top', style})
-          }
-        })
-
         nodesData.forEach(function (node, idx) {
           let label = 'Undefined'
           if (node.name && node.name !== 'undefined') {
@@ -563,16 +523,9 @@
             } else {
               lCaption = node.name
             }
-
             label = strimwidth(lCaption, 20)
           }
-          g.setNode(idx, {shape: 'ellipse', label})
-        })
-
-        nodesData.forEach(function (node, idx) {
-          if (node.url) {
-            g.setParent(idx, `url-${_.indexOf(urls, node.url)}`)
-          }
+          networkData.nodes.add([{id: idx, label: label, group: node.url}])
         })
 
         this.graphData.forEach(function (o) {
@@ -586,61 +539,37 @@
           linksData.push({
             source: sourceIdx,
             target: targetIdx,
-            count: o['count'],
-            w: Math.log10(o.count)
+            count: o['count']
           })
-          let width = 2 * Math.log10(o.count) + 1
-          g.setEdge(sourceIdx, targetIdx, {
-            label: o['count'],
-            style: `stroke-width: ${width}px;`,
-            arrowheadClass: 'arrowhead',
-            curve: d3.curveBasis
-          })
+          console.log(o['count'])
+          networkData.edges.add([{from: sourceIdx, to: targetIdx, label: o['count'].toString()}])
         })
 
-        const render = new DagreD3.render()
-        render(inner, g)
+        const network = new vis.Network(container, networkData, {
+          nodes: {
+            shape: 'dot',
+            size: 10,
+            font: {
+              size: 12
+            }
+          },
+          edges: {
+            arrows: 'to',
+            smooth: false,
+            font: {align: 'horizontal', size: 10}
+          },
+          physics: {
+            enabled: false
+          }
+        })
 
-        const zoom = d3.zoom().on('zoom', () => {
-          inner.attr('transform', d3.event.transform)
-        })
-        svg.call(zoom)
-        const initialScale = 0.75
-        svg.call(zoom.transform, d3.zoomIdentity.translate((svg.attr('width') - g.graph().width * initialScale) / 2, 20).scale(initialScale))
-
-        svg.selectAll('g.node').on('mouseover', (id) => {
-          d3.select(svg.selectAll('g.node').nodes()[id]).classed('hover', true)
-          const keys = _.keys(_.pickBy(linksData, {source: parseInt(id)})).concat(_.keys(_.pickBy(linksData, {target: parseInt(id)})))
-          const edgePaths = svg.selectAll('g.edgePath').nodes()
-          const edgeLabels = svg.selectAll('g.edgeLabel').nodes()
-          for (let key of keys) {
-            d3.select(edgePaths[parseInt(key)]).classed('hover', true)
-            d3.select(edgeLabels[parseInt(key)]).classed('hover', true)
+        network.on('zoom', this.onZoom)
+        network.on('click', (e) => {
+          if (e.nodes.length > 0) {
+            this.node = nodesData[e.nodes[0]]
           }
         })
-        svg.selectAll('g.node').on('mouseout', (id) => {
-          d3.select(svg.selectAll('g.node').nodes()[id]).classed('hover', false)
-          const keys = _.keys(_.pickBy(linksData, {source: parseInt(id)})).concat(_.keys(_.pickBy(linksData, {target: parseInt(id)})))
-          const edgePaths = svg.selectAll('g.edgePath').nodes()
-          const edgeLabels = svg.selectAll('g.edgeLabel').nodes()
-          for (let key of keys) {
-            d3.select(edgePaths[parseInt(key)]).classed('hover', false)
-            d3.select(edgeLabels[parseInt(key)]).classed('hover', false)
-          }
-        })
-        svg.selectAll('g.node').on('click', (id) => {
-          this.node = nodesData[id]
-        })
-        svg.selectAll('g.cluster').on('click', (id) => {
-          const match = id.match(/url-(\d+)/)
-          const u = urls[parseInt(match[1])]
-          if (u !== this.url) {
-            this.url = u
-            this.render()
-          }
-        })
-        this.svg = svg
-        this.zoom = zoom
+        this.network = network
       },
       async r () {
         this.urlGraph = null
@@ -654,55 +583,44 @@
         })
         this.$refs.swaggerSampleModal.hide()
       },
+      onZoom () {
+        this.network.setOptions({
+          nodes: {
+            font: {
+              size: 12 * (1 / this.network.getScale())
+            }
+          },
+          edges: {
+            font: {
+              size: 10 * (1 / this.network.getScale())
+            }
+          }
+        })
+      },
       zoomIn () {
-        this.zoom.scaleBy(this.svg.transition().duration(750), 1.3)
+        this.network.moveTo({
+          scale: this.network.getScale() + 0.2,
+          animation: {duration: 100}
+        })
+        this.onZoom()
       },
       zoomOut () {
-        this.zoom.scaleBy(this.svg.transition().duration(750), 1 / 1.3)
+        this.network.moveTo({
+          scale: this.network.getScale() - 0.2,
+          animation: {duration: 100}
+        })
+        this.onZoom()
       }
     }
   }
 </script>
 
-<style>
-  #graph .node rect, #graph .node ellipse {
-    stroke: #333;
-    fill: #fff;
-    stroke-width: 1.5px;
-  }
-
-  #graph path {
-    stroke: #333;
-    fill: none;
-    stroke-width: 1.5px;
-  }
-
-  #graph .arrowhead {
-    stroke: #333;
-    fill: #333;
-    stroke-width: 1.5px;
-  }
-
-  #graph .clusters rect {
-    fill: #fff;
-    stroke: #333;
-    stroke-width: 1.5px;
-  }
-
-  #graph .node.hover ellipse {
-    stroke: #d9534f;
-  }
-
-  #graph .edgePath.hover path {
-    stroke: #d9534f;
-  }
-
-  #graph .edgeLabel.hover {
-    color: #d9534f;
-  }
-</style>
-
 <style scoped>
+  #graph-c {
+    width: 100%;
+    height: calc(100vh - 130px);
+  }
+
   .graph-container {
     position: relative;
   }
