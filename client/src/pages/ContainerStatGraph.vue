@@ -355,16 +355,14 @@
             },
             physics: {
               enabled: false
+            },
+            layout: {
+              hierarchical: {
+                enabled: true,
+                treeSpacing: 500,
+                nodeSpacing: 500
+              }
             }
-          })
-
-          const radius = 300
-          const ids = networkData.nodes.getIds()
-          const d = 2 * Math.PI / ids.length
-          ids.forEach(function (id, i) {
-            let x = radius * Math.cos(d * i)
-            let y = radius * Math.sin(d * i)
-            network.moveNode(id, x, y)
           })
 
           network.on('zoom', this.onZoom)
