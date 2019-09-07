@@ -346,12 +346,16 @@
               shape: 'dot',
               size: 10,
               font: {
-                size: 12
+                size: 12,
+                color: '#FF0000',
+                background: '#00FF00'
               }
             },
             edges: {
               arrows: 'to',
-              smooth: false,
+              smooth: {
+                type: 'cubicBezier'
+              },
               font: {align: 'horizontal', size: 10}
             },
             physics: {
