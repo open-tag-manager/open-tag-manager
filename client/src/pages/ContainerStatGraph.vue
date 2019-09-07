@@ -337,7 +337,8 @@
             if (t === -1) {
               t = this.urls.length
             }
-            networkData.edges.add([{from: p, to: t, label: u.count.toString()}])
+            let width = 2 * Math.log10(u.count) + 1
+            networkData.edges.add([{from: p, to: t, label: u.count.toString(), width}])
           })
 
           const network = new vis.Network(container, networkData, {
@@ -539,8 +540,8 @@
             target: targetIdx,
             count: o['count']
           })
-          console.log(o['count'])
-          networkData.edges.add([{from: sourceIdx, to: targetIdx, label: o['count'].toString()}])
+          let width = 2 * Math.log10(o.count) + 1
+          networkData.edges.add([{from: sourceIdx, to: targetIdx, label: o['count'].toString(), width}])
         })
 
         const network = new vis.Network(container, networkData, {
@@ -557,7 +558,7 @@
             font: {align: 'horizontal', size: 10}
           },
           physics: {
-            enabled: false
+            enabled: true
           }
         })
 
