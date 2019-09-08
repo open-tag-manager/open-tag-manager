@@ -323,7 +323,9 @@
           }
           this.urls = getUrls(this.urlLinks)
           this.urls.forEach((u, idx) => {
-            networkData.nodes.add([{id: idx, label: u}])
+            const parsedUrl = url.parse(u)
+            const label = parsedUrl && parsedUrl.path ? parsedUrl.path : u
+            networkData.nodes.add([{id: idx, label}])
           })
           networkData.nodes.add([{id: this.urls.length, label: 'Undefined'}])
 
