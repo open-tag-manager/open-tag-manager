@@ -139,7 +139,6 @@
         urls: [],
         rawUrlLinks: null,
         urlLinks: null,
-        urlGraph: null,
         urlLinksData: null,
 
         // selected url (page)
@@ -282,105 +281,112 @@
         console.log('render URLs')
 
         const container = document.getElementById('graph-c')
+        let focusId = null
         container.innerHTML = ''
         const networkData = {
           nodes: new vis.DataSet(),
           edges: new vis.DataSet()
         }
 
-        if (!this.urlGraph) {
-          this.urlLinksData = []
-          // filter
-          this.urlLinks = _.cloneDeep(this.rawUrlLinks)
-          this.urlLinks = convertUrl(this.urlLinks, this.swaggerDoc)
-          this.urlLinks = _.filter(this.urlLinks, (d) => {
-            return d.count >= this.thresholdCount
-          })
-          if (this.swaggerDoc) {
-            const swaggerPaths = JSON.parse(this.swaggerDoc).paths
+        this.urlLinksData = []
+        // filter
+        this.urlLinks = _.cloneDeep(this.rawUrlLinks)
+        this.urlLinks = convertUrl(this.urlLinks, this.swaggerDoc)
+        this.urlLinks = _.filter(this.urlLinks, (d) => {
+          return d.count >= this.thresholdCount
+        })
+        if (this.swaggerDoc) {
+          const swaggerPaths = JSON.parse(this.swaggerDoc).paths
 
-            if (swaggerPaths) {
-              this.urlLinks = _.filter(this.urlLinks, (d) => {
-                if (d.url) {
-                  const parsedUrl = url.parse(d.url)
-                  const sObj = swaggerPaths[parsedUrl.path.replace(/%7b/gi, '{').replace(/%7d/gi, '}')]
-                  if (sObj && sObj.otmHideNode) {
-                    return false
-                  }
+          if (swaggerPaths) {
+            this.urlLinks = _.filter(this.urlLinks, (d) => {
+              if (d.url) {
+                const parsedUrl = url.parse(d.url)
+                const sObj = swaggerPaths[parsedUrl.path.replace(/%7b/gi, '{').replace(/%7d/gi, '}')]
+                if (sObj && sObj.otmHideNode) {
+                  return false
                 }
+              }
 
-                if (d.p_url) {
-                  const parsedUrl = url.parse(d.p_url)
-                  const sObj = swaggerPaths[parsedUrl.path.replace(/%7b/gi, '{').replace(/%7d/gi, '}')]
-                  if (sObj && sObj.otmHideNode) {
-                    return false
-                  }
+              if (d.p_url) {
+                const parsedUrl = url.parse(d.p_url)
+                const sObj = swaggerPaths[parsedUrl.path.replace(/%7b/gi, '{').replace(/%7d/gi, '}')]
+                if (sObj && sObj.otmHideNode) {
+                  return false
                 }
+              }
 
-                return true
-              })
+              return true
+            })
+          }
+        }
+        this.urls = getUrls(this.urlLinks)
+        this.urls.forEach((u, idx) => {
+          const parsedUrl = url.parse(u)
+          const label = parsedUrl && parsedUrl.path ? parsedUrl.path.replace(/%7b/gi, '{').replace(/%7d/gi, '}') : u
+          const node = {id: idx, label}
+          if (label === '/') {
+            focusId = idx
+          }
+          networkData.nodes.add([node])
+        })
+        networkData.nodes.add([{id: this.urls.length, label: 'Undefined'}])
+
+        this.urlLinks.forEach((u) => {
+          let p = _.indexOf(this.urls, u.p_url)
+          let t = _.indexOf(this.urls, u.url)
+
+          if (p === -1) {
+            p = this.urls.length
+          }
+          if (t === -1) {
+            t = this.urls.length
+          }
+          let width = 2 * Math.log10(u.count) + 1
+          networkData.edges.add([{from: p, to: t, label: u.count.toString(), width}])
+        })
+
+        const network = new vis.Network(container, networkData, {
+          nodes: {
+            shape: 'dot',
+            size: 10,
+            font: {
+              size: 12,
+              color: '#FF0000',
+              background: '#00FF00'
+            }
+          },
+          edges: {
+            arrows: 'to',
+            smooth: {
+              type: 'cubicBezier'
+            },
+            font: {align: 'horizontal', size: 10}
+          },
+          physics: {
+            enabled: false
+          },
+          layout: {
+            hierarchical: {
+              enabled: true,
+              treeSpacing: 500,
+              nodeSpacing: 500
             }
           }
-          this.urls = getUrls(this.urlLinks)
-          this.urls.forEach((u, idx) => {
-            const parsedUrl = url.parse(u)
-            const label = parsedUrl && parsedUrl.path ? parsedUrl.path : u
-            networkData.nodes.add([{id: idx, label}])
-          })
-          networkData.nodes.add([{id: this.urls.length, label: 'Undefined'}])
+        })
 
-          this.urlLinks.forEach((u) => {
-            let p = _.indexOf(this.urls, u.p_url)
-            let t = _.indexOf(this.urls, u.url)
-
-            if (p === -1) {
-              p = this.urls.length
-            }
-            if (t === -1) {
-              t = this.urls.length
-            }
-            let width = 2 * Math.log10(u.count) + 1
-            networkData.edges.add([{from: p, to: t, label: u.count.toString(), width}])
-          })
-
-          const network = new vis.Network(container, networkData, {
-            nodes: {
-              shape: 'dot',
-              size: 10,
-              font: {
-                size: 12,
-                color: '#FF0000',
-                background: '#00FF00'
-              }
-            },
-            edges: {
-              arrows: 'to',
-              smooth: {
-                type: 'cubicBezier'
-              },
-              font: {align: 'horizontal', size: 10}
-            },
-            physics: {
-              enabled: false
-            },
-            layout: {
-              hierarchical: {
-                enabled: true,
-                treeSpacing: 500,
-                nodeSpacing: 500
-              }
-            }
-          })
-
-          network.on('zoom', this.onZoom)
-          network.on('doubleClick', (e) => {
-            if (e.nodes.length > 0 && e.nodes[0] !== this.urls.length) {
-              this.url = this.urls[e.nodes[0]]
-              this.render()
-            }
-          })
-          this.network = network
-        }
+        network.on('zoom', this.onZoom)
+        network.on('doubleClick', (e) => {
+          if (e.nodes.length > 0 && e.nodes[0] !== this.urls.length) {
+            this.url = this.urls[e.nodes[0]]
+            this.render()
+          }
+        })
+        network.focus(focusId || 0, {
+          scale: 1,
+          animation: {duration: 100}
+        })
+        this.network = network
       },
       back () {
         this.url = null
@@ -453,7 +459,6 @@
 
         if (this.graphData.length >= 2000 && this.thresholdCount < 5) {
           console.log('too many data')
-          this.urlGraph = null
           this.thresholdCount = 5
           this.filter()
         }
@@ -577,7 +582,6 @@
         this.network = network
       },
       async r () {
-        this.urlGraph = null
         await this.render()
       },
       async saveSwaggerSample ({sample}) {
