@@ -489,10 +489,66 @@ def create_container_goals(org, name):
     except ClientError:
         data = []
 
-    data.append({'id': uuid.uuid4(), 'name': body['name'], 'target': body['target']})
+    target_match = 'eq'
+    if 'target_match' in body:
+        target_match = body['target_match']
+
+    path = None
+    if 'path' in body:
+        path = body['path']
+
+    path_match = 'eq'
+    if 'path_match' in body:
+        path_match = body['path_match']
+
+    goal = {
+        'id': str(uuid.uuid4()),
+        'name': body['name'],
+        'target': body['target'],
+        'target_match': target_match,
+        'path': path,
+        'path_match': path_match
+    }
+    data.append(goal)
 
     s3.Object(bucket, file).put(Body=json.dumps(data), ContentType='application/json')
-    return data
+
+    return goal
+
+
+@app.route('/orgs/{org}/containers/{name}/goals/{goal}', methods=['DELETE'], cors=True, authorizer=authorizer)
+def delete_container_goals(org, name, goal):
+    if not has_role(org, 'read'):
+        return Response(body={'error': 'permission error'}, status_code=401)
+
+    config = get_config_data(org)
+    (data, container) = get_container_data(org, name, config)
+
+    if data is None:
+        return Response(body={'error': 'not found'}, status_code=404)
+
+    o_prefix = ''
+    if org != 'root':
+        o_prefix = org + '/'
+
+    bucket = os.environ.get('OTM_STATS_BUCKET')
+    file = (os.environ.get('OTM_STATS_PREFIX') or '') + o_prefix + name + '_goals.json'
+    object = s3.Object(bucket, file)
+    try:
+        response = object.get()
+        data = json.loads(response['Body'].read())
+        c = list(filter(lambda x: x['id'] == goal, data))
+        print(data)
+        print(c)
+        if len(c) > 0:
+            data.remove(c[0])
+            s3.Object(bucket, file).put(Body=json.dumps(data), ContentType='application/json')
+            return Response(body='', status_code=204)
+        else:
+            return Response(body={'error': 'not found'}, status_code=404)
+    except ClientError:
+        return Response(body={'error': 'not found'}, status_code=404)
+
 
 @app.route('/orgs/{org}/containers/{name}/stats/{file}/events', methods=['GET'], cors=True, authorizer=authorizer)
 def get_container_stats_data_event(org, name, file):
