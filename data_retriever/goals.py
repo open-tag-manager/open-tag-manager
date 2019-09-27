@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import json
 import os
 import re
+import pandas as pd
 
 class GoalDataRetriever(RetrieverBase):
     def __init__(self, **kwargs):
@@ -32,6 +33,7 @@ class GoalDataRetriever(RetrieverBase):
         q += " AND JSON_EXTRACT_SCALAR(qs, '$.o_s') = '{0}'".format(re.sub(r'\'', '\'\'', g['target']))
 
         if g['path']:
+            # support eq mode only
             q += " AND regexp_like(JSON_EXTRACT_SCALAR(qs, '$.dl'), '^http?://[^/]+{0}$')".format(re.sub(r'\'', '\'\'', g['path']))
 
         sql = """SELECT 
@@ -40,8 +42,20 @@ COUNT(DISTINCT JSON_EXTRACT_SCALAR(qs, '$.cid')) as u_count
 FROM {0}.{1}
 WHERE {2}
 """.format(self.options['athena_database'], self.options['athena_table'], q)
-        print(sql)
 
+        result = self._execute_athena_query(sql)
+        if result['QueryExecution']['Status']['State'] != 'SUCCEEDED':
+            print(json.dumps({'message': 'error', 'result': result}))
+            return False
+
+        result_data = self.s3.Bucket(self.options['athena_result_bucket']).Object(
+            '%s%s.csv' % (
+                self.options['athena_result_prefix'], result['QueryExecution']['QueryExecutionId'])).get()
+        pd_data = pd.read_csv(result_data['Body'], encoding='utf-8')
+        e_count = pd_data.iloc[0]['e_count']
+        u_count = pd_data.iloc[0]['u_count']
+        r_data = {'date': self.yesterday.strftime('%Y-%m-%d'), 'e_count': e_count, 'u_count': u_count}
+        print(r_data)
 
 def main():
     retriever = GoalDataRetriever(
