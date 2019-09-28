@@ -1,9 +1,11 @@
 from retriever_base import RetrieverBase
 from datetime import datetime, timedelta
+from botocore.errorfactory import ClientError
 import json
 import os
 import re
 import pandas as pd
+
 
 class GoalDataRetriever(RetrieverBase):
     def __init__(self, **kwargs):
@@ -18,10 +20,6 @@ class GoalDataRetriever(RetrieverBase):
         for g in goal_data:
             self.execute_result_yesterday(g)
 
-    def execute_full_result(self, g):
-        # TODO: implement it
-        False
-
     def execute_result_yesterday(self, g):
         q = ''
         q += "tid = '{0}'".format(g['container'])
@@ -34,7 +32,8 @@ class GoalDataRetriever(RetrieverBase):
 
         if g['path']:
             # support eq mode only
-            q += " AND regexp_like(JSON_EXTRACT_SCALAR(qs, '$.dl'), '^http?://[^/]+{0}$')".format(re.sub(r'\'', '\'\'', g['path']))
+            q += " AND regexp_like(JSON_EXTRACT_SCALAR(qs, '$.dl'), '^http?://[^/]+{0}$')".format(
+                re.sub(r'\'', '\'\'', g['path']))
 
         sql = """SELECT 
 COUNT(qs) as e_count,
@@ -52,10 +51,33 @@ WHERE {2}
             '%s%s.csv' % (
                 self.options['athena_result_prefix'], result['QueryExecution']['QueryExecutionId'])).get()
         pd_data = pd.read_csv(result_data['Body'], encoding='utf-8')
-        e_count = pd_data.iloc[0]['e_count']
-        u_count = pd_data.iloc[0]['u_count']
+        e_count = int(pd_data.iloc[0]['e_count'])
+        u_count = int(pd_data.iloc[0]['u_count'])
         r_data = {'date': self.yesterday.strftime('%Y-%m-%d'), 'e_count': e_count, 'u_count': u_count}
-        print(r_data)
+
+        grp_prefix = ''
+        if not g['org'] == 'root':
+            grp_prefix = g['org'] + '/'
+
+        result_file = self.options['stat_prefix'] + grp_prefix + g['container'] + '_' + g['id'] + '_goal_result.json'
+        goal_result_obj = self.s3.Object(self.options['stat_bucket'], result_file)
+        try:
+            response = goal_result_obj.get()
+            result = json.loads(response['Body'].read())
+        except ClientError:
+            result = []
+
+        idx = [i for i, _ in enumerate(result) if _['date'] == r_data['date']]
+        if len(idx) > 0:
+            result[idx[0]] = r_data
+        else:
+            result.append(r_data)
+
+        result.sort(key=lambda x: x['date'])
+        print(json.dumps(
+            {'message': 'save goal result data', 'bucket': self.options['stat_bucket'], 'file': result_file}))
+        goal_result_obj.put(Body=json.dumps(result), ContentType='application/json')
+
 
 def main():
     retriever = GoalDataRetriever(
