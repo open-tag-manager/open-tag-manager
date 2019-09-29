@@ -10,6 +10,7 @@ import Container from '@/pages/Container'
 import ContainerSetting from '@/pages/ContainerSetting'
 import ContainerStat from '@/pages/ContainerStat'
 import ContainerStatGraph from '@/pages/ContainerStatGraph'
+import ContainerGoals from '@/pages/ContainerGoals'
 import OrgSettings from '@/pages/OrgSettings'
 import OrgSettingsContainers from '@/pages/OrgSettingsContainers'
 
@@ -102,6 +103,11 @@ const router = new Router({
               path: 'stat/:statid',
               name: 'Container-Stat-Graph',
               component: ContainerStatGraph
+            },
+            {
+              path: 'goals',
+              name: 'Container-Goals',
+              component: ContainerGoals
             }
           ]
         },

@@ -12,6 +12,9 @@
           <b-nav-item :to="{name: 'Container-Stat', params: {org: $route.params.org, name: $route.params.name}}">
             Analytics
           </b-nav-item>
+          <b-nav-item :to="{name: 'Container-Goals', params: {org: $route.params.org, name: $route.params.name}}">
+            Goals
+          </b-nav-item>
           <b-nav-item :to="{name: 'Container-Setting', params: {org: $route.params.org, name: $route.params.name}}">
             Setting
           </b-nav-item>
