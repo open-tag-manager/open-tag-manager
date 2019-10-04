@@ -443,18 +443,15 @@ def get_container_goals(org, name):
     if data is None:
         return Response(body={'error': 'not found'}, status_code=404)
 
-    o_prefix = ''
-    if org != 'root':
-        o_prefix = org + '/'
-
     bucket = os.environ.get('OTM_STATS_BUCKET')
-    file = (os.environ.get('OTM_STATS_PREFIX') or '') + o_prefix + name + '_goals.json'
+    file = (os.environ.get('OTM_STATS_PREFIX') or '') + 'goals.json'
     object = s3.Object(bucket, file)
     try:
         response = object.get()
         data = json.loads(response['Body'].read())
+        result = list(filter(lambda x: x['org'] == org and x['container'] == name, data))
 
-        return data
+        return result
     except ClientError:
         return Response(body=[], status_code=200)
 
@@ -470,12 +467,8 @@ def create_container_goals(org, name):
     if data is None:
         return Response(body={'error': 'not found'}, status_code=404)
 
-    o_prefix = ''
-    if org != 'root':
-        o_prefix = org + '/'
-
     bucket = os.environ.get('OTM_STATS_BUCKET')
-    file = (os.environ.get('OTM_STATS_PREFIX') or '') + o_prefix + name + '_goals.json'
+    file = (os.environ.get('OTM_STATS_PREFIX') or '') + 'goals.json'
     object = s3.Object(bucket, file)
 
     request = app.current_request
@@ -504,6 +497,8 @@ def create_container_goals(org, name):
     goal = {
         'id': str(uuid.uuid4()),
         'name': body['name'],
+        'org': org,
+        'container': name,
         'target': body['target'],
         'target_match': target_match,
         'path': path,
@@ -518,7 +513,7 @@ def create_container_goals(org, name):
 
 @app.route('/orgs/{org}/containers/{name}/goals/{goal}', methods=['DELETE'], cors=True, authorizer=authorizer)
 def delete_container_goals(org, name, goal):
-    if not has_role(org, 'read'):
+    if not has_role(org, 'write'):
         return Response(body={'error': 'permission error'}, status_code=401)
 
     config = get_config_data(org)
@@ -532,14 +527,12 @@ def delete_container_goals(org, name, goal):
         o_prefix = org + '/'
 
     bucket = os.environ.get('OTM_STATS_BUCKET')
-    file = (os.environ.get('OTM_STATS_PREFIX') or '') + o_prefix + name + '_goals.json'
+    file = (os.environ.get('OTM_STATS_PREFIX') or '') + 'goals.json'
     object = s3.Object(bucket, file)
     try:
         response = object.get()
         data = json.loads(response['Body'].read())
-        c = list(filter(lambda x: x['id'] == goal, data))
-        print(data)
-        print(c)
+        c = list(filter(lambda x: x['id'] == goal and x['org'] == org and x['container'] == name, data))
         if len(c) > 0:
             data.remove(c[0])
             s3.Object(bucket, file).put(Body=json.dumps(data), ContentType='application/json')
