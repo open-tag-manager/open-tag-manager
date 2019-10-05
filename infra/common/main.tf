@@ -486,7 +486,7 @@ resource "aws_cloudwatch_event_rule" "otm_data_retriever_goal" {
   name                = "${terraform.env}_otm_data_retriever_goal"
   description         = "[OTM] retrieve goal result"
   schedule_expression = "cron(10 0 * * ? *)"
-  is_enabled          = false
+  is_enabled          = "${var.aws_cloudwatch_event_goal_enable}"
 }
 
 resource "aws_cloudwatch_event_target" "otm_data_retriever_goal" {

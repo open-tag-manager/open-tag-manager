@@ -36,6 +36,7 @@ Copy `terraform.tfvars.sample` to `terraform.tfvars` and set your configuration.
 - `aws_cognito_user_pool_id`: AWS Cognito user pool ID.
 - `aws_cognito_user_pool_client_id`: AWS Cognito user pool client ID.
 - `aws_sources_tags` (Optional, Map): Attached tags for OTM related resources.
+- `aws_cloudwatch_event_goal_enable`: (Optional, Boolean): enability 
 
 (Optional) If you need to attach domain for OTM related service,
 create `${env}-terraform.tfvars`.
