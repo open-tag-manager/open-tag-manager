@@ -18,4 +18,3 @@ RUN pip3 install -r requirements.txt
 COPY app.py /usr/src/app
 COPY goals.py /usr/src/app
 COPY retriever_base.py /usr/src/app
-ENTRYPOINT ["python", "app.py"]

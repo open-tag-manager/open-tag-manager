@@ -24,8 +24,8 @@ class GoalDataRetriever(RetrieverBase):
         q = ''
         q += "tid = '{0}'".format(g['container'])
         q += ' AND year = {0}'.format(self.yesterday.strftime('%Y'))
-        q += ' AND month = {0}'.format(self.yesterday.strftime('%-m'))
-        q += ' AND day = {0}'.format(self.yesterday.strftime('%-d'))
+        q += ' AND month = {0}'.format(self.yesterday.month)
+        q += ' AND day = {0}'.format(self.yesterday.day)
 
         # support eq mode only
         q += " AND JSON_EXTRACT_SCALAR(qs, '$.o_s') = '{0}'".format(re.sub(r'\'', '\'\'', g['target']))
