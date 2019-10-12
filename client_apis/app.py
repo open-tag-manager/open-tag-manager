@@ -451,6 +451,19 @@ def get_container_goals(org, name):
         data = json.loads(response['Body'].read())
         result = list(filter(lambda x: x['org'] == org and x['container'] == name, data))
 
+        for r in result:
+            prefix = (os.environ.get('OTM_STATS_PREFIX') or '')
+            org = r['org']
+            if not org == 'root':
+                prefix += org + '/'
+
+            r['result_url'] = s3_client.generate_presigned_url(
+                ClientMethod='get_object',
+                Params={'Bucket': bucket, 'Key': prefix + r['container'] + '_' + r['id'] + '_goal_result.json'},
+                ExpiresIn=3600,
+                HttpMethod='GET'
+            )
+
         return result
     except ClientError:
         return Response(body=[], status_code=200)
