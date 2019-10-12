@@ -38,26 +38,15 @@
     <h3>Goals</h3>
     <div class="row">
       <div v-for="goal in goals" :key="goal.id" class="col-6">
-        <div class="card mb-1">
-          <div>
-            TODO: graph
-          </div>
-          <div class="card-body">
-            <div class="mb-1">
-              <div>ID: {{goal.id}}</div>
-              <div>Name: {{goal.name}}</div>
-              <div>Target status: <code>{{goal.target}}</code> (<code>{{goal.target_match}}</code>)</div>
-              <div v-if="goal.path">Target path: <code>{{goal.path}}</code> (<code>{{goal.path_match}}</code>)</div>
-            </div>
-            <button class="btn btn-danger btn-sm" @click="deleteGoal(goal)">Delete</button>
-          </div>
-        </div>
+        <goal-result-card :goal="goal"></goal-result-card>
       </div>
     </div>
   </div>
 </template>
 
 <script>
+  import GoalResultCard from '../components/GoalResultCard'
+
   const goalDefault = () => {
     return {
       name: null,
@@ -69,6 +58,7 @@
   }
 
   export default {
+    components: {GoalResultCard},
     data () {
       return {
         newGoal: goalDefault(),
@@ -88,11 +78,6 @@
         const name = this.$route.params.name
         await this.$Amplify.API.post('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${name}/goals`, {body: this.newGoal})
         this.newGoal = goalDefault()
-        await this.reloadGoals()
-      },
-      async deleteGoal (goal) {
-        const name = this.$route.params.name
-        await this.$Amplify.API.del('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${name}/goals/${goal.id}`)
         await this.reloadGoals()
       }
     }
