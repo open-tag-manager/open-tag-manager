@@ -28,6 +28,7 @@
       const componentElement = d3.select(this.$el)
       const graph = componentElement.select('.graph')
       const width = graph.node().clientWidth
+      const margin = {left: 0, right: 0, top: 0, bottom: 50}
       const height = 200
       const svg = graph.append('svg')
       svg.attr('width', width).attr('height', height)
@@ -49,7 +50,49 @@
           }
           return d.u_count
         }))])
-        .range([height, 0])
+        .range([height - margin.bottom, margin.top])
+
+      const focus = svg.append('g')
+        .append('circle')
+        .style('fill', 'none')
+        .style('stroke', 'black')
+        .style('r', 3)
+        .style('opacity', 0)
+
+      const focusText = graph.append('div')
+        .attr('class', 'focus-text')
+        .style('opacity', 0)
+        .style('text-align', 'center')
+        .style('position', 'absolute')
+        .style('z-index', 255)
+
+      const bisect = d3.bisector((d) => {
+        return d.x
+      }).left
+
+      svg.append('rect')
+        .style('fill', 'none')
+        .style('pointer-events', 'all')
+        .attr('width', width - margin.left - margin.right)
+        .attr('height', height - margin.top - margin.bottom)
+        .on('mouseover', () => {
+          focus.style('opacity', 1)
+          focusText.style('opacity', 0.5)
+        })
+        .on('mouseout', () => {
+          focus.style('opacity', 0)
+          focusText.style('opacity', 0)
+        })
+        .on('mousemove', function () {
+          const x0 = xScale.invert(d3.mouse(this)[0])
+          const i = bisect(data, x0, 1)
+          const selectedData = data[i]
+          focus.attr('cx', xScale(new Date(selectedData.date)))
+            .attr('cy', yScale(selectedData.e_count))
+          focusText.html(selectedData.date + ' ' + selectedData.e_count)
+            .style('left', xScale(new Date(selectedData.date)) + 'px')
+            .style('top', yScale(selectedData.e_count) - 20 + 'px')
+        })
 
       svg.append('path').datum(data)
         .attr('fill', 'none')
@@ -63,6 +106,15 @@
             return yScale(d.e_count)
           })
         )
+
+      svg.append('g')
+        .attr('class', 'x-axis')
+        .attr('transform', `translate(${[0, height - margin.bottom].join(',')})`)
+        .call(d3.axisBottom(xScale).tickFormat(d3.timeFormat('%m/%d')))
+
+      if (data.length > 0) {
+        svg.append('text').text(data[data.length - 1].e_count)
+      }
     },
     methods: {
       async deleteGoal (goal) {
@@ -73,3 +125,19 @@
     }
   }
 </script>
+
+<style scoped>
+  .graph {
+    position: relative;
+  }
+</style>
+
+<style>
+  .graph .focus-text {
+    width: 100px;
+    font-size: 8px;
+    color: white;
+    background-color: #000000;
+    border-radius: 5px;
+  }
+</style>
