@@ -26,6 +26,9 @@
         <b-form-group label="Threshold Count" horizontal>
           <b-form-input v-model.number="thresholdCount" type="number" required @change="r"></b-form-input>
         </b-form-group>
+        <b-form-group label="Threshold Percent" horizontal>
+        <b-form-input v-model.number="thresholdPercent" type="number" required @change="r"></b-form-input>
+        </b-form-group>
       </div>
       <div class="rb-menu">
         <div class="btn-group" role="group">
@@ -151,6 +154,7 @@
 
         // UI
         thresholdCount: 1,
+        thresholdPercent: 0,
         mergeSameId: true,
         isLoading: false,
 
@@ -322,6 +326,13 @@
               })
             }
           }
+          const sumCount = _.sumBy(this.urlLinks, 'count')
+
+          // filter by percent
+          this.urlLinks = _.filter(this.urlLinks, (d) => {
+            return d.count / sumCount * 100 > parseFloat(this.thresholdPercent)
+          })
+
           this.urls = getUrls(this.urlLinks)
           const g = new DagreD3.graphlib.Graph({compound: true}).setGraph({}).setDefaultEdgeLabel(function () {
             return {}
@@ -361,7 +372,7 @@
             let width = 2 * Math.log10(u.count) + 1
             this.urlLinksData.push({source: p, target: t, count: u.count})
             g.setEdge(p, t, {
-              label: u.count,
+              label: `${u.count}, ${_.round(u.count / sumCount * 100, 2)}%`,
               style: `stroke-width: ${width}px;`,
               arrowheadClass: 'arrowhead',
               curve: d3.curveBasis
