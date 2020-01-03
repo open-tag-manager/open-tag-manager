@@ -4,9 +4,11 @@
 
 Open Tag Manager (OTM for short) is OpenSource Tag Manager and Action Tracker. You can reach raw data.
 
-Copyright
+Copyright 2019-2020 Alexander Keith
 
-see ./LICENSE
+This software is licensed under the Aapche Licens, Version 2.0.
+Please see the file called LICENSE.
+
 
 ## (1) Installation
 
