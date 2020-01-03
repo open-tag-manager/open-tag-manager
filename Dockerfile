@@ -16,7 +16,6 @@ RUN add-apt-repository \
 RUN apt-get update; apt-get -y install docker-ce
 
 RUN pip install chalice==1.12.0 awscli
-RUN npm install -g serverless@1.32.0
 
 RUN mkdir /terraform
 WORKDIR /terraform
