@@ -4,6 +4,7 @@ import uuidV4 from 'uuid/v4'
 import JsSHA from 'jssha'
 import url from 'url'
 import ttiPolyfill from 'tti-polyfill'
+import template from 'lodash.template'
 
 if ('PerformanceLongTaskTiming' in window) {
   let g = window.__tti = {e: []}
@@ -42,9 +43,18 @@ class OTM {
         continue
       }
 
-      switch (observer.type) {
+      let type = observer.type
+      let options = observer.options
+      if (observer.base) {
+        type = observer.base
+        for (let templateName in observer.actionData.template) {
+          options[templateName] = template(observer.actionData.template[templateName])(observer.options)
+        }
+      }
+
+      switch (type) {
         case 'html':
-          const fragment = document.createRange().createContextualFragment(observer.options.script)
+          const fragment = document.createRange().createContextualFragment(options.script)
           let node = fragment.firstChild
           while (node) {
             document.body.appendChild(node)
@@ -55,7 +65,7 @@ class OTM {
           // manage state for collect
           this.prevTime = (new Date()).getTime()
           this.prevState = this.state
-          let newState = observer.options.pageview ? 'pageview' : target
+          let newState = options.pageview ? 'pageview' : target
           if (newState !== 'pageview') {
             if (params.statePrefix) {
               newState = params.statePrefix + '_' + newState
@@ -66,7 +76,7 @@ class OTM {
               delete params.stateSuffix
             }
           } else {
-            if (observer.options.pageview && this.prevState.match(/^click_widget_/)) {
+            if (options.pageview && this.prevState.match(/^click_widget_/)) {
               params.plt = (new Date()).getTime() - this.prevTime
             }
           }
@@ -79,23 +89,23 @@ class OTM {
           if (this.org) {
             params['org'] = this.org
           }
-          this.call(observer.name, observer.options.pageview ? 'pageview' : target, params)
+          this.call(observer.name, options.pageview ? 'pageview' : target, params)
 
           this.prevUrl = this.url
           Cookies.set('_pu', window.document.URL, {expires: 20})
 
           break
         case 'script':
-          if (typeof observer.options.script === 'function') {
-            observer.options.script(params)
+          if (typeof options.script === 'function') {
+            options.script(params)
           } else {
             // eslint-disable-next-line no-eval
-            const func = eval('(function(params){' + observer.options.script + '})')
+            const func = eval('(function(params){' + options.script + '})')
             func(params)
           }
           break
         case 'load-script':
-          this.loadScript(observer.options.src, {})
+          this.loadScript(options.src, {})
           break
       }
 

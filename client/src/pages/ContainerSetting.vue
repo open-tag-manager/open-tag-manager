@@ -40,11 +40,8 @@
 
           <div class="form-group">
             <label :for="observer.id + '_type'">Action Type</label>
-            <b-form-select v-model="observer.type" required>
-              <option value="html">HTML Tag</option>
-              <option value="load-script">Load Script</option>
-              <option value="collect">Send Collect</option>
-              <option value="script">Script</option>
+            <b-form-select v-model="observer.type" required @input="inputType(observer)">
+              <option v-for="action in actionTypes" :key="action.id" :value="action.id">{{action.name}}</option>
             </b-form-select>
           </div>
 
@@ -59,7 +56,16 @@
             </textarea>
           </div>
 
-          <b-checkbox v-model="observer.options.pageview" v-if="observer.type === 'collect' && observer.target !== 'pageview'">Pageview event</b-checkbox>
+          <div v-if="observer.actionData && observer.actionData.params">
+            <div class="form-group" v-for="p in observer.actionData.params">
+              <label>{{p.label}}</label>
+              <input type="text" v-model="observer.options[p.name]" class="form-control" :required="p.required">
+            </div>
+          </div>
+
+          <b-checkbox v-model="observer.options.pageview"
+                      v-if="observer.type === 'collect' && observer.target !== 'pageview'">Pageview event
+          </b-checkbox>
           <b-checkbox v-model="observer.once">Once only</b-checkbox>
 
           <div class="my-2">
@@ -127,53 +133,70 @@
       }
     },
     computed: {
-      triggers: {
-        get () {
-          const preset = [
-            {
-              id: 'pageview',
-              name: 'pageview'
-            },
-            {
-              id: 'click',
-              name: 'click',
-              tag: true
-            },
-            {
-              id: 'touchstart',
-              name: 'touchstart',
-              tag: true
-            },
-            {
-              id: 'change-url',
-              name: 'change-url'
-            },
-            {
-              id: 'custom',
-              name: 'custom'
-            }
-          ]
-          return preset.concat(this.container.triggers)
-        }
+      triggers () {
+        const preset = [
+          {
+            id: 'pageview',
+            name: 'pageview'
+          },
+          {
+            id: 'click',
+            name: 'click',
+            tag: true
+          },
+          {
+            id: 'touchstart',
+            name: 'touchstart',
+            tag: true
+          },
+          {
+            id: 'change-url',
+            name: 'change-url'
+          },
+          {
+            id: 'custom',
+            name: 'custom'
+          }
+        ]
+        return preset.concat(this.container.triggers)
       },
-      triggerTypes: {
-        get () {
-          return [
-            {
-              name: 'timer',
-              fields: [
-                {name: 'second', type: 'number', default: 10}
-              ]
-            },
-            {
-              name: 'scroll',
-              fields: [
-                {name: 'threshold', type: 'number', default: 10},
-                {name: 'interval', type: 'number', default: 1}
-              ]
-            }
-          ]
-        }
+      actionTypes () {
+        const preset = [
+          {
+            id: 'html',
+            name: 'HTML'
+          },
+          {
+            id: 'load-script',
+            name: 'Load Script'
+          },
+          {
+            id: 'collect',
+            name: 'Collect'
+          },
+          {
+            id: 'script',
+            name: 'Script'
+          }
+        ]
+        return [...preset, ...process.env.OTM_PLUGIN_ACTIONS]
+      },
+      triggerTypes () {
+        return [
+          {
+            name: 'timer',
+            fields: [
+              {name: 'second', type: 'number', default: 10}
+            ]
+          },
+          {
+            name: 'scroll',
+            fields: [
+              {name: 'threshold', type: 'number', default: 10},
+              {name: 'interval', type: 'number', default: 1}
+            ]
+          }
+        ]
       },
       tag () {
         return '<script src="' + this.container.script + '"><' + '/script>'
@@ -258,7 +281,19 @@
         })
       },
       async saveSwaggerDoc () {
-        await this.$store.dispatch('container/saveSwaggerDoc', {org: this.$route.params.org, container: this.$route.params.name})
+        await this.$store.dispatch('container/saveSwaggerDoc', {
+          org: this.$route.params.org,
+          container: this.$route.params.name
+        })
+      },
+      inputType (observer) {
+        const action = this.getAction(observer.type)
+        observer.actionData = action
+      },
+      getAction (id) {
+        return this.actionTypes.find((type) => {
+          return type.id === id
+        })
       }
     }
   }

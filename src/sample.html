@@ -64,6 +64,7 @@ Hello<br>
 Hello<br>
 Hello<br>
 Hello
+<script src="otm.js"></script>
 <script>
   OTM.init('https://s3-REGION-1.amazonaws.com/BUCKET/index.html', {
     observers: [
@@ -83,7 +84,9 @@ Hello
         name: 'cu',
         target: 'change-url',
         type: 'collect',
-        options: {}
+        options: {
+          pageview: true
+        }
       },
       {
         name: 's',
@@ -126,6 +129,19 @@ Hello
         type: 'script',
         options: {
           script: 'console.log("change-url", params)'
+        }
+      },
+      {
+        target: 'pageview',
+        type: 'custom-type',
+        base: 'script',
+        options: {
+          data: 'sample!'
+        },
+        actionData: {
+          template: {
+            script: 'console.log("custom-type, \<%= data %\> ")'
+          }
         }
       }
     ],

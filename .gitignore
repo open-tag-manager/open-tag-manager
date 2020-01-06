@@ -8,3 +8,5 @@ account.json
 .terraform/
 *-terraform.tfvars
 terraform.tfvars
+plugins/*
+!plugins/.gitkeep
