@@ -45,8 +45,8 @@ class OTM {
 
       let type = observer.type
       let options = observer.options
-      if (observer.base) {
-        type = observer.base
+      if (observer && observer.actionData && observer.actionData.base) {
+        type = observer.actionData.base
         for (let templateName in observer.actionData.template) {
           options[templateName] = template(observer.actionData.template[templateName])(observer.options)
         }
