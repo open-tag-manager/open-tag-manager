@@ -114,6 +114,9 @@ def main():
     with open('./client_apis/.chalice/config.json', 'w') as f:
         json.dump(config, f, indent=4)
 
+    import client_apis.install_plugin
+    client_apis.install_plugin.main()
+
     with open('./client_apis/.chalice/policy-sample.json', 'r') as f:
         config = json.load(f)
         config['Statement'][1]['Resource'] = []
