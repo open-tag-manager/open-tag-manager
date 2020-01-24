@@ -5,5 +5,6 @@ __pycache__/
 .chalice/config.json
 .chalice/policy-*.json
 .chalice/deployed/*
+chalicelib/otmplugins/*
 !.chalice/policy-sample.json
 npm-debug.log
