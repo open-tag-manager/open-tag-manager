@@ -5,6 +5,7 @@ terraform.tfstate
 terraform.tfstate.backup
 **/terraform.tfstate.d/**/*
 account.json
+infra/common/plugin_*
 .terraform/
 *-terraform.tfvars
 terraform.tfvars
