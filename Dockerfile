@@ -20,8 +20,8 @@ RUN pip install chalice==1.12.0 awscli
 RUN mkdir /terraform
 WORKDIR /terraform
 
-RUN wget https://releases.hashicorp.com/terraform/0.11.8/terraform_0.11.8_linux_amd64.zip
-RUN unzip terraform_0.11.8_linux_amd64.zip
+RUN wget https://releases.hashicorp.com/terraform/0.11.14/terraform_0.11.14_linux_amd64.zip
+RUN unzip terraform_0.11.14_linux_amd64.zip
 RUN cp terraform /usr/local/bin
 
 VOLUME /otm

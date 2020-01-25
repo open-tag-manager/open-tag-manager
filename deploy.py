@@ -3,6 +3,8 @@ import shutil
 import json
 import os
 import re
+import glob
+
 
 def main():
     environment = os.environ.get('ENV') or 'dev'
@@ -11,11 +13,11 @@ def main():
     print('1. deploy infra')
 
     print('1.1. deploy shared infra')
-    subprocess.call(['terraform', 'init'], cwd='./infra/aws-batch')
+    subprocess.run(['terraform', 'init'], cwd='./infra/aws-batch', check=True)
     if not os.path.exists('./infra/aws-batch/terraform.tfstate.d/%s' % s_environment):
-        subprocess.call(['terraform', 'workspace', 'new', s_environment], cwd='./infra/aws-batch')
-    subprocess.call(['terraform', 'workspace', 'select', s_environment], cwd='./infra/aws-batch')
-    subprocess.call(['terraform', 'apply', '-var-file=../../terraform.tfvars'], cwd='./infra/aws-batch')
+        subprocess.run(['terraform', 'workspace', 'new', s_environment], cwd='./infra/aws-batch', check=True)
+    subprocess.run(['terraform', 'workspace', 'select', s_environment], cwd='./infra/aws-batch', check=True)
+    subprocess.run(['terraform', 'apply', '-var-file=../../terraform.tfvars'], cwd='./infra/aws-batch', check=True)
 
     print('1.2. deploy infra')
 
@@ -25,15 +27,28 @@ def main():
 
     job_queue = tfresource['aws_batch_job_queue.otm']['primary']['id']
 
-    subprocess.call(['terraform', 'init'], cwd='./infra/common')
+    for filename in glob.iglob('./infra/common/plugin_*.tf'):
+        os.remove(filename)
+
+    for filename in glob.iglob('./plugins/*/infra/*.tf'):
+        tfname_base = os.path.split(filename)
+        with open(tfname_base[0] + '/../package.json', 'r') as f:
+            package = json.load(f)
+            plugin_name = package['name']
+        os.symlink('../../' + filename, './infra/common/plugin_' + plugin_name + tfname_base[1])
+
+    subprocess.run(['terraform', 'init'], cwd='./infra/common', check=True)
     if not os.path.exists('./infra/common/terraform.tfstate.d/' + environment):
-        subprocess.call(['terraform', 'workspace', 'new', environment], cwd='./infra/common')
-    subprocess.call(['terraform', 'workspace', 'select', environment], cwd='./infra/common')
+        subprocess.run(['terraform', 'workspace', 'new', environment], cwd='./infra/common', check=True)
+    subprocess.run(['terraform', 'workspace', 'select', environment], cwd='./infra/common', check=True)
+
     vars = ['terraform', 'apply', '-var-file=../../terraform.tfvars',
             '-var=aws_batch_job_queue_arn=%s' % job_queue]
     if os.path.exists('%s-terraform.tfvars' % environment):
         vars.append('-var-file=../../%s-terraform.tfvars' % environment)
-    subprocess.call(vars, cwd='./infra/common')
+    subprocess.run(vars, cwd='./infra/common', check=True)
+
+    return False
 
     with open('./infra/common/terraform.tfstate.d/%s/terraform.tfstate' % environment) as f:
         tfstate = json.load(f)
@@ -49,15 +64,18 @@ def main():
     script_distribution = tfresource['aws_cloudfront_distribution.otm_script_distribution']['primary']['id']
     client_distribution = tfresource['aws_cloudfront_distribution.otm_client_distribution']['primary']['id']
 
-    script_domain = tfresource['aws_cloudfront_distribution.otm_script_distribution']['primary']['attributes']['domain_name']
+    script_domain = tfresource['aws_cloudfront_distribution.otm_script_distribution']['primary']['attributes'][
+        'domain_name']
     if 'aws_route53_record.otm' in tfresource:
         script_domain = tfresource['aws_route53_record.otm']['primary']['attributes']['name']
 
-    collect_domain = tfresource['aws_cloudfront_distribution.otm_collect_distribution']['primary']['attributes']['domain_name']
+    collect_domain = tfresource['aws_cloudfront_distribution.otm_collect_distribution']['primary']['attributes'][
+        'domain_name']
     if 'aws_route53_record.collect' in tfresource:
         collect_domain = tfresource['aws_route53_record.collect']['primary']['attributes']['name']
 
-    client_domain = tfresource['aws_cloudfront_distribution.otm_client_distribution']['primary']['attributes']['domain_name']
+    client_domain = tfresource['aws_cloudfront_distribution.otm_client_distribution']['primary']['attributes'][
+        'domain_name']
     if 'aws_route53_record.client' in tfresource:
         client_domain = tfresource['aws_route53_record.client']['primary']['attributes']['name']
 
@@ -73,7 +91,8 @@ def main():
     cognito_identify_pool_id = tfresource['aws_cognito_identity_pool.otm']['primary']['id']
     cognito_user_pool_id = None
     cognito_user_pool_client_id = None
-    aws_id = re.match('^arn:aws:cognito-identity:[a-z0-9\-]+:([0-9]+):identitypool', tfresource['aws_cognito_identity_pool.otm']['primary']['attributes']['arn'])[1]
+    aws_id = re.match('^arn:aws:cognito-identity:[a-z0-9\-]+:([0-9]+):identitypool',
+                      tfresource['aws_cognito_identity_pool.otm']['primary']['attributes']['arn'])[1]
     for i in tfresource['aws_cognito_identity_pool.otm']['primary']['attributes'].keys():
         v = tfresource['aws_cognito_identity_pool.otm']['primary']['attributes'][i]
         if re.match('^cognito_identity_providers\.[0-9]+\.client_id$', i):
@@ -81,15 +100,17 @@ def main():
         if re.match('^cognito_identity_providers\.[0-9]+\.provider_name$', i):
             cognito_user_pool_id = re.match('^cognito-idp\.([a-z0-9\-]+)\.amazonaws.com/(.+)$', v)[2]
 
-    cognito_user_pool_arn = 'arn:aws:cognito-idp:%s:%s:userpool/%s' % (os.environ.get('AWS_DEFAULT_REGION'), aws_id, cognito_user_pool_id)
+    cognito_user_pool_arn = 'arn:aws:cognito-idp:%s:%s:userpool/%s' % (
+    os.environ.get('AWS_DEFAULT_REGION'), aws_id, cognito_user_pool_id)
 
     shutil.copy('./client_apis/.chalice/config.json.sample', './client_apis/.chalice/config.json')
     shutil.copy('./log_formatter/.chalice/config.json.sample', './log_formatter/.chalice/config.json')
 
     print('2. deploy otm.js')
-    subprocess.call(['yarn', 'install'])
-    subprocess.call(['npm', 'run', 'build'], env={'NODE_ENV': 'production', 'PATH': os.environ.get('PATH')})
-    subprocess.call(['aws', 's3', 'cp', './dist/otm.js', 's3://%s/otm.js' % script_bucket, '--acl=public-read'])
+    subprocess.run(['yarn', 'install'], check=True)
+    subprocess.run(['npm', 'run', 'build'], env={'NODE_ENV': 'production', 'PATH': os.environ.get('PATH')}, check=True)
+    subprocess.run(['aws', 's3', 'cp', './dist/otm.js', 's3://%s/otm.js' % script_bucket, '--acl=public-read'],
+                   check=True)
 
     print('3. deploy client API')
     with open('./client_apis/.chalice/config.json', 'r') as f:
@@ -129,24 +150,26 @@ def main():
     with open('./client_apis/.chalice/policy-%s.json' % environment, 'w') as f:
         json.dump(config, f, indent=4)
 
-    subprocess.call(['pip', 'install', '-r', 'requirements.txt'], cwd='./client_apis')
-    subprocess.call(['chalice', 'deploy', '--no-autogen-policy', '--stage=%s' % environment], cwd='./client_apis')
+    subprocess.run(['pip', 'install', '-r', 'requirements.txt'], cwd='./client_apis', check=True)
+    subprocess.run(['chalice', 'deploy', '--no-autogen-policy', '--stage=%s' % environment], cwd='./client_apis',
+                   check=True)
 
     print('4. deploy data_retriever')
     repository_url = tfresource['aws_ecr_repository.otm_data_retriever']['primary']['attributes']['repository_url']
     p = subprocess.Popen(['aws', 'ecr', 'get-login', '--no-include-email'], stdout=subprocess.PIPE)
     p.wait()
-    subprocess.call(p.stdout.readlines()[0].decode('utf-8').split())
-    subprocess.call(['docker', 'build', '-t', 'otm-data-retriever', '.'], cwd='./data_retriever')
-    subprocess.call(['docker', 'tag', 'otm-data-retriever:latest', '%s:latest' % repository_url], cwd='./data_retriever')
-    subprocess.call(['docker', 'push', '%s:latest' % repository_url], cwd='./data_retriever')
+    subprocess.run(p.stdout.readlines()[0].decode('utf-8').split(), check=True)
+    subprocess.run(['docker', 'build', '-t', 'otm-data-retriever', '.'], cwd='./data_retriever', check=True)
+    subprocess.run(['docker', 'tag', 'otm-data-retriever:latest', '%s:latest' % repository_url], cwd='./data_retriever',
+                   check=True)
+    subprocess.run(['docker', 'push', '%s:latest' % repository_url], cwd='./data_retriever', check=True)
 
     print('5. deploy client frontend')
     with open('./client_apis/.chalice/deployed/%s.json' % environment, 'r') as f:
         api_resource = json.load(f)
 
-    subprocess.call(['yarn', 'install'], cwd='./client')
-    subprocess.call(['npm', 'run', 'build'], env={
+    subprocess.run(['yarn', 'install'], cwd='./client', check=True)
+    subprocess.run(['npm', 'run', 'build'], env={
         'NODE_ENV': 'production',
         'PATH': os.environ.get('PATH'),
         'API_BASE_URL': api_resource['resources'][2]['rest_api_url'],
@@ -159,12 +182,16 @@ def main():
         'COGNITO_COOKIE_STORAGE_DOMAIN': client_domain,
         'COGNITO_COOKIE_SECURE': '1',
         'BASE_PATH': ''
-    }, cwd='./client')
-    subprocess.call(['aws', 's3', 'sync', './client/dist/', 's3://%s/' % client_bucket, '--acl=public-read'])
+    }, cwd='./client', check=True)
+    subprocess.run(['aws', 's3', 'sync', './client/dist/', 's3://%s/' % client_bucket, '--acl=public-read'], check=True)
 
     print('6. invalidate client / otm.js')
-    subprocess.call(['aws', 'cloudfront', 'create-invalidation', '--distribution-id', script_distribution, '--paths', '/otm.js'])
-    subprocess.call(['aws', 'cloudfront', 'create-invalidation', '--distribution-id', client_distribution, '--paths', '/', '/index.html'])
+    subprocess.run(
+        ['aws', 'cloudfront', 'create-invalidation', '--distribution-id', script_distribution, '--paths', '/otm.js'],
+        check=True)
+    subprocess.run(
+        ['aws', 'cloudfront', 'create-invalidation', '--distribution-id', client_distribution, '--paths', '/',
+         '/index.html'], check=True)
 
     print('7. deploy log_formatter')
     with open('./log_formatter/.chalice/config.json', 'r') as f:
@@ -185,10 +212,11 @@ def main():
     with open('./log_formatter/.chalice/policy-%s.json' % environment, 'w') as f:
         json.dump(config, f, indent=4)
 
-    subprocess.call(['pip', 'install', '-r', 'requirements.txt'], cwd='./log_formatter')
+    subprocess.run(['pip', 'install', '-r', 'requirements.txt'], cwd='./log_formatter', check=True)
     local_env = os.environ.copy()
     local_env['OTM_LOG_SNS'] = sns_topic
-    subprocess.call(['chalice', 'deploy', '--no-autogen-policy', '--stage=%s' % environment], cwd='./log_formatter', env=local_env)
+    subprocess.run(['chalice', 'deploy', '--no-autogen-policy', '--stage=%s' % environment], cwd='./log_formatter',
+                   env=local_env, check=True)
 
     print('8. make athena table')
     athena_query = '''
@@ -237,7 +265,7 @@ LOCATION
 TBLPROPERTIES ('has_encrypted_data'='false')
 ''' % (athena_database, collect_log_bucket)
 
-    subprocess.call([
+    subprocess.run([
         'aws',
         'athena',
         'start-query-execution',
@@ -245,9 +273,10 @@ TBLPROPERTIES ('has_encrypted_data'='false')
         athena_query,
         '--result-configuration',
         'OutputLocation=s3://%s/deploy' % athena_bucket
-    ])
+    ], check=True)
 
     print("Deployed: https://%s/" % client_domain)
+
 
 if __name__ == '__main__':
     main()
