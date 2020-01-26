@@ -155,6 +155,10 @@ def main():
                    check=True)
 
     print('4. deploy data_retriever')
+
+    import data_retriever.install_plugin
+    data_retriever.install_plugin.main()
+
     repository_url = tfresource['aws_ecr_repository.otm_data_retriever']['primary']['attributes']['repository_url']
     p = subprocess.Popen(['aws', 'ecr', 'get-login', '--no-include-email'], stdout=subprocess.PIPE)
     p.wait()
