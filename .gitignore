@@ -1,4 +1,5 @@
 node_modules/
+__pycache__/
 .idea/
 dist/
 terraform.tfstate
@@ -6,6 +7,8 @@ terraform.tfstate.backup
 **/terraform.tfstate.d/**/*
 account.json
 infra/common/plugin_*
+infra/**/*.log
+data_retriever/otmplugin/*
 .terraform/
 *-terraform.tfvars
 terraform.tfvars
