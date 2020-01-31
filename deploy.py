@@ -173,6 +173,7 @@ def main():
         api_resource = json.load(f)
 
     subprocess.run(['yarn', 'install'], cwd='./client', check=True)
+    subprocess.run(['yarn', 'install-otm-plugin'], cwd='./client', check=True)
     subprocess.run(['npm', 'run', 'build'], env={
         'NODE_ENV': 'production',
         'PATH': os.environ.get('PATH'),

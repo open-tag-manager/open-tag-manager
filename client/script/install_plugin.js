@@ -25,6 +25,6 @@ glob('../plugins/*/client/', (err, files) => {
     lines2.push(`plugins.push(${camelizedPluginName}())`)
   }
   lines1.push('const plugins = []')
-  lines2.push('export default plugins')
+  lines2.push('', 'export default plugins', '')
   fs.writeFileSync('src/plugins.js', lines1.concat(lines2).join('\n'))
 })
