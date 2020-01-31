@@ -12,6 +12,9 @@
           <b-nav-item :to="{name: 'Container-Stat', params: {org: $route.params.org, name: $route.params.name}}">
             Analytics
           </b-nav-item>
+          <b-nav-item :to="{name: item.name, params: {org: $route.params.org, name: $route.params.name}}" v-for="item in $store.state.containerMenu" :key="item.name">
+            {{ item.label }}
+          </b-nav-item>
           <b-nav-item :to="{name: 'Container-Setting', params: {org: $route.params.org, name: $route.params.name}}">
             Setting
           </b-nav-item>
