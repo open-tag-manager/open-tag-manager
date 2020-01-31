@@ -24,7 +24,7 @@
     "bootstrap": "^4.3.1",
     "bootstrap-vue": "^2.0.0-rc.15",
     "d3": "^4.12.2",
-    "dagre-d3": "^0.6.3",
+    "dagre-d3": "0.6.3",
     "lodash": "^4.17.11",
     "moment": "^2.23.0",
     "moment-timezone": "^0.5.23",
