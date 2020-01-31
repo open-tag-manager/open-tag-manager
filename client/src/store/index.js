@@ -6,6 +6,16 @@ import container from './container'
 
 Vue.use(Vuex)
 
-export default new Vuex.Store({
-  modules: {user, container}
-})
+export default (plugins) => {
+  const options = {
+    modules: {user, container}
+  }
+
+  for (const plugin of plugins) {
+    if (plugin.store) {
+      plugin.store(options)
+    }
+  }
+
+  return new Vuex.Store(options)
+}

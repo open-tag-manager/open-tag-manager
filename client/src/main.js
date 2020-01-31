@@ -6,7 +6,8 @@ import BootstrapVue from 'bootstrap-vue'
 import Vuelidate from 'vuelidate'
 import VueToasted from 'vue-toasted'
 import router from './router'
-import store from './store'
+import storeGenerator from './store'
+import plugins from './plugins'
 import Amplify from 'aws-amplify'
 import {components} from 'aws-amplify-vue'
 
@@ -57,13 +58,23 @@ Vue.use(VueToasted)
 library.add(faExpand, faCog, faUser, faBuilding, faExclamationTriangle)
 Vue.component('fa-icon', FontAwesomeIcon)
 
-/* eslint-disable no-new */
-const vue = new Vue({
-  el: '#app',
+const store = storeGenerator(plugins)
+
+const MyComponent = Vue.extend({
   store,
-  router,
+  router: router(store, plugins),
   components: {App, components},
   template: '<App/>'
 })
 
-store.app = vue
+const app = new MyComponent()
+
+store.app = app
+
+for (const plugin of plugins) {
+  if (plugin.app) {
+    plugin.app(app)
+  }
+}
+
+app.$mount('#app')
