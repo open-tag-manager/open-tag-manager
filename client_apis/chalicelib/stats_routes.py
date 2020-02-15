@@ -114,6 +114,8 @@ def get_container_stats_data(org, name, file):
 
             diff_states = list(set(p_states) - set(states))
             for st in diff_states:
+                if st is None:
+                    continue
                 if not re.match(r'^click_', st):
                     continue
 
