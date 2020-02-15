@@ -29,4 +29,4 @@ app.register_blueprint(stats_routes, url_prefix='/orgs/{org}/containers/{name}/s
 plugins = json.loads(os.environ.get('OTM_PLUGINS'), encoding='utf-8')
 for plugin in plugins:
     module = importlib.import_module('chalicelib.otmplugins.' + plugin['package'] + '.' + plugin['module'])
-    app.register_blueprint(module.app, url_prefix=plugin['urlPrefix'])
+    app.register_blueprint(module.plugin_app, url_prefix=plugin['urlPrefix'])
