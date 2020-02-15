@@ -8,6 +8,9 @@ export function getUrls (data) {
     if (d.url && !_.includes(urls, d.url)) {
       urls.push(d.url)
     }
+    if (d.p_url && !_.includes(urls, d.p_url)) {
+      urls.push(d.p_url)
+    }
   }
   return urls
 }
@@ -139,7 +142,7 @@ export function convertUrl (data, swaggerDoc) {
 
   for (let d of data) {
     let newUrl = lookupPath(paths, url.parse(d.url)) || d.url
-    let newPUrl = lookupPath(paths, url.parse(d.p_url)) || d.p_url
+    let newPUrl = d.p_url ? lookupPath(paths, url.parse(d.p_url)) || d.p_url : null
 
     // remove duplicated record
     const e = _.find(data, {url: newUrl, p_url: newPUrl, state: d.state, p_state: d.p_state, m: true})

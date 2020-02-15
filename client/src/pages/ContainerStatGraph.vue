@@ -331,9 +331,7 @@
           }))
           this.urls.forEach((u, idx) => {
             let label = ''
-            const parsedUrl = url.parse(u)
-            label += parsedUrl.path.replace(/%7b/gi, '{').replace(/%7d/gi, '}') + '\n'
-            const e = _.find(this.urlLinks, {url: u})
+            label += u.replace(/%7b/gi, '{').replace(/%7d/gi, '}') + '\n'
 
             const count = _.sumBy(_.filter(this.urlLinks, {url: u}), 'count')
             let labelSize = 5 * (count / maxCount)
@@ -341,11 +339,12 @@
               labelSize = 1
             }
 
-            label += strimwidth(e.title, 12)
+            const e = _.find(this.urlLinks, {url: u})
+            label += strimwidth(e ? e.title : '', 12)
             g.setNode(idx, {shape: 'ellipse', label: label, labelStyle: `font-size: ${labelSize}em`})
           })
 
-          g.setNode(this.urls.length, {label: 'Undefined', shape: 'ellipse', labelStyle: 'font-size: 5em'})
+          g.setNode(this.urls.length, {label: 'Direct', shape: 'ellipse', labelStyle: 'font-size: 5em'})
 
           this.urlLinks.forEach((u) => {
             let p = _.indexOf(this.urls, u.p_url)
@@ -552,7 +551,7 @@
         })
 
         nodesData.forEach(function (node, idx) {
-          let label = 'Undefined'
+          let label = 'Origin'
           if (node.name && node.name !== 'undefined') {
             let lCaption = node.label
             if (lCaption) {

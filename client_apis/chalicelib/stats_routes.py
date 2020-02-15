@@ -23,6 +23,8 @@ def _normalizeUrl(url):
 
 
 def _match_url(pattern, url):
+    if url is None:
+        return False
     p = re.sub('\\\\{[^}]+\\\\}', '[^/]+', re.escape(pattern))
     return re.match('^' + p + '$', url)
 
