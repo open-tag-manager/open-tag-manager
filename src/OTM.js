@@ -356,8 +356,19 @@ class OTM {
       this.userUUID = uuid()
       Cookies.set('_kk', this.userUUID, {expires: 60 * 60 * 24 * 365 * 2})
     }
-    this.prevUrl = Cookies.get('_pu')
-    this.state = Cookies.get('_st')
+
+    let ref = null
+    let st = Cookies.get('_st')
+    if (document.referrer) {
+      if (document.referrer === document.URL) {
+        ref = Cookies.get('_pu')
+      } else {
+        ref = document.referrer
+        st = null
+      }
+    }
+    this.prevUrl = ref
+    this.state = st
 
     document.addEventListener('click', (e) => {
       const wTarget = this._getWidgetElement(e.target)
