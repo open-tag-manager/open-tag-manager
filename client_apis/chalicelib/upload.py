@@ -20,18 +20,18 @@ class S3Uploader:
         self._s3.Object(self._script_bucket, 'otm.js').put(Body=open(self._otm_path, 'rb'),
                                                            ACL='public-read',
                                                            ContentType='text/javascript',
-                                                           Metadata={'Cache-Control': 'public, max-age=1800'})
+                                                           CacheControl='public, max-age=1800')
 
     def upload_script_by_file(self, name, script_path):
         self._s3.Object(self._script_bucket, name).put(Body=open(script_path, 'rb'), ACL='public-read',
                                                        ContentType='text/javascript',
-                                                       Metadata={'Cache-Control': 'public, max-age=60'})
+                                                       CacheControl='public, max-age=60')
         self._script_name = name
 
     def upload_script(self, name, body):
         self._s3.Object(self._script_bucket, name).put(Body=body, ACL='public-read',
                                                        ContentType='text/javascript',
-                                                       Metadata={'Cache-Control': 'public, max-age=60'})
+                                                       CacheControl='public, max-age=60')
         self._script_name = name
 
     def collect_url(self):

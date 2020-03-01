@@ -1,6 +1,7 @@
 from chalice import Blueprint, Response
 from . import ScriptGenerator, S3Uploader, s3, authorizer, get_config_data, has_role, put_config_data, \
     get_container_data
+from botocore.errorfactory import ClientError
 import string
 import random
 import time
@@ -153,6 +154,15 @@ def delete_container(org, name):
 
     if data is None:
         return Response(body={'error': 'not found'}, status_code=404)
+
+    prefix = ''
+    if org != 'root':
+        prefix = org + '/'
+
+    try:
+        s3.Object(os.environ.get('OTM_BUCKET'), prefix + name + '.js').delete()
+    except ClientError:
+        pass
 
     config['containers'].remove(container)
     put_config_data(org, config)

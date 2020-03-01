@@ -3,6 +3,11 @@ import _ from 'lodash'
 const getters = {
   isAuthenticated (state) {
     return !!state.user
+  },
+  hasRootRole (state) {
+    const root = _.find(state.orgs, {org: 'root'})
+
+    return root && root.roles.includes('write')
   }
 }
 

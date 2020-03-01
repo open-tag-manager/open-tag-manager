@@ -21,28 +21,45 @@ def get_role_table():
 
 
 def get_roles(app):
-    if not 'authorizer' in app.current_request.context:
+    if 'authorizer' in app.current_request.context:
+        username = app.current_request.context['authorizer']['claims']['cognito:username']
+
+        item = get_role_table().query(
+            KeyConditionExpression=Key('username').eq(username)
+        )
+        if not 'Items' in item:
+            return []
+
+        result = []
+        for role in item['Items']:
+            result.append({'org': role['organization'], 'roles': role['roles']})
+    else:
         # for local test environment
-        return [{'org': 'root', 'roles': ['write', 'read']}, {'org': 'sample', 'roles': ['write', 'read']}]
+        result = [{'org': 'root', 'roles': ['write', 'read']}, {'org': 'sample', 'roles': ['write', 'read']}]
 
-    username = app.current_request.context['authorizer']['claims']['cognito:username']
+    freezed_orgs = []
+    try:
+        response = s3.Object(os.environ.get('OTM_BUCKET'), 'freezed.json').get()
+        freezed_orgs = json.loads(response['Body'].read())
+    except ClientError:
+        pass
 
-    item = get_role_table().query(
-        KeyConditionExpression=Key('username').eq(username)
-    )
-    if not 'Items' in item:
-        return []
+    for item in result:
+        item['freezed'] = item['org'] in freezed_orgs
 
-    result = []
-    for role in item['Items']:
-        result.append({'org': role['organization'], 'roles': role['roles']})
     return result
 
 
 def has_role(app, org, role_name):
     for role in get_roles(app):
         if (role['org'] == org or role['org'] == 'root') and role_name in role['roles']:
-            return True
+            if org == 'root':
+                return True
+
+            if role_name == 'write':
+                return not role['freezed']
+            else:
+                return True
 
     return False
 
