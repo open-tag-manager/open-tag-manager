@@ -8,3 +8,4 @@ __pycache__/
 chalicelib/otmplugins/*
 !.chalice/policy-sample.json
 npm-debug.log
+requirements.txt

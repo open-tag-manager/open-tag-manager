@@ -9,16 +9,23 @@ Vue.use(Vuex)
 export default (plugins) => {
   const options = {
     state: {
-      containerMenu: []
+      containerMenu: [],
+      orgMenu: []
     },
     mutations: {
       addContainerMenu (state, menuData) {
         state.containerMenu = [...state.containerMenu, menuData]
+      },
+      addOrgMenu (state, menuData) {
+        state.orgMenu = [...state.orgMenu, menuData]
       }
     },
     actions: {
       addContainerMenu ({commit}, menuData) {
         commit('addContainerMenu', menuData)
+      },
+      addOrgMenu ({commit}, menuData) {
+        commit('addOrgMenu', menuData)
       }
     },
     modules: {user, container}

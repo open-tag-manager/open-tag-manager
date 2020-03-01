@@ -16,10 +16,6 @@ if ('PerformanceLongTaskTiming' in window) {
 
 const OTM_VERSION = 1
 
-const uuid = () => {
-  return uuidV4().replace(/-/g, '')
-}
-
 class OTM {
   constructor () {
     this.observers = []
@@ -126,7 +122,7 @@ class OTM {
     params.o_cts = (new Date()).getTime()
     params.o_psid = this.viewUUID
     params.o_ps = this.prevState
-    params.o_r = uuid()
+    params.o_r = uuidV4()
     params.utc = category
     params.utv = variable
     const esc = encodeURIComponent
@@ -163,7 +159,7 @@ class OTM {
     params.o_psid = this.viewUUID
     params.o_ps = this.prevState
     params.o_s = this.state
-    params.o_r = uuid()
+    params.o_r = uuidV4()
 
     const esc = encodeURIComponent
     const query = Object.keys(params).map(k => `${esc(k)}=${esc(params[k])}`).join('&')
@@ -323,9 +319,14 @@ class OTM {
   }
 
   init (endpoint, options = {}) {
+    if (options.disabled) {
+      // stop execution
+      return
+    }
+
     this.preview = false
     this.endpoint = endpoint
-    this.viewUUID = uuid()
+    this.viewUUID = uuidV4()
     this.url = window.document.URL
     this.prevState = null
     this.prevTime = null
@@ -353,7 +354,7 @@ class OTM {
 
     this.userUUID = Cookies.get('_kk')
     if (!this.userUUID) {
-      this.userUUID = uuid()
+      this.userUUID = uuidV4()
       Cookies.set('_kk', this.userUUID, {expires: 60 * 60 * 24 * 365 * 2})
     }
 

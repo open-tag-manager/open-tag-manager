@@ -6,6 +6,9 @@
           <b-nav-item :to="{name: 'Org-Settings-Containers', params: {org: $route.params.org, name: $route.params.name}}">
             Containers
           </b-nav-item>
+          <b-nav-item v-for="item in $store.state.orgMenu" :key="item.name" :to="{name: item.name, params: {org: $route.params.org}}">
+            {{ item.label }}
+          </b-nav-item>
         </b-nav>
       </div>
       <div role="main" class="col-10 px-4">

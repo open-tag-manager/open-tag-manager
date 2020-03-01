@@ -14,7 +14,7 @@ for (let pkg of packages) {
   }
 }
 
-module.exports = {
+const c = {
   NODE_ENV: '"production"',
   API_BASE_URL: `"${process.env.API_BASE_URL || 'http://localhost:8000'}"`,
   BASE_PATH: `"${process.env.BASE_PATH || '/'}"`,
@@ -27,3 +27,15 @@ module.exports = {
   COGNITO_COOKIE_SECURE: `"${process.env.COGNITO_COOKIE_SECURE}"`,
   OTM_PLUGIN_ACTIONS: JSON.stringify(pluginActions)
 }
+
+const configFiles = glob.sync('../plugins/**/config.json')
+for (let conf of configFiles) {
+  const jsonObject = JSON.parse(fs.readFileSync(conf, 'utf8'))
+  if (jsonObject.client) {
+    for (let key in jsonObject.client) {
+      c[key] = `"${jsonObject.client[key]}"`
+    }
+  }
+}
+
+module.exports = c
