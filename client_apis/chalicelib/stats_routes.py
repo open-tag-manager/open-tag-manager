@@ -205,6 +205,8 @@ def make_container_stats(org, name):
         o_prefix = org + '/'
 
     command = [
+        'python',
+        'app.py',
         '-d',
         os.environ.get('STATS_ATHENA_DATABASE'),
         '-p',
