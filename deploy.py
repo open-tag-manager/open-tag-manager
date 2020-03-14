@@ -48,8 +48,6 @@ def main():
         vars.append('-var-file=../../%s-terraform.tfvars' % environment)
     subprocess.run(vars, cwd='./infra/common', check=True)
 
-    return False
-
     with open('./infra/common/terraform.tfstate.d/%s/terraform.tfstate' % environment) as f:
         tfstate = json.load(f)
         tfresource = tfstate['modules'][0]['resources']
@@ -101,7 +99,7 @@ def main():
             cognito_user_pool_id = re.match('^cognito-idp\.([a-z0-9\-]+)\.amazonaws.com/(.+)$', v)[2]
 
     cognito_user_pool_arn = 'arn:aws:cognito-idp:%s:%s:userpool/%s' % (
-    os.environ.get('AWS_DEFAULT_REGION'), aws_id, cognito_user_pool_id)
+        os.environ.get('AWS_DEFAULT_REGION'), aws_id, cognito_user_pool_id)
 
     shutil.copy('./client_apis/.chalice/config.json.sample', './client_apis/.chalice/config.json')
     shutil.copy('./log_formatter/.chalice/config.json.sample', './log_formatter/.chalice/config.json')
@@ -131,6 +129,14 @@ def main():
         env['STATS_ATHENA_DATABASE'] = athena_database
         env['STATS_ATHENA_TABLE'] = 'otm_collect2'
         env['STATS_ATHENA_RESULT_BUCKET'] = athena_bucket
+
+        # apply plugin configuration
+        for config_file in glob.iglob('./plugins/*/config.json'):
+            with open(config_file, 'r') as cf:
+                config_data = json.load(cf)
+                if 'api' in config_data:
+                    for k in config_data['api']:
+                        env[k] = config_data['api'][k]
 
     with open('./client_apis/.chalice/config.json', 'w') as f:
         json.dump(config, f, indent=4)
