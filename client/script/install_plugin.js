@@ -11,6 +11,7 @@ glob('../plugins/*/client/', (err, files) => {
     try {
       const packageFile = `${files[i]}package.json`
       fs.accessSync(packageFile, fs.constants.R_OK)
+      execSync('yarn install', {cwd: files[i]})
       execSync('yarn link', {cwd: files[i]})
       const packageData = require(`../${packageFile}`)
       plugins.push(packageData.name)
