@@ -53,6 +53,9 @@
       },
       filterStates: {
         type: Array
+      },
+      filterUrl: {
+        type: String
       }
     },
     computed: {
@@ -72,6 +75,10 @@
 
             return false
           })
+        }
+
+        if (this.filterUrl) {
+          data = _.filter(data, {url: this.filterUrl})
         }
 
         if (!this.sortBy) {

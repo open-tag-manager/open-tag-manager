@@ -7,6 +7,7 @@
       </th>
       <th scope="col"></th>
       <th scope="col"></th>
+      <th scope="col"></th>
       <th scope="col" @click="sort('count')">PV
         <stat-table-sort-order-allow v-if="sortBy === 'count'" :order="order"></stat-table-sort-order-allow>
       </th>
@@ -44,6 +45,7 @@
       <td class="url">{{col.url}}</td>
       <td><a @click.prevent="clickUrl(col.url)" href="#">Show Graph</a></td>
       <td><a @click.prevent="filterUrl(col.url)" href="#">Filter in Line Chart</a></td>
+      <td><a @click.prevent="showEvent(col.url)" href="#">Show Event Table</a></td>
       <td>{{col.count}}</td>
       <td>{{col.session_count}}</td>
       <td>{{col.user_count}}</td>
@@ -111,6 +113,9 @@
       },
       filterUrl (url) {
         this.$emit('clickFilterUrl', url)
+      },
+      showEvent (url) {
+        this.$emit('clickShowEvent', url)
       },
       sort (field) {
         if (this.sortBy === field) {

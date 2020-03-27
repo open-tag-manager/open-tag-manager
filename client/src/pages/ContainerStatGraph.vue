@@ -45,7 +45,8 @@
       <stat-line-chart :data="tableData" :filtered-url="lineChartFilterUrl"></stat-line-chart>
       <div class="table-container">
         <stat-table :data="summaryTableData" @clickGraphUrl="goToUrlGraph"
-                    @clickFilterUrl="filterLineChartUrl"></stat-table>
+                    @clickFilterUrl="filterLineChartUrl"
+                    @clickShowEvent="goToEventTableWithUrl" />
       </div>
 
     </div>
@@ -57,6 +58,9 @@
       <div class="table-container">
         <div v-if="eventTableFilterState">
           Filtered by: {{eventTableFilterState}} <a href="#" @click="eventTableFilterState = null">x</a>
+        </div>
+        <div v-if="eventTableFilterUrl">
+          Filtered by: {{eventTableFilterUrl}} <a href="#" @click="eventTableFilterUrl = null">x</a>
         </div>
         <b-form-group label="Enabled Statuses" class="status-filter" v-else>
           <b-form-checkbox-group id="enabled-statuses-event" v-model="enabledStatues"
@@ -127,6 +131,7 @@
         rawEventTableData: null,
         eventTableData: null,
         eventTableFilterState: null,
+        eventTableFilterUrl: null,
 
         // selected node
         node: null,
@@ -420,7 +425,7 @@
       showGraph () {
         this.mode = 'graph'
       },
-      async showEvent (node = null) {
+      async showEvent (node = null, url = null) {
         if (!this.rawEventTableData) {
           const statId = this.$route.params.statid
           const file = statId.match(/\/([^/]+\.json)$/)[1]
@@ -435,6 +440,11 @@
           this.eventTableFilterState = node.name
         } else {
           this.eventTableFilterState = null
+        }
+        if (url) {
+          this.eventTableFilterUrl = url
+        } else {
+          this.eventTableFilterUrl = null
         }
         let eventTableData = convertUrlForTableData(this.rawEventTableData.event_table, this.swaggerDoc)
         eventTableData = _(eventTableData).groupBy((d) => {
@@ -454,6 +464,9 @@
         setTimeout(() => {
           this.render()
         }, 500)
+      },
+      goToEventTableWithUrl (url) {
+        this.showEvent(null, url)
       },
       filterLineChartUrl (url) {
         this.lineChartFilterUrl = url
