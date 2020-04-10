@@ -9,7 +9,7 @@
         </b-form-select>
 
         <b-nav vertical>
-          <b-nav-item :to="{name: 'Container-Stat', params: {org: $route.params.org, name: $route.params.name}}">
+          <b-nav-item :to="{name: 'Container-Stats', params: {org: $route.params.org, name: $route.params.name}}">
             Analytics
           </b-nav-item>
           <b-nav-item :to="{name: item.name, params: {org: $route.params.org, name: $route.params.name}}" v-for="item in $store.state.containerMenu" :key="item.name">
@@ -56,7 +56,7 @@
     },
     methods: {
       changeContainer () {
-        this.$router.push(`/orgs/${this.$route.params.org}/containers/${this.currentContainer}/stat`)
+        this.$router.push(`/orgs/${this.$route.params.org}/containers/${this.currentContainer}/stats`)
       }
     }
   }

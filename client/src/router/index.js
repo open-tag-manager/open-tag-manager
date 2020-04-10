@@ -8,8 +8,13 @@ import NoOrgError from '@/pages/NoOrgError'
 import Containers from '@/pages/Containers'
 import Container from '@/pages/Container'
 import ContainerSetting from '@/pages/ContainerSetting'
-import ContainerStat from '@/pages/ContainerStat'
-import ContainerStatGraph from '@/pages/ContainerStatGraph'
+import ContainerStats from '@/pages/ContainerStats'
+import ContainerStatsStatId from '@/pages/ContainerStatsStatId'
+import ContainerStatsStatIdPageTable from '@/pages/ContainerStatsStatIdPageTable'
+import ContainerStatsStatIdEventTable from '@/pages/ContainerStatsStatIdEventTable'
+import ContainerStatsStatIdURLGraph from '@/pages/ContainerStatsStatIdURLGraph'
+import ContainerStatsStatIdURLGraphURL from '@/pages/ContainerStatsStatIdURLGraphURL'
+import ContainerStatsStatIdURLTree from '@/pages/ContainerStatsStatIdURLTree'
 import OrgSettings from '@/pages/OrgSettings'
 import OrgSettingsContainers from '@/pages/OrgSettingsContainers'
 
@@ -80,14 +85,41 @@ export default (store, plugins) => {
                 component: ContainerSetting
               },
               {
-                path: 'stat',
-                name: 'Container-Stat',
-                component: ContainerStat
+                path: 'stats',
+                name: 'Container-Stats',
+                component: ContainerStats
               },
               {
-                path: 'stat/:statid',
-                name: 'Container-Stat-Graph',
-                component: ContainerStatGraph
+                path: 'stats/:statid',
+                name: 'Container-Stats-StatId',
+                component: ContainerStatsStatId,
+                children: [
+                  {
+                    path: 'pages',
+                    name: 'Container-Stats-StatId-Pages',
+                    component: ContainerStatsStatIdPageTable
+                  },
+                  {
+                    path: 'events',
+                    name: 'Container-Stats-StatId-Events',
+                    component: ContainerStatsStatIdEventTable
+                  },
+                  {
+                    path: 'urlgraph',
+                    name: 'Container-Stats-StatId-URLGraph',
+                    component: ContainerStatsStatIdURLGraph
+                  },
+                  {
+                    path: 'urltree',
+                    name: 'Container-Stats-StatId-URLTree',
+                    component: ContainerStatsStatIdURLTree
+                  },
+                  {
+                    path: 'urlgraph/:url',
+                    name: 'Container-Stats-StatId-URLGraph-URL',
+                    component: ContainerStatsStatIdURLGraphURL
+                  }
+                ]
               }
             ]
           },
