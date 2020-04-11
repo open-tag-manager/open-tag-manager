@@ -16,7 +16,7 @@
                                :options="statuses"></b-form-checkbox-group>
       </b-form-group>
 
-      <event-table :data="eventTableData" :filter-state="eventTableFilterState" :filter-states="enabledStatues" />
+      <event-table :data="eventTableData" :filter-state="eventTableFilterState" :filter-states="enabledStatues" :filter-url="eventTableFilterUrl" />
     </div>
   </div>
 </template>
