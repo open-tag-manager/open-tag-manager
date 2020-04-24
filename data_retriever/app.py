@@ -1,35 +1,16 @@
-from retrying import retry
+from retriever_base import RetrieverBase
 from urllib.parse import urlparse
 import pandas as pd
 import json
 import time
-import boto3
 import argparse
 import uuid
 import datetime
 
 
-class DataRetriever:
+class DataRetriever(RetrieverBase):
     def __init__(self, **kwargs):
-        self.options = kwargs
-        self.s3 = boto3.resource('s3')
-        self.athena = boto3.client('athena')
-
-    @retry(stop_max_attempt_number=10,
-           wait_exponential_multiplier=1000,
-           wait_exponential_max=10 * 60 * 1000)
-    def _poll_status(self, id):
-        print(json.dumps({'message': 'poll status', 'id': id}))
-        result = self.athena.get_query_execution(
-            QueryExecutionId=id
-        )
-        state = result['QueryExecution']['Status']['State']
-        if state == 'SUCCEEDED':
-            return result
-        elif state == 'FAILED':
-            return result
-        else:
-            raise Exception
+        super(DataRetriever, self).__init__(**kwargs)
 
     @staticmethod
     def _normalizeUrl(url):
@@ -41,21 +22,6 @@ class DataRetriever:
             return "{0}://{1}{2}".format(parsedurl.scheme, parsedurl.netloc, parsedurl.path)
 
         return None
-
-    def _execute_athena_query(self, query):
-        print(json.dumps({'message': 'execute athena', 'query': query}))
-        response = self.athena.start_query_execution(
-            QueryString=query,
-            ResultConfiguration={
-                'OutputLocation': 's3://%s/%s' % (
-                    self.options['athena_result_bucket'], self.options['athena_result_prefix']),
-                'EncryptionConfiguration': {
-                    'EncryptionOption': 'SSE_S3'
-                }
-            }
-        )
-        QueryExecutionId = response['QueryExecutionId']
-        return self._poll_status(QueryExecutionId)
 
     def execute(self):
         result = self._execute_athena_query(
@@ -113,8 +79,11 @@ JSON_EXTRACT_SCALAR(qs, '$.o_a_id')
             event = json.loads(row.to_json())
             result.append(event)
             url = self._normalizeUrl(event['url'])
+            p_url = self._normalizeUrl(event['p_url'])
             if url and url not in urls:
                 urls.append(url)
+            if p_url and p_url not in urls:
+                urls.append(p_url)
 
         for index, row in pd_data.iterrows():
             event = json.loads(row.to_json())
