@@ -8,8 +8,26 @@
         <textarea readonly class="form-control" v-model="tag"></textarea>
       </div>
 
+      <form @submit.prevent="save">
+        <h3 class="my-2">Container config</h3>
+
+        <div class="form-group">
+          <label for="container-name">Name</label>
+          <input id="container-name" type="text" class="form-control" required v-model="label">
+        </div>
+
+        <div class="form-group">
+          <label for="container-domain">Site domains (comma separated)</label>
+          <input id="container-domain" type="text" class="form-control" v-model.trim="siteDomains">
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save</button>
+      </form>
+
+      <hr>
+
       <form @submit.prevent="deploy">
-        <b-button variant="primary" class="my-2" type="submit">Deploy</b-button>
+        <b-button variant="primary" class="my-2" type="submit">Deploy container</b-button>
 
         <h3 class="my-2">Observers</h3>
 
@@ -129,7 +147,9 @@
   export default {
     data () {
       return {
-        container: null
+        container: null,
+        label: null,
+        siteDomains: null
       }
     },
     computed: {
@@ -221,6 +241,11 @@
         container.triggers = []
       }
       this.container = container
+      this.label = container.label
+      const domains = container.domains
+      if (Array.isArray(domains)) {
+        this.siteDomains = domains.join(',')
+      }
     },
     methods: {
       getTriggerById (id) {
@@ -277,6 +302,14 @@
           body: {
             observers: this.container.observers,
             triggers: this.container.triggers
+          }
+        })
+      },
+      async save () {
+        this.container = await this.$Amplify.API.put('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.container.name}`, {
+          body: {
+            label: this.label,
+            domains: this.siteDomains.split(',').filter(d => d)
           }
         })
       },

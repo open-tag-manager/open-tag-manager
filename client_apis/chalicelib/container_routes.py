@@ -73,7 +73,8 @@ def create_container(org):
         'org': org,
         'label': body['name'],
         'created_at': ts,
-        'updated_at': ts
+        'updated_at': ts,
+        'domains': []
     }
     config['containers'].append(new_container)
     put_config_data(org, config)
@@ -110,17 +111,29 @@ def put_container(org, name):
 
     request = app.current_request
     body = request.json_body
-    if not 'observers' in body or not 'triggers' in body:
-        return Response(body={'error': 'there is no observer or trigger configurations'}, status_code=400)
-    if not isinstance(body['observers'], list) or not isinstance(body['triggers'], list):
-        return Response(body={'error': 'there is no observer configurations'}, status_code=400)
-
     ts = int(time.time())
     data['org'] = org
-    data['updated_at'] = ts
-    data['observers'] = body['observers']
-    data['triggers'] = body['triggers']
+
+    if 'observers' in body:
+        if not isinstance(body['observers'], list):
+            return Response(body={'error': 'observers should set by array'}, status_code=400)
+        data['observers'] = body['observers']
+
+    if 'triggers' in body:
+        if not isinstance(body['triggers'], list):
+            return Response(body={'error': 'triggers should set by array'}, status_code=400)
+        data['triggers'] = body['triggers']
+
+    if 'label' in body and body['label']:
+        container['label'] = data['label'] = body['label']
+
+    if 'domains' in body:
+        if not isinstance(body['domains'], list):
+            return Response(body={'error': 'domains should set by array'}, status_code=400)
+        container['domains'] = data['domains'] = body['domains']
+
     container['updated_at'] = ts
+    data['updated_at'] = ts
 
     # publish javascript
     prefix = ''

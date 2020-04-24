@@ -14,12 +14,13 @@ class DataRetriever(RetrieverBase):
 
     @staticmethod
     def _normalizeUrl(url):
-        if url and url.lower() == 'undefined':
-            return url
+        if isinstance(url, str):
+            if url and url.lower() == 'undefined':
+                return url
 
-        if url:
-            parsedurl = urlparse(url)
-            return "{0}://{1}{2}".format(parsedurl.scheme, parsedurl.netloc, parsedurl.path)
+            if url:
+                parsedurl = urlparse(url)
+                return "{0}://{1}{2}".format(parsedurl.scheme, parsedurl.netloc, parsedurl.path)
 
         return None
 
@@ -102,55 +103,60 @@ JSON_EXTRACT_SCALAR(qs, '$.o_a_id')
 
         sql2 = """WITH scroll as (
 SELECT 
-datet, url, COUNT(y) as s_count, SUM(CAST(y as decimal)) as sum_scroll_y, MAX(CAST(y as decimal)) as max_scroll_y
+datet, url, p_url, COUNT(y) as s_count, SUM(CAST(y as decimal)) as sum_scroll_y, MAX(CAST(y as decimal)) as max_scroll_y
 FROM 
 (
 SELECT
 format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ') as datet,
 JSON_EXTRACT_SCALAR(qs, '$.dl') as url,
+JSON_EXTRACT_SCALAR(qs, '$.o_pl') AS p_url,
 MAX(JSON_EXTRACT_SCALAR(qs, '$.o_e_y')) as y,
 JSON_EXTRACT_SCALAR(qs, '$.cid') as uid
 FROM {0}.{1}
 WHERE JSON_EXTRACT_SCALAR(qs, '$.o_s') LIKE 'scroll_%' AND {2}
-GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), JSON_EXTRACT_SCALAR(qs, '$.dl'),  JSON_EXTRACT_SCALAR(qs, '$.cid')
+GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), JSON_EXTRACT_SCALAR(qs, '$.dl'), JSON_EXTRACT_SCALAR(qs, '$.o_pl'), JSON_EXTRACT_SCALAR(qs, '$.cid')
 ) tmp 
-GROUP BY datet, url  
+GROUP BY datet, url, p_url
 ),
 
 event as (
 SELECT 
 format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ') as datet,
 JSON_EXTRACT_SCALAR(qs, '$.dl') as url,
+JSON_EXTRACT_SCALAR(qs, '$.o_pl') AS p_url,
 COUNT(datetime) as event_count
 FROM {0}.{1}
 WHERE {2}
-GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), JSON_EXTRACT_SCALAR(qs, '$.dl')
+GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), JSON_EXTRACT_SCALAR(qs, '$.dl'), JSON_EXTRACT_SCALAR(qs, '$.o_pl') 
 ),
 
 widget_click as (
 SELECT 
 format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ') as datet,
 JSON_EXTRACT_SCALAR(qs, '$.dl') as url,
+JSON_EXTRACT_SCALAR(qs, '$.o_pl') AS p_url,
 COUNT(datetime) as w_click_count
 FROM {0}.{1}
 WHERE JSON_EXTRACT_SCALAR(qs, '$.o_s') LIKE 'click_widget_%' AND {2}
-GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), JSON_EXTRACT_SCALAR(qs, '$.dl')
+GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), JSON_EXTRACT_SCALAR(qs, '$.dl'), JSON_EXTRACT_SCALAR(qs, '$.o_pl')
 ),
 
 trivial_click as (
 SELECT 
 format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ') as datet,
 JSON_EXTRACT_SCALAR(qs, '$.dl') as url,
+JSON_EXTRACT_SCALAR(qs, '$.o_pl') AS p_url,
 COUNT(datetime) as t_click_count
 FROM {0}.{1}
 WHERE JSON_EXTRACT_SCALAR(qs, '$.o_s') LIKE 'click_trivial_%' AND {2}
-GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), JSON_EXTRACT_SCALAR(qs, '$.dl')
+GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), JSON_EXTRACT_SCALAR(qs, '$.dl'), JSON_EXTRACT_SCALAR(qs, '$.o_pl')
 ),
 
 plt as (
 SELECT 
 format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ') as datet,
 JSON_EXTRACT_SCALAR(qs, '$.dl') as url,
+JSON_EXTRACT_SCALAR(qs, '$.o_pl') AS p_url,
 COUNT(JSON_EXTRACT_SCALAR(qs, '$.plt')) as plt_count,
 SUM(CAST(JSON_EXTRACT_SCALAR(qs, '$.plt') as decimal)) as sum_plt,
 MAX(CAST(JSON_EXTRACT_SCALAR(qs, '$.plt') as decimal)) as max_plt
@@ -159,12 +165,13 @@ WHERE JSON_EXTRACT_SCALAR(qs, '$.o_s') = 'pageview'
 AND CAST(JSON_EXTRACT_SCALAR(qs, '$.plt') as decimal) > 0 
 AND CAST(JSON_EXTRACT_SCALAR(qs, '$.plt') as decimal) <= 30000 
 AND {2}
-GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), JSON_EXTRACT_SCALAR(qs, '$.dl')
+GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), JSON_EXTRACT_SCALAR(qs, '$.dl'), JSON_EXTRACT_SCALAR(qs, '$.o_pl')
 )
 
 SELECT
 format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ') as datetime,
 JSON_EXTRACT_SCALAR(qs, '$.dl') as url,
+JSON_EXTRACT_SCALAR(qs, '$.o_pl') AS p_url,
 COUNT(qs) as count,
 COUNT(DISTINCT JSON_EXTRACT_SCALAR(qs, '$.o_psid')) as session_count,
 COUNT(DISTINCT JSON_EXTRACT_SCALAR(qs, '$.cid')) as user_count,
@@ -180,17 +187,17 @@ plt.max_plt
 FROM 
 {0}.{1}
 LEFT OUTER JOIN 
-scroll ON (scroll.url = JSON_EXTRACT_SCALAR(qs, '$.dl') AND scroll.datet = format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'))
+scroll ON (scroll.url = JSON_EXTRACT_SCALAR(qs, '$.dl') AND scroll.p_url = JSON_EXTRACT_SCALAR(qs, '$.o_pl') AND scroll.datet = format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'))
 LEFT OUTER JOIN 
-event ON (event.url = JSON_EXTRACT_SCALAR(qs, '$.dl') AND event.datet = format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'))
+event ON (event.url = JSON_EXTRACT_SCALAR(qs, '$.dl') AND event.p_url = JSON_EXTRACT_SCALAR(qs, '$.o_pl') AND event.datet = format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'))
 LEFT OUTER JOIN 
-widget_click ON (widget_click.url = JSON_EXTRACT_SCALAR(qs, '$.dl') AND widget_click.datet = format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'))
+widget_click ON (widget_click.url = JSON_EXTRACT_SCALAR(qs, '$.dl') AND widget_click.p_url = JSON_EXTRACT_SCALAR(qs, '$.o_pl') AND widget_click.datet = format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'))
 LEFT OUTER JOIN 
-trivial_click ON (trivial_click.url = JSON_EXTRACT_SCALAR(qs, '$.dl') AND trivial_click.datet = format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'))
+trivial_click ON (trivial_click.url = JSON_EXTRACT_SCALAR(qs, '$.dl') AND trivial_click.p_url = JSON_EXTRACT_SCALAR(qs, '$.o_pl') AND trivial_click.datet = format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'))
 LEFT OUTER JOIN
-plt ON (plt.url = JSON_EXTRACT_SCALAR(qs, '$.dl') AND plt.datet = format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'))
+plt ON (plt.url = JSON_EXTRACT_SCALAR(qs, '$.dl') AND plt.p_url = JSON_EXTRACT_SCALAR(qs, '$.o_pl') AND plt.datet = format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'))
 WHERE JSON_EXTRACT_SCALAR(qs, '$.o_s') = 'pageview' AND {2}
-GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), JSON_EXTRACT_SCALAR(qs, '$.dl'), s_count, sum_scroll_y, max_scroll_y, event_count, w_click_count, t_click_count, plt_count, sum_plt, max_plt
+GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), JSON_EXTRACT_SCALAR(qs, '$.dl'), JSON_EXTRACT_SCALAR(qs, '$.o_pl'),s_count, sum_scroll_y, max_scroll_y, event_count, w_click_count, t_click_count, plt_count, sum_plt, max_plt
 ORDER BY count DESC
 """.format(self.options['athena_database'], self.options['athena_table'], q)
 
@@ -209,8 +216,9 @@ ORDER BY count DESC
         table_result = []
         for index, row in pd_data.iterrows():
             url = self._normalizeUrl(row['url'])
+            p_url = self._normalizeUrl(row['p_url'])
             rj = json.loads(row.to_json())
-            r = [d for d in table_result if d['url'] == url and d['datetime'] == rj['datetime']]
+            r = [d for d in table_result if d['url'] == url and d['p_url'] == p_url and d['datetime'] == rj['datetime']]
             if len(r) > 0:
                 # merge data
                 r[0]['count'] += rj['count'] or 0
@@ -228,6 +236,7 @@ ORDER BY count DESC
             else:
                 # initialize data
                 rj['url'] = url
+                rj['p_url'] = p_url
                 rj['count'] = rj['count'] or 0
                 rj['session_count'] = rj['session_count'] or 0
                 rj['user_count'] = rj['user_count'] or 0
