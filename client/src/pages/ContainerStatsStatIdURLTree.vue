@@ -8,6 +8,7 @@
 </template>
 
 <script>
+  import _ from 'lodash'
   import {getTree} from '../lib/UrlTree'
   import axios from 'axios'
   import SwaggerSample from '../components/SwaggerSample'
