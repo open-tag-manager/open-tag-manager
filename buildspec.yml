@@ -9,4 +9,8 @@ phases:
       - pip3 install chalice==1.12.0
       - wget https://releases.hashicorp.com/terraform/0.11.14/terraform_0.11.14_linux_amd64.zip
       - unzip terraform_0.11.14_linux_amd64.zip
-      - ./terraform --version
+      - mv terraform /usr/local/bin/terraform
+      - docker --version
+      - python --version
+      - chalice --version
+      - terrafom --version
