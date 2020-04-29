@@ -9,8 +9,9 @@ import glob
 def main():
     environment = os.environ.get('ENV') or 'dev'
     s_environment = os.environ.get('S_ENV') or 'shared'
+    region = os.environ.get('AWS_DEFAULT_REGION')
     backend_bucket = os.environ.get('TERRAFORM_BACKEND_BUCKET')
-    backend_region = os.environ.get('TERRAFORM_BACKEND_REGION') or os.environ.get('AWS_DEFAULT_REGION')
+    backend_region = os.environ.get('TERRAFORM_BACKEND_REGION') or region
 
     print('1. deploy infra')
 
@@ -51,7 +52,11 @@ def main():
     subprocess.run(['terraform', 'workspace', 'new', environment], cwd='./infra/common', check=False)
     subprocess.run(['terraform', 'workspace', 'select', environment], cwd='./infra/common', check=True)
 
-    terraform_apply_cmd = ['terraform', 'apply', '-auto-approve', '-var=aws_batch_job_queue_arn=%s' % job_queue]
+    terraform_apply_cmd = [
+        'terraform', 'apply', '-auto-approve',
+        '-var=aws_batch_job_queue_arn=%s' % job_queue,
+        '-var=aws_region=%s' % region
+    ]
     if os.path.exists('terraform.tfvars'):
         terraform_apply_cmd.append('-var-file=%s' % '../../terraform.tfvars')
     if os.path.exists('%s-terraform.tfvars' % environment):
@@ -105,7 +110,7 @@ def main():
     cognito_user_pool_client_id = cognito_identity_provider['client_id']
     cognito_user_pool_id = re.match('^cognito-idp\.([a-z0-9\-]+)\.amazonaws.com/(.+)$', cognito_identity_provider['provider_name'])[2]
     cognito_user_pool_arn = 'arn:aws:cognito-idp:%s:%s:userpool/%s' % (
-        os.environ.get('AWS_DEFAULT_REGION'), aws_id, cognito_user_pool_id)
+        region, aws_id, cognito_user_pool_id)
 
     repository_url = [x for x in common_resources if x['address'] == 'aws_ecr_repository.otm_data_retriever'][0]['values']['repository_url']
 
@@ -193,8 +198,8 @@ def main():
         'API_BASE_URL': api_resource['resources'][2]['rest_api_url'],
         'ASSETS_PUBLIC_PATH': "https://%s/" % client_domain,
         'COGNITO_IDENTITY_POOL_ID': cognito_identify_pool_id,
-        'COGNITO_REGION': os.environ.get('AWS_DEFAULT_REGION'),
-        'COGNITO_IDENTITY_POOL_REGION': os.environ.get('AWS_DEFAULT_REGION'),
+        'COGNITO_REGION': region,
+        'COGNITO_IDENTITY_POOL_REGION': region,
         'COGNITO_USER_POOL_ID': cognito_user_pool_id,
         'COGNITO_USER_POOL_WEB_CLIENT_ID': cognito_user_pool_client_id,
         'COGNITO_COOKIE_STORAGE_DOMAIN': client_domain,
