@@ -1,5 +1,3 @@
-variable "aws_profile" {}
-variable "aws_region" {}
 variable "aws_batch_timeout" {
   default = 1800
 }
