@@ -9,23 +9,27 @@ import glob
 def main():
     environment = os.environ.get('ENV') or 'dev'
     s_environment = os.environ.get('S_ENV') or 'shared'
+    backend_bucket = os.environ.get('TERRAFORM_BACKEND_BUCKET')
+    backend_region = os.environ.get('TERRAFORM_BACKEND_REGION') or os.environ.get('AWS_DEFAULT_REGION')
 
     print('1. deploy infra')
 
+    terraform_init_cmd = ['terraform', 'init',
+                          '-backend-config=bucket=%s' % backend_bucket,
+                          '-backend-config=key=aws-batch',
+                          '-backend-config=region=%s' % backend_region]
+
     print('1.1. deploy shared infra')
-    subprocess.run(['terraform', 'init'], cwd='./infra/aws-batch', check=True)
-    if not os.path.exists('./infra/aws-batch/terraform.tfstate.d/%s' % s_environment):
-        subprocess.run(['terraform', 'workspace', 'new', s_environment], cwd='./infra/aws-batch', check=True)
+    subprocess.run(terraform_init_cmd, cwd='./infra/aws-batch', check=True)
+    subprocess.run(['terraform', 'workspace', 'new', s_environment], cwd='./infra/aws-batch', check=False)
     subprocess.run(['terraform', 'workspace', 'select', s_environment], cwd='./infra/aws-batch', check=True)
-    subprocess.run(['terraform', 'apply', '-var-file=../../terraform.tfvars'], cwd='./infra/aws-batch', check=True)
+    subprocess.run(['terraform', 'apply', '-auto-approve', '-var-file=../../terraform.tfvars'], cwd='./infra/aws-batch', check=True)
+    shared_infra = subprocess.run(['terraform', 'show', '-json'], stdout=subprocess.PIPE, cwd='./infra/aws-batch',
+                                  check=True)
+    shared_infra_result = json.loads(shared_infra.stdout.decode('utf8'))['values']['root_module']['resources']
+    job_queue = [x for x in shared_infra_result if x['address'] == 'aws_batch_job_queue.otm'][0]['values']['arn']
 
     print('1.2. deploy infra')
-
-    with open('./infra/aws-batch/terraform.tfstate.d/%s/terraform.tfstate' % s_environment) as f:
-        tfstate = json.load(f)
-        tfresource = tfstate['modules'][0]['resources']
-
-    job_queue = tfresource['aws_batch_job_queue.otm']['primary']['id']
 
     for filename in glob.iglob('./infra/common/plugin_*.tf'):
         os.remove(filename)
@@ -37,69 +41,67 @@ def main():
             plugin_name = package['name']
         os.symlink('../../' + filename, './infra/common/plugin_' + plugin_name + tfname_base[1])
 
-    subprocess.run(['terraform', 'init'], cwd='./infra/common', check=True)
-    if not os.path.exists('./infra/common/terraform.tfstate.d/' + environment):
-        subprocess.run(['terraform', 'workspace', 'new', environment], cwd='./infra/common', check=True)
+    terraform_init_cmd[3] = '-backend-config=key=common'
+    subprocess.run(terraform_init_cmd, cwd='./infra/common', check=True)
+    subprocess.run(['terraform', 'workspace', 'new', environment], cwd='./infra/common', check=False)
     subprocess.run(['terraform', 'workspace', 'select', environment], cwd='./infra/common', check=True)
 
-    vars = ['terraform', 'apply', '-var-file=../../terraform.tfvars',
-            '-var=aws_batch_job_queue_arn=%s' % job_queue]
+    terraform_cmd = ['terraform', 'apply', '-auto-approve', '-var-file=../../terraform.tfvars',
+                     '-var=aws_batch_job_queue_arn=%s' % job_queue]
     if os.path.exists('%s-terraform.tfvars' % environment):
-        vars.append('-var-file=../../%s-terraform.tfvars' % environment)
-    subprocess.run(vars, cwd='./infra/common', check=True)
+        terraform_cmd.append('-var-file=../../%s-terraform.tfvars' % environment)
 
-    with open('./infra/common/terraform.tfstate.d/%s/terraform.tfstate' % environment) as f:
-        tfstate = json.load(f)
-        tfresource = tfstate['modules'][0]['resources']
+    subprocess.run(terraform_cmd, cwd='./infra/common', check=True)
+    common_result = subprocess.run(['terraform', 'show', '-json'], stdout=subprocess.PIPE, cwd='./infra/common',
+                                   check=True)
 
-    script_bucket = tfresource['aws_s3_bucket.otm_script']['primary']['id']
-    client_bucket = tfresource['aws_s3_bucket.otm_client']['primary']['id']
-    stat_bucket = tfresource['aws_s3_bucket.otm_stats']['primary']['id']
-    config_bucket = tfresource['aws_s3_bucket.otm_config']['primary']['id']
-    athena_bucket = tfresource['aws_s3_bucket.otm_athena']['primary']['id']
-    collect_log_bucket = tfresource['aws_s3_bucket.otm_collect_log']['primary']['id']
+    # parse terraform result
+    common_resources = json.loads(common_result.stdout.decode('utf8'))['values']['root_module']['resources']
 
-    script_distribution = tfresource['aws_cloudfront_distribution.otm_script_distribution']['primary']['id']
-    client_distribution = tfresource['aws_cloudfront_distribution.otm_client_distribution']['primary']['id']
+    script_bucket = [x for x in common_resources if x['address'] == 'aws_s3_bucket.otm_script'][0]['values']['bucket']
+    client_bucket = [x for x in common_resources if x['address'] == 'aws_s3_bucket.otm_client'][0]['values']['bucket']
+    stat_bucket = [x for x in common_resources if x['address'] == 'aws_s3_bucket.otm_stats'][0]['values']['bucket']
+    config_bucket = [x for x in common_resources if x['address'] == 'aws_s3_bucket.otm_config'][0]['values']['bucket']
+    athena_bucket = [x for x in common_resources if x['address'] == 'aws_s3_bucket.otm_athena'][0]['values']['bucket']
+    collect_log_bucket = [x for x in common_resources if x['address'] == 'aws_s3_bucket.otm_collect_log'][0]['values']['bucket']
 
-    script_domain = tfresource['aws_cloudfront_distribution.otm_script_distribution']['primary']['attributes'][
-        'domain_name']
-    if 'aws_route53_record.otm' in tfresource:
-        script_domain = tfresource['aws_route53_record.otm']['primary']['attributes']['name']
+    script_distribution_values = [x for x in common_resources if x['address'] == 'aws_cloudfront_distribution.otm_script_distribution'][0]['values']
+    script_distribution = script_distribution_values['id']
+    script_domain = script_distribution_values['domain_name']
+    if len(script_distribution_values['aliases']) > 0:
+        script_domain = script_distribution_values['aliases'][0]
 
-    collect_domain = tfresource['aws_cloudfront_distribution.otm_collect_distribution']['primary']['attributes'][
-        'domain_name']
-    if 'aws_route53_record.collect' in tfresource:
-        collect_domain = tfresource['aws_route53_record.collect']['primary']['attributes']['name']
+    collect_distribution_values = [x for x in common_resources if x['address'] == 'aws_cloudfront_distribution.otm_collect_distribution'][0]['values']
+    collect_domain = collect_distribution_values['domain_name']
+    if len(collect_distribution_values['aliases']) > 0:
+        collect_domain = collect_distribution_values['aliases'][0]
 
-    client_domain = tfresource['aws_cloudfront_distribution.otm_client_distribution']['primary']['attributes'][
-        'domain_name']
-    if 'aws_route53_record.client' in tfresource:
-        client_domain = tfresource['aws_route53_record.client']['primary']['attributes']['name']
+    client_distribution_values = [x for x in common_resources if x['address'] == 'aws_cloudfront_distribution.otm_client_distribution'][0]['values']
+    client_distribution = client_distribution_values['id']
+    client_domain = script_distribution_values['domain_name']
+    if len(client_distribution_values['aliases']) > 0:
+        client_domain = client_distribution_values['aliases'][0]
 
-    dynamo_db_table = tfresource['aws_dynamodb_table.otm_role']['primary']['id']
-    dynamo_db_table_arn = tfresource['aws_dynamodb_table.otm_role']['primary']['attributes']['arn']
+    dynamo_db_values = [x for x in common_resources if x['address'] == 'aws_dynamodb_table.otm_role'][0]['values']
+    dynamo_db_table = dynamo_db_values['id']
+    dynamo_db_table_arn = dynamo_db_values['arn']
 
-    job_definition = tfresource['aws_batch_job_definition.otm_data_retriever']['primary']['id']
+    job_definition = [x for x in common_resources if x['address'] == 'aws_batch_job_definition.otm_data_retriever'][0]['values']['id']
 
-    sns_topic = tfresource['aws_sns_topic.otm_collect_log_topic']['primary']['attributes']['name']
+    sns_topic = [x for x in common_resources if x['address'] == 'aws_sns_topic.otm_collect_log_topic'][0]['values']['name']
 
-    athena_database = tfresource['aws_athena_database.otm']['primary']['id']
+    athena_database = [x for x in common_resources if x['address'] == 'aws_athena_database.otm'][0]['values']['id']
 
-    cognito_identify_pool_id = tfresource['aws_cognito_identity_pool.otm']['primary']['id']
-    cognito_user_pool_id = None
-    cognito_user_pool_client_id = None
-    aws_id = re.match('^arn:aws:cognito-identity:[a-z0-9\-]+:([0-9]+):identitypool',
-                      tfresource['aws_cognito_identity_pool.otm']['primary']['attributes']['arn'])[1]
-    for i in tfresource['aws_cognito_identity_pool.otm']['primary']['attributes'].keys():
-        v = tfresource['aws_cognito_identity_pool.otm']['primary']['attributes'][i]
-        if re.match('^cognito_identity_providers\.[0-9]+\.client_id$', i):
-            cognito_user_pool_client_id = v
-        if re.match('^cognito_identity_providers\.[0-9]+\.provider_name$', i):
-            cognito_user_pool_id = re.match('^cognito-idp\.([a-z0-9\-]+)\.amazonaws.com/(.+)$', v)[2]
-
+    cognito_identify_pool_values = [x for x in common_resources if x['address'] == 'aws_cognito_identity_pool.otm'][0]['values']
+    cognito_identify_pool_id = cognito_identify_pool_values['id']
+    aws_id = re.match('^arn:aws:cognito-identity:[a-z0-9\-]+:([0-9]+):identitypool', cognito_identify_pool_values['arn'])[1]
+    cognito_identity_provider = cognito_identify_pool_values['cognito_identity_providers'][0]
+    cognito_user_pool_client_id = cognito_identity_provider['client_id']
+    cognito_user_pool_id = re.match('^cognito-idp\.([a-z0-9\-]+)\.amazonaws.com/(.+)$', cognito_identity_provider['provider_name'])[2]
     cognito_user_pool_arn = 'arn:aws:cognito-idp:%s:%s:userpool/%s' % (
         os.environ.get('AWS_DEFAULT_REGION'), aws_id, cognito_user_pool_id)
+
+    repository_url = [x for x in common_resources if x['address'] == 'aws_ecr_repository.otm_data_retriever'][0]['values']['repository_url']
 
     shutil.copy('./client_apis/.chalice/config.json.sample', './client_apis/.chalice/config.json')
     shutil.copy('./log_formatter/.chalice/config.json.sample', './log_formatter/.chalice/config.json')
@@ -165,7 +167,6 @@ def main():
     import data_retriever.install_plugin
     data_retriever.install_plugin.main()
 
-    repository_url = tfresource['aws_ecr_repository.otm_data_retriever']['primary']['attributes']['repository_url']
     p = subprocess.Popen(['aws', 'ecr', 'get-login', '--no-include-email'], stdout=subprocess.PIPE)
     p.wait()
     subprocess.run(p.stdout.readlines()[0].decode('utf-8').split(), check=True)
