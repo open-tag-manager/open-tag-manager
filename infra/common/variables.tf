@@ -1,10 +1,8 @@
+variable "aws_region" {}
 variable "aws_batch_timeout" {
   default = 1800
 }
 variable "aws_batch_job_queue_arn" {}
-variable "aws_cloudwatch_schedule_enabled" {
-  default = false
-}
 variable "aws_cloudfront_collect_domain" {
   type = list(string)
   default = []
