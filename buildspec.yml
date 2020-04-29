@@ -13,4 +13,4 @@ phases:
       - docker --version
       - python --version
       - chalice --version
-      - terrafom --version
+      - terraform --version
