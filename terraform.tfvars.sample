@@ -1,5 +1,0 @@
-aws_profile          = ""
-aws_region           = ""
-aws_s3_bucket_prefix = ""
-aws_cognito_user_pool_id = ""
-aws_cognito_user_pool_client_id = ""
