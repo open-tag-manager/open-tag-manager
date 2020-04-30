@@ -143,7 +143,15 @@ def main():
         env['STATS_ATHENA_TABLE'] = 'otm_collect2'
         env['STATS_ATHENA_RESULT_BUCKET'] = athena_bucket
 
-        # apply plugin configuration
+        # apply plugin configuration from env
+        for config_file in glob.iglob('./plugins/*/config.json.sample'):
+            with open(config_file, 'r') as cf:
+                config_data = json.load(cf)
+                if 'api' in config_data:
+                    for k in config_data['api']:
+                        env[k] = os.environ.get(k)
+
+        # overwrite plugin configuration from file
         for config_file in glob.iglob('./plugins/*/config.json'):
             with open(config_file, 'r') as cf:
                 config_data = json.load(cf)
