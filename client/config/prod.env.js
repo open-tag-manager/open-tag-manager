@@ -28,6 +28,20 @@ const c = {
   OTM_PLUGIN_ACTIONS: JSON.stringify(pluginActions)
 }
 
+// load configuration from environments
+const sampleConfigFiles = glob.sync('../plugins/**/config.json.sample')
+for (let conf of sampleConfigFiles) {
+  const jsonObject = JSON.parse(fs.readFileSync(conf, 'utf8'))
+  if (jsonObject.client) {
+    for (let key in jsonObject.client) {
+      if (process.env[key]) {
+        c[key] = `"${process.env[key]}"`
+      }
+    }
+  }
+}
+
+// load configuration from file
 const configFiles = glob.sync('../plugins/**/config.json')
 for (let conf of configFiles) {
   const jsonObject = JSON.parse(fs.readFileSync(conf, 'utf8'))
