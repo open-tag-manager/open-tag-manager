@@ -149,7 +149,8 @@ def main():
                 config_data = json.load(cf)
                 if 'api' in config_data:
                     for k in config_data['api']:
-                        env[k] = os.environ.get(k)
+                        if k in os.environ:
+                            env[k] = os.environ.get(k)
 
         # overwrite plugin configuration from file
         for config_file in glob.iglob('./plugins/*/config.json'):
