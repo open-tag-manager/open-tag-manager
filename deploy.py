@@ -201,7 +201,8 @@ def main():
 
     subprocess.run(['yarn', 'install'], cwd='./client', check=True)
     subprocess.run(['yarn', 'install-otm-plugin'], cwd='./client', check=True)
-    subprocess.run(['npm', 'run', 'build'], env={
+
+    client_build_env = {
         'NODE_ENV': 'production',
         'PATH': os.environ.get('PATH'),
         'API_BASE_URL': api_resource['resources'][2]['rest_api_url'],
@@ -214,7 +215,18 @@ def main():
         'COGNITO_COOKIE_STORAGE_DOMAIN': client_domain,
         'COGNITO_COOKIE_SECURE': '1',
         'BASE_PATH': ''
-    }, cwd='./client', check=True)
+    }
+
+    # apply plugin configuration from env
+    for config_file in glob.iglob('./plugins/*/config.json.sample'):
+        with open(config_file, 'r') as cf:
+            config_data = json.load(cf)
+            if 'api' in config_data:
+                for k in config_data['client']:
+                    if k in os.environ:
+                        client_build_env[k] = os.environ.get(k)
+
+    subprocess.run(['npm', 'run', 'build'], env=client_build_env, cwd='./client', check=True)
     subprocess.run(['aws', 's3', 'sync', './client/dist/', 's3://%s/' % client_bucket, '--acl=public-read'], check=True)
 
     print('6. invalidate client / otm.js')
