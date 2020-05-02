@@ -4,7 +4,7 @@
 
 Open Tag Manager (OTM for short) is OpenSource Tag Manager and Action Tracker. You can reach raw data.
 
-Copyright 2019-2020 Alexander Keith
+Copyright 2018-2020 Alexander Keith
 
 This software is licensed under the Aapche Licens, Version 2.0.
 Please see the file called LICENSE.
@@ -16,7 +16,7 @@ Please see the file called LICENSE.
 
 - AWS: This product is using following stack.
     - CloudFront: for tracker, to distribute scripts and client web apps.
-    - S3: to store scripts, logs, stat data and client web apps.
+    - S3: to store scripts, logs, stat data, terraform backend and client web apps.
     - Athena: to retrieve summary data from S3 log object.
     - API Gateway / Lambda: to provide management APIs for client web apps.
     - Amazon Cognito: to manage admin users for client web apps.
@@ -72,14 +72,18 @@ aws_route53_client_zone_id = "ZXXXXX"
 
 ### Deploy
 
+Before that, you need create a s3 bucket for terraform backend.
+And set bucket name to `TERRAFORM_BACKEND_BUCKET` environment variable.
+
 ```
 docker build -t otm-setup .
 docker run -e 'AWS_PROFILE=YOUR_PROFILE' \
-          -e 'AWS_DEFAULT_REGION=YOUR_REGION' \
-          -v `pwd`:/otm  \
-          -v $HOME/.aws:/root/.aws \
-          -v /var/run/docker.sock:/var/run/docker.sock  \
-          -it otm-setup:latest python deploy.py
+           -e 'AWS_DEFAULT_REGION=YOUR_REGION' \
+           -e 'TERRAFORM_BACKEND_BUCKET=YOUR_TERRAFORM_BACKEND_BUCKET'
+           -v `pwd`:/otm  \
+           -v $HOME/.aws:/root/.aws \
+           -v /var/run/docker.sock:/var/run/docker.sock  \
+           -it otm-setup:latest python deploy.py
 ```
 
 ### Add admin user
