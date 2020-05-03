@@ -89,7 +89,7 @@ def main():
 
     client_distribution_values = [x for x in common_resources if x['address'] == 'aws_cloudfront_distribution.otm_client_distribution'][0]['values']
     client_distribution = client_distribution_values['id']
-    client_domain = script_distribution_values['domain_name']
+    client_domain = client_distribution_values['domain_name']
     if client_distribution_values['aliases'] and len(client_distribution_values['aliases']) > 0:
         client_domain = client_distribution_values['aliases'][0]
 
