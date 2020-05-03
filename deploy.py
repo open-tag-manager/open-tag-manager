@@ -79,18 +79,18 @@ def main():
     script_distribution_values = [x for x in common_resources if x['address'] == 'aws_cloudfront_distribution.otm_script_distribution'][0]['values']
     script_distribution = script_distribution_values['id']
     script_domain = script_distribution_values['domain_name']
-    if len(script_distribution_values['aliases']) > 0:
+    if script_distribution_values['aliases'] and len(script_distribution_values['aliases']) > 0:
         script_domain = script_distribution_values['aliases'][0]
 
     collect_distribution_values = [x for x in common_resources if x['address'] == 'aws_cloudfront_distribution.otm_collect_distribution'][0]['values']
     collect_domain = collect_distribution_values['domain_name']
-    if len(collect_distribution_values['aliases']) > 0:
+    if collect_distribution_values['aliases'] and len(collect_distribution_values['aliases']) > 0:
         collect_domain = collect_distribution_values['aliases'][0]
 
     client_distribution_values = [x for x in common_resources if x['address'] == 'aws_cloudfront_distribution.otm_client_distribution'][0]['values']
     client_distribution = client_distribution_values['id']
     client_domain = script_distribution_values['domain_name']
-    if len(client_distribution_values['aliases']) > 0:
+    if client_distribution_values['aliases'] and len(client_distribution_values['aliases']) > 0:
         client_domain = client_distribution_values['aliases'][0]
 
     dynamo_db_values = [x for x in common_resources if x['address'] == 'aws_dynamodb_table.otm_role'][0]['values']
