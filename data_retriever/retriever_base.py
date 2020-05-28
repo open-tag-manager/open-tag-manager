@@ -39,3 +39,9 @@ class RetrieverBase:
         )
         QueryExecutionId = response['QueryExecutionId']
         return self._poll_status(QueryExecutionId)
+
+    def make_partition(self):
+        result = self._execute_athena_query('MSCK REPAIR TABLE %s.%s;' % (self.options['athena_database'], self.options['athena_table']))
+
+        if result['QueryExecution']['Status']['State'] != 'SUCCEEDED':
+            raise Exception('Cannot make partition')

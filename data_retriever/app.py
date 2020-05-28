@@ -25,10 +25,7 @@ class DataRetriever(RetrieverBase):
         return None
 
     def execute(self):
-        result = self._execute_athena_query(
-            'MSCK REPAIR TABLE %s.%s;' % (self.options['athena_database'], self.options['athena_table']))
-        if result['QueryExecution']['Status']['State'] != 'SUCCEEDED':
-            raise Exception('Cannot make partition')
+        self.make_partition()
 
         stime = datetime.datetime.utcfromtimestamp(int(self.options['query_stime'] / 1000))
         etime = datetime.datetime.utcfromtimestamp(int(self.options['query_etime'] / 1000))
