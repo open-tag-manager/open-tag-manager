@@ -243,6 +243,8 @@ def main():
         env = config['environment_variables']
         env['OTM_REFORM_S3_BUCKET'] = collect_log_bucket
         env['OTM_REFORM_LOG_PREFIX'] = 'formatted/'
+        env['OTM_STAT_S3_BUCKET'] = stat_bucket
+        env['OTM_STAT_LOG_PREFIX'] = 'usage/'
 
     with open('./log_formatter/.chalice/config.json', 'w') as f:
         json.dump(config, f, indent=4)
@@ -252,6 +254,8 @@ def main():
         config['Statement'][1]['Resource'] = []
         config['Statement'][1]['Resource'].append('arn:aws:s3:::%s/*' % collect_log_bucket)
         config['Statement'][1]['Resource'].append('arn:aws:s3:::%s' % collect_log_bucket)
+        config['Statement'][1]['Resource'].append('arn:aws:s3:::%s/*' % stat_bucket)
+        config['Statement'][1]['Resource'].append('arn:aws:s3:::%s' % stat_bucket)
 
     with open('./log_formatter/.chalice/policy-%s.json' % environment, 'w') as f:
         json.dump(config, f, indent=4)

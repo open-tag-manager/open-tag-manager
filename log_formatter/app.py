@@ -37,6 +37,7 @@ def handler(event):
     file_name = re.compile('(.*/)?(.+)$').match(object_key)[2]
 
     result = {}
+    record_count = {}
     for b in read_cf_data(bucket_name, object_key):
         str = b.decode('utf-8')
         if comment_pattern.match(str):
@@ -91,8 +92,17 @@ def handler(event):
         if new_key not in result:
             result[new_key] = []
 
+        if new_key not in record_count:
+            record_count[new_key] = 0
+
         result[new_key].append(json.dumps(record_data))
+        record_count[new_key] += 1
 
     for key in result:
         obj = s3.Object(os.environ.get('OTM_REFORM_S3_BUCKET'), os.environ.get('OTM_REFORM_LOG_PREFIX') + key)
         obj.put(Body=gzip.compress('\n'.join(result[key]).encode('utf-8')))
+
+    for key in record_count:
+        file_name = os.path.splitext(key)[0]
+        obj = s3.Object(os.environ.get('OTM_STAT_S3_BUCKET'), os.environ.get('OTM_STAT_LOG_PREFIX') + file_name + '.json')
+        obj.put(Body=json.dumps({'type': 'collect', 'size': record_count[key]}))
