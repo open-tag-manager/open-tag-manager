@@ -1,6 +1,7 @@
 from retrying import retry
 import boto3
 import json
+import datetime
 
 
 class RetrieverBase:
@@ -39,6 +40,16 @@ class RetrieverBase:
         )
         QueryExecutionId = response['QueryExecutionId']
         return self._poll_status(QueryExecutionId)
+
+    def _save_usage_report(self, bucket, org, tid, result_athena):
+        print(json.dumps({'message': 'save usage report'}))
+        scanned = result_athena['QueryExecution']['Statistics']['DataScannedInBytes']
+        usage_key = 'org={0}/tid={1}/{2}/{3}.json'.format(org, tid,
+                                                          datetime.datetime.now().strftime('year=%Y/month=%-m/day=%-d'),
+                                                          result_athena['QueryExecution']['QueryExecutionId'])
+        usage_key = '{0}{1}'.format(self.options['usage_prefix'], usage_key)
+        self.s3.Object(bucket, usage_key).put(Body=json.dumps({'type': 'athena_scan', 'size': scanned}))
+
 
     def make_partition(self):
         result = self._execute_athena_query('MSCK REPAIR TABLE %s.%s;' % (self.options['athena_database'], self.options['athena_table']))

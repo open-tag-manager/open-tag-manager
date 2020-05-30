@@ -133,6 +133,7 @@ def main():
         env['OTM_ROLE_DYNAMODB_TABLE'] = dynamo_db_table
         env['OTM_STATS_BUCKET'] = stat_bucket
         env['OTM_STATS_PREFIX'] = 'stats/'
+        env['OTM_USAGE_PREFIX'] = 'usage/'
         env['OTM_SCRIPT_CDN'] = 'https://%s' % script_domain
         env['OTM_COGNITO_USER_POOL_ARN'] = cognito_user_pool_arn
         env['STATS_BATCH_JOB_QUEUE'] = job_queue

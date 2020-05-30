@@ -31,7 +31,8 @@ class DataRetriever(RetrieverBase):
         etime = datetime.datetime.utcfromtimestamp(int(self.options['query_etime'] / 1000))
 
         q = ''
-        q += " tid = '%s'" % self.options['query_tid']
+        q += " org = '%s'" % self.options['query_org']
+        q += " AND tid = '%s'" % self.options['query_tid']
         q += ' AND year * 10000 + month * 100 + day >= %s' % stime.strftime('%Y%m%d')
         q += ' AND year * 10000 + month * 100 + day <= %s' % etime.strftime('%Y%m%d')
         q += " AND datetime >= timestamp '%s'" % (stime.strftime('%Y-%m-%d %H:%M:%S'))
@@ -64,6 +65,9 @@ JSON_EXTRACT_SCALAR(qs, '$.o_a_id')
         result_athena = self._execute_athena_query(sql)
         if result_athena['QueryExecution']['Status']['State'] != 'SUCCEEDED':
             raise Exception('Cannot execute query')
+
+        self._save_usage_report(self.options['target_bucket'], self.options['query_org'], self.options['query_tid'],
+                                result_athena)
 
         result_data = self.s3.Bucket(self.options['athena_result_bucket']).Object(
             '%s%s.csv' % (
@@ -202,6 +206,9 @@ ORDER BY count DESC
         if result_athena['QueryExecution']['Status']['State'] != 'SUCCEEDED':
             raise Exception('Cannot execute query')
 
+        self._save_usage_report(self.options['target_bucket'], self.options['query_org'], self.options['query_tid'],
+                                result_athena)
+
         result_data = self.s3.Bucket(self.options['athena_result_bucket']).Object(
             '%s%s.csv' % (
                 self.options['athena_result_prefix'], result_athena['QueryExecution']['QueryExecutionId'])).get()
@@ -332,7 +339,9 @@ def main():
     parser.add_argument('-t', '--target-bucket', dest='target_bucket', required=True, help='target bucket')
     parser.add_argument('-n', '--target-prefix', dest='target_prefix', required=True, help='target key prefix')
     parser.add_argument('-r', '--target-prefix-raw', dest='target_prefix_raw', required=True, help='target key prefix')
+    parser.add_argument('-u', '--usage-prefix', dest='usage_prefix', required=True, help='usage key prefix')
     parser.add_argument('--target-suffix', dest='target_suffix', required=False, help='target key suffix')
+    parser.add_argument('--query-org', dest='query_org', required=True, help='organization name')
     parser.add_argument('--query-tid', dest='query_tid', required=True, help='tid (Container Name)')
     parser.add_argument('--query-stime', dest='query_stime', type=int, required=True,
                         help='Query start time (msec unix time)')
