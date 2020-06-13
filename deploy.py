@@ -32,7 +32,7 @@ def main():
     subprocess.run(terraform_apply_cmd, cwd='./infra/aws-batch', check=True)
 
     terraform_apply_cmd[1] = 'apply'
-    terraform_apply_cmd.apply('-auto-approve')
+    terraform_apply_cmd.append('-auto-approve')
 
     subprocess.run(terraform_apply_cmd, cwd='./infra/aws-batch', check=True)
     shared_infra = subprocess.run(['terraform', 'show', '-json'], stdout=subprocess.PIPE, cwd='./infra/aws-batch',
@@ -70,7 +70,7 @@ def main():
     subprocess.run(terraform_apply_cmd, cwd='./infra/common', check=True)
 
     terraform_apply_cmd[1] = 'apply'
-    terraform_apply_cmd.apply('-auto-approve')
+    terraform_apply_cmd.append('-auto-approve')
 
     subprocess.run(terraform_apply_cmd, cwd='./infra/common', check=True)
     common_result = subprocess.run(['terraform', 'show', '-json'], stdout=subprocess.PIPE, cwd='./infra/common',
