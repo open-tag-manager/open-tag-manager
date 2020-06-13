@@ -268,6 +268,7 @@ def main():
                    env=local_env, check=True)
 
     print('8. make athena table')
+    print('8.1. collect table')
     athena_query = '''
 CREATE EXTERNAL TABLE IF NOT EXISTS %s.otm_collect2(
   `datetime` timestamp, 
@@ -313,7 +314,38 @@ LOCATION
   's3://%s/formatted'
 TBLPROPERTIES ('has_encrypted_data'='false')
 ''' % (athena_database, collect_log_bucket)
+    subprocess.run([
+        'aws',
+        'athena',
+        'start-query-execution',
+        '--query-string',
+        athena_query,
+        '--result-configuration',
+        'OutputLocation=s3://%s/deploy' % athena_bucket
+    ], check=True)
 
+    print('8.2. usage table')
+    athena_query = '''
+CREATE EXTERNAL TABLE IF NOT EXISTS %s.otm_usage(
+  `type` string,
+  `size` bigint
+)
+PARTITIONED BY ( 
+  `org` string, 
+  `tid` string,
+  `year` int, 
+  `month` int, 
+  `day` int)
+ROW FORMAT SERDE 
+  'org.openx.data.jsonserde.JsonSerDe' 
+STORED AS INPUTFORMAT 
+  'org.apache.hadoop.mapred.TextInputFormat' 
+OUTPUTFORMAT 
+  'org.apache.hadoop.hive.ql.io.IgnoreKeyTextOutputFormat'
+LOCATION
+  's3://%s/usage'
+TBLPROPERTIES ('has_encrypted_data'='false')
+''' % (athena_database, stat_bucket)
     subprocess.run([
         'aws',
         'athena',
