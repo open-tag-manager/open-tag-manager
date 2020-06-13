@@ -25,9 +25,14 @@ def main():
     subprocess.run(['terraform', 'workspace', 'new', s_environment], cwd='./infra/aws-batch', check=False)
     subprocess.run(['terraform', 'workspace', 'select', s_environment], cwd='./infra/aws-batch', check=True)
 
-    terraform_apply_cmd = ['terraform', 'apply', '-auto-approve']
+    terraform_apply_cmd = ['terraform', 'plan']
     if os.path.exists('terraform.tfvars'):
         terraform_apply_cmd.append('-var-file=%s' % '../../terraform.tfvars')
+
+    subprocess.run(terraform_apply_cmd, cwd='./infra/aws-batch', check=True)
+
+    terraform_apply_cmd[1] = 'apply'
+    terraform_apply_cmd.apply('-auto-approve')
 
     subprocess.run(terraform_apply_cmd, cwd='./infra/aws-batch', check=True)
     shared_infra = subprocess.run(['terraform', 'show', '-json'], stdout=subprocess.PIPE, cwd='./infra/aws-batch',
@@ -53,7 +58,7 @@ def main():
     subprocess.run(['terraform', 'workspace', 'select', environment], cwd='./infra/common', check=True)
 
     terraform_apply_cmd = [
-        'terraform', 'apply', '-auto-approve',
+        'terraform', 'plan',
         '-var=aws_batch_job_queue_arn=%s' % job_queue,
         '-var=aws_region=%s' % region
     ]
@@ -61,6 +66,11 @@ def main():
         terraform_apply_cmd.append('-var-file=%s' % '../../terraform.tfvars')
     if os.path.exists('%s-terraform.tfvars' % environment):
         terraform_apply_cmd.append('-var-file=../../%s-terraform.tfvars' % environment)
+
+    subprocess.run(terraform_apply_cmd, cwd='./infra/common', check=True)
+
+    terraform_apply_cmd[1] = 'apply'
+    terraform_apply_cmd.apply('-auto-approve')
 
     subprocess.run(terraform_apply_cmd, cwd='./infra/common', check=True)
     common_result = subprocess.run(['terraform', 'show', '-json'], stdout=subprocess.PIPE, cwd='./infra/common',
