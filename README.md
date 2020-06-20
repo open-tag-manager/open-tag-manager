@@ -25,7 +25,52 @@ Please see the file called LICENSE.
     - Route 53 (Optional): to manage domains for OTM application stacks.
 - docker: It's required to deploy application.
 
-### Configuration
+### Deploy with AWS CodeBuild
+
+By this way, you can deploy OTM environment easily.
+
+Firstly, you need make Amazon Cognito user pool to manage administrator.
+And get the user pool id and client id.
+
+And make a S3 bucket for terraform backend.
+
+Go to CodeBuild console, and create new project.
+
+- Source provider: You can set this repository as public repository.
+- Environment: Use `Managed image`
+    - Operation system: `Ubuntu`
+    - Runtime(s): `Standard`
+    - Image: `aws/codebuild/standard:4.0`
+    - Image version: `Always use the latest image for this runtime version`
+    - Environment type: `Linux`
+    - Privileged: To build docker image, set `true`
+    - Service role: Set service role that is attached `AdministratorAccess`
+    - Environment variables: Set following variables
+        - `AWS_DEFAULT_REGION` (Required): Your AWS region.
+        - `TERRAFORM_BACKEND_BUCKET` (Required): Terraform backend S3 bucket.
+        - `TF_VAR_aws_s3_bucket_prefix` (Required): Bucket prefix for your S3 bucket. It can prevent name conflict. 
+        Set the unique name by the project.
+        - `TF_VAR_aws_cognito_user_pool_id` (Required): AWS Cognito user pool ID.
+        - `TF_VAR_aws_cognito_user_pool_client_id` (Required): AWS Cognito user pool client ID.
+        - `TF_VAR_aws_resource_tags` (Optional, Map): Attached tags for OTM related resources.
+        - `OTM_PLUGINS` (Optional): OTM Plugin git repository URLs. Separated by space.
+        - `TF_VAR_aws_cloudfront_collect_domain` (Optional, Array): tracker domain.
+        - `TF_VAR_aws_cloudfront_collect_acm_certificate_arn`: ACM certification's ARN for tacker.
+        - `TF_VAR_aws_route53_collect_zone_id`: tracker's domain Zone ID for Route53.
+        - `TF_VAR_aws_cloudfront_otm_domain` (Optional, Array): script distributor domain.
+        - `TF_VAR_aws_cloudfront_otm_acm_certificate_arn`: ACM certification's ARN for script distributor.
+        - `TF_VAR_aws_route53_otm_zone_id`: script distributor's domain Zone ID for Route53.
+        - `TF_VAR_aws_cloudfront_client_domain` (Optional, Array): client web apps domain.
+        - `TF_VAR_aws_cloudfront_client_acm_certificate_arn`: ACM certification's ARN for client.
+        - `TF_VAR_aws_route53_client_zone_id`: client's domain Zone ID for Route53.
+- Artifacts:
+    - Type: Set `No artifacts`
+    - Additional configuration:
+        - Cache type: Set `Local`, and select `Docker layer cache` and `Source cache` as local cache option.
+
+After the build, you can get URL for client (admin) console screen.
+
+### Deploy on local environment
 
 Firstly, you need make Amazon Cognito user pool to manage administrator.
 And get the user pool id and client id.
@@ -69,8 +114,6 @@ aws_cloudfront_client_domain = ["client.example,com"]
 aws_cloudfront_client_acm_certificate_arn = "arn:aws:acm:us-east-1:xxx:certificate/xxx"
 aws_route53_client_zone_id = "ZXXXXX"
 ```
-
-### Deploy
 
 Before that, you need create a s3 bucket for terraform backend.
 And set bucket name to `TERRAFORM_BACKEND_BUCKET` environment variable.
