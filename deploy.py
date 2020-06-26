@@ -4,6 +4,7 @@ import json
 import os
 import re
 import glob
+import time
 
 
 def main():
@@ -32,7 +33,8 @@ def main():
     subprocess.run(terraform_apply_cmd, cwd='./infra/aws-batch', check=True)
 
     terraform_apply_cmd[1] = 'apply'
-    terraform_apply_cmd.append('-auto-approve')
+    if not os.environ.get('CONFIRM'):
+        terraform_apply_cmd.append('-auto-approve')
 
     subprocess.run(terraform_apply_cmd, cwd='./infra/aws-batch', check=True)
     shared_infra = subprocess.run(['terraform', 'show', '-json'], stdout=subprocess.PIPE, cwd='./infra/aws-batch',
@@ -70,7 +72,8 @@ def main():
     subprocess.run(terraform_apply_cmd, cwd='./infra/common', check=True)
 
     terraform_apply_cmd[1] = 'apply'
-    terraform_apply_cmd.append('-auto-approve')
+    if not os.environ.get('CONFIRM'):
+        terraform_apply_cmd.append('-auto-approve')
 
     subprocess.run(terraform_apply_cmd, cwd='./infra/common', check=True)
     common_result = subprocess.run(['terraform', 'show', '-json'], stdout=subprocess.PIPE, cwd='./infra/common',
@@ -103,9 +106,21 @@ def main():
     if client_distribution_values['aliases'] and len(client_distribution_values['aliases']) > 0:
         client_domain = client_distribution_values['aliases'][0]
 
-    dynamo_db_values = [x for x in common_resources if x['address'] == 'aws_dynamodb_table.otm_role'][0]['values']
-    dynamo_db_table = dynamo_db_values['id']
-    dynamo_db_table_arn = dynamo_db_values['arn']
+    dynamo_role_values = [x for x in common_resources if x['address'] == 'aws_dynamodb_table.otm_role'][0]['values']
+    dynamo_role_table = dynamo_role_values['id']
+    dynamo_role_table_arn = dynamo_role_values['arn']
+
+    dynamo_org_values = [x for x in common_resources if x['address'] == 'aws_dynamodb_table.otm_org'][0]['values']
+    dynamo_org_table = dynamo_org_values['id']
+    dynamo_org_table_arn = dynamo_org_values['arn']
+
+    dynamo_user_values = [x for x in common_resources if x['address'] == 'aws_dynamodb_table.otm_user'][0]['values']
+    dynamo_user_table = dynamo_user_values['id']
+    dynamo_user_table_arn = dynamo_user_values['arn']
+
+    dynamo_stat_values = [x for x in common_resources if x['address'] == 'aws_dynamodb_table.otm_stat'][0]['values']
+    dynamo_stat_table = dynamo_stat_values['id']
+    dynamo_stat_table_arn = dynamo_stat_values['arn']
 
     job_definition = [x for x in common_resources if x['address'] == 'aws_batch_job_definition.otm_data_retriever'][0]['values']['id']
 
@@ -140,7 +155,10 @@ def main():
         env['OTM_BUCKET'] = script_bucket
         env['OTM_URL'] = 'https://%s/otm.js' % script_domain
         env['COLLECT_URL'] = 'https://%s/collect' % collect_domain
-        env['OTM_ROLE_DYNAMODB_TABLE'] = dynamo_db_table
+        env['OTM_ROLE_DYNAMODB_TABLE'] = dynamo_role_table
+        env['OTM_USER_DYNAMODB_TABLE'] = dynamo_user_table
+        env['OTM_STAT_DYNAMODB_TABLE'] = dynamo_stat_table
+        env['OTM_ORG_DYNAMODB_TABLE'] = dynamo_org_table
         env['OTM_STATS_BUCKET'] = stat_bucket
         env['OTM_STATS_PREFIX'] = 'stats/'
         env['OTM_USAGE_PREFIX'] = 'usage/'
@@ -151,7 +169,7 @@ def main():
         env['STATS_CONFIG_BUCKET'] = config_bucket
         env['STATS_GCLOUD_KEY_NAME'] = 'account.json'
         env['STATS_ATHENA_DATABASE'] = athena_database
-        env['STATS_ATHENA_TABLE'] = 'otm_collect2'
+        env['STATS_ATHENA_TABLE'] = 'otm_collect'
         env['STATS_ATHENA_RESULT_BUCKET'] = athena_bucket
 
         # apply plugin configuration from env
@@ -184,7 +202,11 @@ def main():
         config['Statement'][1]['Resource'].append('arn:aws:s3:::%s' % script_bucket)
         config['Statement'][1]['Resource'].append('arn:aws:s3:::%s/*' % stat_bucket)
         config['Statement'][1]['Resource'].append('arn:aws:s3:::%s' % stat_bucket)
-        config['Statement'][2]['Resource'][0] = dynamo_db_table_arn
+        config['Statement'][2]['Resource'] = []
+        config['Statement'][2]['Resource'].append(dynamo_role_table_arn)
+        config['Statement'][2]['Resource'].append(dynamo_user_table_arn)
+        config['Statement'][2]['Resource'].append(dynamo_org_table_arn)
+        config['Statement'][2]['Resource'].append(dynamo_stat_table_arn)
 
     with open('./client_apis/.chalice/policy-%s.json' % environment, 'w') as f:
         json.dump(config, f, indent=4)
@@ -280,7 +302,7 @@ def main():
     print('8. make athena table')
     print('8.1. collect table')
     athena_query = '''
-CREATE EXTERNAL TABLE IF NOT EXISTS %s.otm_collect2(
+CREATE EXTERNAL TABLE IF NOT EXISTS %s.otm_collect(
   `datetime` timestamp, 
   `x_edge_location` string, 
   `sc_bytes` string, 
@@ -365,6 +387,76 @@ TBLPROPERTIES ('has_encrypted_data'='false')
         '--result-configuration',
         'OutputLocation=s3://%s/deploy' % athena_bucket
     ], check=True)
+
+    print('9. add seed data')
+    print('9.1. org data')
+    subprocess.run([
+        'aws',
+        'dynamodb',
+        'update-item',
+        '--table-name',
+        dynamo_org_table,
+        '--key',
+        json.dumps({'name': {'S': 'root'}}),
+        '--update-expression',
+        'SET created_at = if_not_exists(created_at, :c), updated_at = if_not_exists(updated_at, :u)',
+        '--expression-attribute-values',
+        json.dumps({':c': {'N': str(int(time.time()))}, ':u': {'N': str(int(time.time()))}})
+    ], check=True)
+
+    print('9.2. user data')
+    subprocess.run([
+        'aws',
+        'dynamodb',
+        'update-item',
+        '--table-name',
+        dynamo_user_table,
+        '--key',
+        json.dumps({'username': {'S': 'root'}}),
+        '--update-expression',
+        'SET created_at = if_not_exists(created_at, :c), updated_at = if_not_exists(updated_at, :u)',
+        '--expression-attribute-values',
+        json.dumps({':c': {'N': str(int(time.time()))}, ':u': {'N': str(int(time.time()))}})
+    ], check=True)
+    subprocess.run([
+        'aws',
+        'dynamodb',
+        'update-item',
+        '--table-name',
+        dynamo_role_table,
+        '--key',
+        json.dumps({'username': {'S': 'root'}, 'organization': {'S': 'root'}}),
+        '--update-expression',
+        'SET #r = if_not_exists(#r, :r)',
+        '--expression-attribute-names',
+        json.dumps({'#r': 'roles'}),
+        '--expression-attribute-values',
+        json.dumps({':r': {'L': [{'S': 'read'}, {'S': 'write'}, {'S': 'admin'}]}})
+    ], check=True)
+    if os.environ.get('ROOT_EMAIL'):
+        idp_result = subprocess.run([
+            'aws',
+            'cognito-idp',
+            'admin-get-user',
+            '--user-pool-id',
+            cognito_user_pool_id,
+            '--username',
+            'root'
+        ], check=False)
+        if idp_result.returncode == 255:
+            print('create idp user')
+            subprocess.run([
+                'aws',
+                'cognito-idp',
+                'admin-create-user',
+                '--user-pool-id',
+                cognito_user_pool_id,
+                '--username',
+                'root',
+                '--user-attributes',
+                'Name=email,Value=%s' % os.environ.get('ROOT_EMAIL'),
+                'Name=email_verified,Value=true'
+            ], check=True)
 
     print("Deployed: https://%s/" % client_domain)
 

@@ -48,6 +48,8 @@ Go to CodeBuild console, and create new project.
     - Environment variables: Set following variables
         - `AWS_DEFAULT_REGION` (Required): Your AWS region.
         - `TERRAFORM_BACKEND_BUCKET` (Required): Terraform backend S3 bucket.
+        - `ROOT_EMAIL` (Optional): Default root user e-mail address.
+        If not set, the deployment script will not make default user.
         - `TF_VAR_aws_s3_bucket_prefix` (Required): Bucket prefix for your S3 bucket. It can prevent name conflict. 
         Set the unique name by the project.
         - `TF_VAR_aws_cognito_user_pool_id` (Required): AWS Cognito user pool ID.
@@ -122,21 +124,13 @@ And set bucket name to `TERRAFORM_BACKEND_BUCKET` environment variable.
 docker build -t otm-setup .
 docker run -e 'AWS_PROFILE=YOUR_PROFILE' \
            -e 'AWS_DEFAULT_REGION=YOUR_REGION' \
-           -e 'TERRAFORM_BACKEND_BUCKET=YOUR_TERRAFORM_BACKEND_BUCKET'
+           -e 'TERRAFORM_BACKEND_BUCKET=YOUR_TERRAFORM_BACKEND_BUCKET' \
+           -e 'ROOT_EMAIL=YOUR_ROOT_USER_EMAIL' \
            -v `pwd`:/otm  \
            -v $HOME/.aws:/root/.aws \
            -v /var/run/docker.sock:/var/run/docker.sock  \
            -it otm-setup:latest python deploy.py
 ```
-
-### Add admin user
-
-1. Add an admin user from Cognito user pool
-2. Add DynamoDB following record to `${env}_otm_roles` table
-
-- username: Your admin username
-- organization: Your organization. `root` is special organization to manage whole data.
-- roles (Array): Set roles by String array. `['read', 'write']`
 
 ## (2) for Development
 

@@ -279,10 +279,31 @@ resource "aws_s3_bucket" "otm_config" {
   tags = var.aws_resource_tags
 }
 
+resource "aws_dynamodb_table" "otm_org" {
+  name = "${terraform.workspace}_otm_org"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key = "name"
+
+  attribute {
+    name = "name"
+    type = "S"
+  }
+}
+
+resource "aws_dynamodb_table" "otm_user" {
+  name = "${terraform.workspace}_otm_user"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key = "username"
+
+  attribute {
+    name = "username"
+    type = "S"
+  }
+}
+
 resource "aws_dynamodb_table" "otm_role" {
   name = "${terraform.workspace}_otm_role"
-  read_capacity = 1
-  write_capacity = 1
+  billing_mode = "PAY_PER_REQUEST"
   hash_key = "username"
   range_key = "organization"
 
@@ -294,6 +315,29 @@ resource "aws_dynamodb_table" "otm_role" {
   attribute {
     name = "organization"
     type = "S"
+  }
+
+  global_secondary_index {
+    name               = "organization_index"
+    hash_key           = "organization"
+    projection_type    = "ALL"
+  }
+}
+
+resource "aws_dynamodb_table" "otm_stat" {
+  name = "${terraform.workspace}_otm_stat"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key = "tid"
+  range_key = "timestamp"
+
+  attribute {
+    name = "tid"
+    type = "S"
+  }
+
+  attribute {
+    name = "timestamp"
+    type = "N"
   }
 }
 
@@ -384,6 +428,21 @@ resource "aws_iam_policy" "log_stat_s3_access_policy" {
         "${aws_s3_bucket.otm_athena.arn}/*",
         "${aws_s3_bucket.otm_athena.arn}"
       ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem"
+      ],
+      "Resource": [
+        "${aws_dynamodb_table.otm_org.arn}",
+        "${aws_dynamodb_table.otm_stat.arn}"
+      ]
     }
   ]
 }
@@ -434,7 +493,7 @@ resource "aws_s3_bucket" "otm_athena" {
 }
 
 resource "aws_athena_database" "otm" {
-  name = "${terraform.workspace}_${terraform.workspace}_otm_a2bq"
+  name = "${terraform.workspace}_${terraform.workspace}_otm"
   bucket = aws_s3_bucket.otm_athena.bucket
 }
 
