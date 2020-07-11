@@ -324,6 +324,34 @@ resource "aws_dynamodb_table" "otm_role" {
   }
 }
 
+resource "aws_dynamodb_table" "otm_container" {
+  name = "${terraform.workspace}_otm_container"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key = "tid"
+
+  attribute {
+    name = "tid"
+    type = "S"
+  }
+
+  attribute {
+    name = "organization"
+    type = "S"
+  }
+
+  attribute {
+    name = "created_at"
+    type = "N"
+  }
+
+  global_secondary_index {
+    name               = "organization_index"
+    hash_key           = "organization"
+    range_key          = "created_at"
+    projection_type    = "ALL"
+  }
+}
+
 resource "aws_dynamodb_table" "otm_stat" {
   name = "${terraform.workspace}_otm_stat"
   billing_mode = "PAY_PER_REQUEST"
