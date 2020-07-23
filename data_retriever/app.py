@@ -6,6 +6,9 @@ import time
 import argparse
 import uuid
 import datetime
+import os
+import boto3
+from decimal import Decimal
 
 
 class DataRetriever(RetrieverBase):
@@ -332,36 +335,69 @@ JSON_EXTRACT_SCALAR(qs, '$.el')
 
 def main():
     parser = argparse.ArgumentParser(description='Make stats from Athena')
-    parser.add_argument('-d', '--database', dest='athena_database', required=True, help='athena database')
-    parser.add_argument('-p', '--table', dest='athena_table', required=True, help='athena table')
-    parser.add_argument('--result-bucket', dest='athena_result_bucket', required=True, help='athena result bucket')
-    parser.add_argument('--result-prefix', dest='athena_result_prefix', help='athena result object prefix', default='')
-    parser.add_argument('-t', '--target-bucket', dest='target_bucket', required=True, help='target bucket')
-    parser.add_argument('-n', '--target-prefix', dest='target_prefix', required=True, help='target key prefix')
-    parser.add_argument('-r', '--target-prefix-raw', dest='target_prefix_raw', required=True, help='target key prefix')
-    parser.add_argument('-u', '--usage-prefix', dest='usage_prefix', required=True, help='usage key prefix')
-    parser.add_argument('--target-suffix', dest='target_suffix', required=False, help='target key suffix')
     parser.add_argument('--query-org', dest='query_org', required=True, help='organization name')
     parser.add_argument('--query-tid', dest='query_tid', required=True, help='tid (Container Name)')
     parser.add_argument('--query-stime', dest='query_stime', type=int, required=True,
                         help='Query start time (msec unix time)')
     parser.add_argument('--query-etime', dest='query_etime', type=int, required=True,
                         help='Query end time (msec unix time)')
-
+    parser.add_argument('--file-key', dest='file_key', required=True, help='File key')
     args = vars(parser.parse_args())
+
+    dynamodb = boto3.resource('dynamodb')
+    stat_table = dynamodb.Table(str(os.environ.get('OTM_STAT_DYNAMODB_TABLE')))
+    queue_record_key = {'tid': args['query_org'] + '/' + args['query_tid'], 'timestamp': Decimal(args['file_key'])}
+
+    queue_record = stat_table.get_item(Key=queue_record_key)
+
+    if 'Item' not in queue_record:
+        print('Queue data not found')
+        return
+
+    if not queue_record['Item']['status'] == 'QUEUED':
+        print('Queue data is not QUEUED status')
+
+    stat_table.update_item(Key=queue_record_key, UpdateExpression='set #s = :s', ExpressionAttributeValues={
+        ':s': 'IN_PROGRESS'
+    }, ExpressionAttributeNames={
+        '#s': 'status'
+    })
+
+    o_prefix = ''
+    if args['query_org'] != 'root':
+        o_prefix = args['query_org'] + '/'
+
+    args['target_bucket'] = os.environ.get('OTM_STATS_BUCKET')
+    args['target_prefix'] = (os.environ.get('OTM_STATS_PREFIX') or '') + o_prefix + args['query_tid'] + '/'
+    args['target_prefix_raw'] = (os.environ.get('OTM_STATS_PREFIX') or '') + o_prefix + args['query_tid'] + '_raw/'
+    args['usage_prefix'] = (os.environ.get('OTM_USAGE_PREFIX') or '')
+    args['athena_result_bucket'] = os.environ.get('STATS_ATHENA_RESULT_BUCKET')
+    args['athena_result_prefix'] = os.environ.get('STATS_ATHENA_RESULT_PREFIX') or ''
+    args['athena_database'] = os.environ.get('STATS_ATHENA_DATABASE')
+    args['athena_table'] = os.environ.get('STATS_ATHENA_TABLE')
 
     target_name = time.strftime("%Y%m%d%H%M%S") + '_'
     target_name += datetime.datetime.utcfromtimestamp(int(args['query_stime'] / 1000)).strftime('%Y%m%d%H%M%S') + '_'
     target_name += datetime.datetime.utcfromtimestamp(int(args['query_etime'] / 1000)).strftime('%Y%m%d%H%M%S') + '_'
-    if args['target_suffix']:
-        target_name += args['target_suffix'] + '_'
     target_name += str(uuid.uuid4())
-
     args['target_name'] = args['target_prefix'] + target_name + '.json'
     args['target_name_raw'] = args['target_prefix_raw'] + target_name + '.json'
 
     retriever = DataRetriever(**args)
     retriever.execute()
+
+    stat_table.update_item(
+        Key=queue_record_key,
+        UpdateExpression='set #s = :s, file_key = :f, raw_file_key = :r',
+        ExpressionAttributeValues={
+            ':s': 'COMPLETE',
+            ':f': args['target_name'],
+            ':r': args['target_name_raw']
+        },
+        ExpressionAttributeNames={
+            '#s': 'status'
+        }
+    )
 
 
 if __name__ == '__main__':

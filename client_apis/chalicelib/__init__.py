@@ -66,22 +66,6 @@ def has_permission(org, role):
     return False
 
 
-def check_container_permission():
-    def __decorator(func):
-        def inner(*args, **kwargs):
-            org = app.current_request.uri_params['org']
-            name = app.current_request.uri_params['name']
-            container_info = get_container_table().get_item(Key={'organization': org, 'tid': name})
-            if not 'Item' in container_info:
-                return Response(body={'error': 'not found'}, status_code=404)
-
-            return func(*args, **kwargs)
-
-        return inner
-
-    return __decorator
-
-
 def check_org_permission(role):
     def __decorator(func):
         def inner(*args, **kwargs):
@@ -111,6 +95,9 @@ def check_json_body(schema):
     def __decorator(func):
         def inner(*args, **kwargs):
             request = app.current_request.json_body
+            if request is None:
+                return Response(body={'error': 'bad request'}, status_code=400)
+
             v = Validator(schema)
             if v.validate(request):
                 return func(*args, **kwargs)

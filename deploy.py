@@ -213,6 +213,8 @@ def main():
         config['Statement'][2]['Resource'].append(dynamo_org_table_arn)
         config['Statement'][2]['Resource'].append(dynamo_stat_table_arn)
         config['Statement'][2]['Resource'].append(dynamo_container_table_arn)
+        config['Statement'][3]['Resource'] = []
+        config['Statement'][3]['Resource'].append(cognito_user_pool_arn)
 
     with open('./client_apis/.chalice/policy-%s.json' % environment, 'w') as f:
         json.dump(config, f, indent=4)

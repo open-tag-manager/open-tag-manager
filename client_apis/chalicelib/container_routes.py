@@ -1,5 +1,5 @@
 from chalice import Blueprint, Response
-from . import app, ScriptGenerator, S3Uploader, s3, authorizer, get_config_data, check_org_permission, \
+from . import app, ScriptGenerator, S3Uploader, s3, authorizer, check_org_permission, \
     get_container_table, check_json_body
 from botocore.errorfactory import ClientError
 import string
@@ -17,15 +17,8 @@ def randomname(n):
     return ''.join(random.choices(string.ascii_letters + string.digits, k=n))
 
 
-def make_random_name(org):
-    config = get_config_data(org)
-    if not 'containers' in config:
-        config['containers'] = []
-    containers = config['containers']
-    name = 'OTM-' + randomname(8).upper();
-    if len(list(filter(lambda x: x['name'] == name, containers))) > 0:
-        return make_random_name(org)
-
+def make_random_name():
+    name = 'OTM-' + randomname(8).upper()
     return name
 
 
@@ -38,6 +31,7 @@ def containers(org):
 
     args = {
         'KeyConditionExpression': Key('organization').eq(org),
+        'IndexName': 'organization_index',
         'Limit': 100
     }
 
@@ -69,7 +63,7 @@ def create_container(org):
     body = request.json_body
     ts = Decimal(time.time())
     new_container = {
-        'tid': make_random_name(org),
+        'tid': make_random_name(),
         'organization': org,
         'label': body['label'],
         'created_at': ts,
@@ -120,22 +114,16 @@ def put_container(org, name):
 
     ts = Decimal(time.time())
     current_container['updated_at'] = ts
-    attributes = {'updated_at': ts}
     if 'observers' in body:
         current_container['observers'] = body['observers']
-        attributes['observers'] = body['observers']
     if 'triggers' in body:
         current_container['triggers'] = body['triggers']
-        attributes['triggers'] = body['triggers']
     if 'domains' in body:
         current_container['domains'] = body['domains']
-        attributes['domains'] = body['domains']
     if 'label' in body:
         current_container['label'] = body['label']
-        attributes['label'] = body['label']
     if 'swagger_doc' in body:
         current_container['swagger_doc'] = body['swagger_doc']
-        attributes['swagger_doc'] = body['swagger_doc']
 
     # publish javascript
     prefix = ''
@@ -152,10 +140,7 @@ def put_container(org, name):
     if os.environ.get('OTM_SCRIPT_CDN'):
         current_container['script'] = uploader.script_url_cdn(os.environ.get('OTM_SCRIPT_CDN'))
 
-    get_container_table().update_item(
-        Key={'organization': org, 'tid': name},
-        AttributeUpdates=attributes
-    )
+    get_container_table().put_item(Item=current_container)
 
     return current_container
 
@@ -172,10 +157,10 @@ def delete_container(org, name):
         prefix = org + '/'
 
     try:
-        s3.Object(os.environ.get('OTM_BUCKET'), prefix + tid + '.js').delete()
+        s3.Object(os.environ.get('OTM_BUCKET'), prefix + name + '.js').delete()
     except ClientError:
         pass
 
-    get_container_table().delete_item(Key={'organization': org, 'tid': tid})
+    get_container_table().delete_item(Key={'organization': org, 'tid': name})
 
     return Response(body='', status_code=204)

@@ -1,12 +1,13 @@
 from chalice import Blueprint, Response
-from . import app, authorizer, s3, batch_client, check_org_permission, get_stat_table, check_container_permission, \
-    check_json_body
+from . import app, authorizer, s3, s3_client, batch_client, check_org_permission, get_stat_table, check_json_body
 from urllib.parse import urlparse
 import os
 import re
 import json
 import datetime
 import uuid
+import time
+from decimal import Decimal
 from boto3.dynamodb.conditions import Key
 
 stats_routes = Blueprint(__name__)
@@ -32,15 +33,15 @@ def _match_url(pattern, url):
 
 @stats_routes.route('/', methods=['GET'], cors=True, authorizer=authorizer)
 @check_org_permission('read')
-@check_container_permission()
 def get_container_stats(org, name):
     next_key = None
     if app.current_request.query_params and 'next' in app.current_request.query_params:
         next_key = json.loads(app.current_request.query_params['next'])
 
     args = {
-        'KeyConditionExpression': Key('tid').eq(name),
+        'KeyConditionExpression': Key('tid').eq(org + '/' + name),
         'Limit': 100,
+        'ScanIndexForward': False
     }
 
     if next_key:
@@ -51,7 +52,14 @@ def get_container_stats(org, name):
     if 'Items' in table_response:
         for item in table_response['Items']:
             stat_info = item.copy()
-            stat_info.pop('organization')
+            stat_info.pop('tid')
+            if stat_info['status'] == 'COMPLETE':
+                stat_info['timestamp'] = str(stat_info['timestamp'])
+                stat_info['file_url'] = s3_client.generate_presigned_url(
+                    'get_object', {
+                        'Key': stat_info['file_key'], 'Bucket': os.environ.get('OTM_STATS_BUCKET')
+                    }
+                )
             results.append(stat_info)
 
     headers = {}
@@ -63,16 +71,15 @@ def get_container_stats(org, name):
 
 @stats_routes.route('/{file}', methods=['GET'], cors=True, authorizer=authorizer)
 @check_org_permission('read')
-@check_container_permission()
 def get_container_stats_data(org, name, file):
-    file_table_info = get_stat_table().get_item(Key={'tid': name, 'timestamp': file})
+    file_table_info = get_stat_table().get_item(Key={'tid': org + '/' + name, 'timestamp': Decimal(file)})
 
     if not 'Item' in file_table_info:
         return Response(body={'error': 'not found'}, status_code=404)
 
     file_info = file_table_info['Item']
 
-    if not file_info['status'] == 'SUCCESS':
+    if not file_info['status'] == 'COMPLETE':
         return Response(body={'error': 'the result data had not been created yet'}, status_code=404)
 
     bucket = os.environ.get('OTM_STATS_BUCKET')
@@ -138,20 +145,19 @@ def get_container_stats_data(org, name, file):
 
 @stats_routes.route('/{file}/events', methods=['GET'], cors=True, authorizer=authorizer)
 @check_org_permission('read')
-@check_container_permission()
 def get_container_stats_data_event(org, name, file):
-    file_table_info = get_stat_table().get_item(Key={'tid': name, 'timestamp': file})
+    file_table_info = get_stat_table().get_item(Key={'tid': org + '/' + name, 'timestamp': Decimal(file)})
     if not 'Item' in file_table_info:
         return Response(body={'error': 'not found'}, status_code=404)
 
     file_info = file_table_info['Item']
 
-    if not file_info['status'] == 'SUCCESS':
+    if not file_info['status'] == 'COMPLETE':
         return Response(body={'error': 'the result data had not been created yet'}, status_code=404)
 
     bucket = os.environ.get('OTM_STATS_BUCKET')
-    object = s3.Object(bucket, file_info['raw_file_key'])
-    response = object.get()
+    raw_obj = s3.Object(bucket, file_info['raw_file_key'])
+    response = raw_obj.get()
     data = json.loads(response['Body'].read())
 
     del data['result']
@@ -161,10 +167,10 @@ def get_container_stats_data_event(org, name, file):
 
 @stats_routes.route('/', methods=['POST'], cors=True, authorizer=authorizer)
 @check_org_permission('write')
-@check_container_permission()
 @check_json_body({
-    'stime': {'type': 'int'},
-    'etime': {'type': 'int'}
+    'stime': {'type': 'integer'},
+    'etime': {'type': 'integer'},
+    'label': {'type': 'string'}
 })
 def make_container_stats(org, name):
     request = app.current_request
@@ -183,8 +189,9 @@ def make_container_stats(org, name):
     if body and 'etime' in body:
         etime = str(int(body['etime']))
 
+    ts = Decimal(time.time())
     command = ['python', 'app.py', '--query-org', org, '--query-tid', name,
-               '--query-stime', stime, '--query-etime', etime, '--stat-name', stat_name]
+               '--query-stime', stime, '--query-etime', etime, '--file-key', str(ts)]
 
     job = batch_client.submit_job(
         jobName=('otm_data_retriever_' + name + '_stat_' + str(uuid.uuid4())),
@@ -192,5 +199,11 @@ def make_container_stats(org, name):
         jobDefinition=os.environ.get('STATS_BATCH_JOB_DEFINITION'),
         containerOverrides={'command': command}
     )
+
+    item = {'tid': org + '/' + name, 'timestamp': ts, 'status': 'QUEUED', 'label': '', 'job_id': job['jobId']}
+    if 'label' in body:
+        item['label'] = body['label']
+
+    get_stat_table().put_item(Item=item)
 
     return Response(body={'queue': job['jobId']}, status_code=201)

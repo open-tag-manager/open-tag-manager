@@ -10,6 +10,7 @@ import time
 from decimal import Decimal
 
 from boto3.dynamodb.conditions import Key
+from botocore.exceptions import ClientError
 
 
 @app.route('/', cors=True, authorizer=authorizer)
@@ -19,13 +20,27 @@ def index():
 
 def get_user_response(username):
     user_info = get_user_table().get_item(Key={'username': username})
+    if 'Item' in user_info:
+        result = user_info['Item']
+    else:
+        try:
+            idp_user = cognito_idp_client.admin_get_user(UserPoolId=get_cognito_user_pool_id(), Username=username)
+        except ClientError as error:
+            if error.response['Error']['Code'] == 'UserNotFoundException':
+                return Response(body={'error': 'not found'}, status_code=404)
+            else:
+                raise error
+
+        email = [x for x in idp_user['UserAttributes'] if x['Name'] == 'email'][0]['Value']
+        ts = Decimal(time.time())
+        data = {'username': username, 'email': email, 'created_at': ts, 'updated_at': ts}
+        get_user_table().put_item(Item=data)
+        result = data
+
     item = get_role_table().query(
         KeyConditionExpression=Key('username').eq(username)
     )
-    if not 'Item' in user_info:
-        return Response(body={'error': 'not found'}, status_code=404)
 
-    result = user_info['Item']
     result['orgs'] = []
     if 'Items' in item:
         for role in item['Items']:
