@@ -114,6 +114,13 @@ resource "aws_cloudfront_distribution" "otm_collect_distribution" {
     response_page_path = "/collect.html"
   }
 
+  custom_error_response {
+    error_caching_min_ttl = 3600
+    error_code = 404
+    response_code = 200
+    response_page_path = "/collect.html"
+  }
+
   tags = var.aws_resource_tags
 }
 
