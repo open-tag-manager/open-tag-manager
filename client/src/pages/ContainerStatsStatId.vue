@@ -25,6 +25,8 @@
 </template>
 
 <script>
+  import moment from 'moment-timezone'
+
   export default {
     data () {
       return {
@@ -41,7 +43,7 @@
     computed: {
       statTerm () {
         if (this.stat) {
-          return this.stat.term
+          return `${moment(this.stat.stime).format('YYYY/MM/DD HH:mm:ss')} 〜 ${moment(this.stat.etime).format('YYYY/MM/DD HH:mm:ss')}`
         }
       },
       statLabel () {
