@@ -49,11 +49,12 @@
         enabledStatues: _.difference(_.keys(statusPatterns), ['click_trivial', 'timer', 'scroll'])
       }
     },
+    computed: {
+      swaggerDoc () {
+        return this.$store.state.container.swaggerDoc
+      }
+    },
     async mounted () {
-      await this.$store.dispatch('container/fetchSwaggerDoc', {
-        org: this.$route.params.org,
-        container: this.$route.params.name
-      })
       this.eventTableFilterUrl = this.$route.query.url
       await this.loadData()
     },
@@ -61,8 +62,7 @@
       async loadData () {
         this.isLoading = true
         const statId = this.$route.params.statid
-        const file = statId.match(/\/([^/]+\.json)$/)[1]
-        const data = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.$route.params.name}/stats/${encodeURIComponent(file)}/events`)
+        const data = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.$route.params.name}/stats/${encodeURIComponent(statId)}/events`)
         this.rawEventTableData = data
 
         if (!this.rawEventTableData) {

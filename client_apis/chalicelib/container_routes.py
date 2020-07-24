@@ -96,7 +96,8 @@ def get_container(org, name):
     'label': {'type': 'string', 'required': False, 'empty': False},
     'observers': {'type': 'list', 'required': False, 'schema': {'type': 'dict'}},
     'triggers': {'type': 'list', 'required': False, 'schema': {'type': 'dict'}},
-    'domains': {'type': 'list', 'required': False, 'schema': {'type': 'string'}}
+    'domains': {'type': 'list', 'required': False, 'schema': {'type': 'string'}},
+    'swagger_doc': {'type': 'dict', 'required': False}
 })
 @check_org_permission('write')
 def put_container(org, name):
@@ -148,7 +149,7 @@ def put_container(org, name):
 @container_routes.route('/{name}', methods=['DELETE'], cors=True, authorizer=authorizer)
 @check_org_permission('write')
 def delete_container(org, name):
-    container_info = get_container_table().get_item(Key={'organization': org, 'tid': name})
+    container_info = get_container_table().get_item(Key={'tid': name})
     if not 'Item' in container_info:
         return Response(body={'error': 'not found'}, status_code=404)
 
@@ -161,6 +162,6 @@ def delete_container(org, name):
     except ClientError:
         pass
 
-    get_container_table().delete_item(Key={'organization': org, 'tid': name})
+    get_container_table().delete_item(Key={'tid': name})
 
     return Response(body='', status_code=204)

@@ -26,10 +26,10 @@
       <tbody>
       <tr v-for="container in containers" :key="container.name">
         <td>
-          {{ container.label || container.name }}
+          {{ container.label || container.tid }}
         </td>
         <td>
-          {{ container.name }}
+          {{ container.tid }}
         </td>
         <td>
           {{ container.created_at | date }}
@@ -39,11 +39,11 @@
           {{ container.updated_at | date }}
         </td>
         <td class="text-right">
-          <b-button variant="primary" :to="{name: 'Container-Stat', params: {org: $route.params.org, name: container.name}}">Stats</b-button>
+          <b-button variant="primary" :to="{name: 'Container-Stats', params: {org: $route.params.org, name: container.tid}}">Stats</b-button>
 
-          <b-button variant="primary" :to="{name: 'Container-Setting', params: {org: $route.params.org, name: container.name}}">Setting</b-button>
+          <b-button variant="primary" :to="{name: 'Container-Setting', params: {org: $route.params.org, name: container.tid}}">Setting</b-button>
 
-          <button type="button" class="btn btn-danger" @click="deleteContainer(container.name)">Delete</button>
+          <button type="button" class="btn btn-danger" @click="deleteContainer(container.tid)">Delete</button>
         </td>
       </tr>
 
@@ -51,7 +51,7 @@
     </table>
 
     <h2>Make New Container</h2>
-    <b-form @submit="createContainer">
+    <b-form @submit.prevent="createContainer">
       <b-form-group label="Name" label-for="name">
         <b-form-input id="name" type="text" :state="error ? false : ($v.newName.$dirty ? !$v.newName.$invalid : null)" required v-model.trim="newName" @input="$v.newName.$touch()"></b-form-input>
         <b-form-invalid-feedback :force-show="!!error">
@@ -103,7 +103,7 @@
         this.error = null
         try {
           await this.$Amplify.API.post('OTMClientAPI', `/orgs/${this.$route.params.org}/containers`, {
-            body: {name: this.newName}
+            body: {label: this.newName}
           })
           await this.loadContainers()
           this.newName = ''

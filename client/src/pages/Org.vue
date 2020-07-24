@@ -1,5 +1,5 @@
 <template>
-  <div :key="$route.params.org">
+  <div>
     <div class="alert alert-warning" v-if="$store.state.user.currentOrg.freezed">
       <fa-icon icon="exclamation-triangle"/> This org is freezed
     </div>
@@ -22,27 +22,35 @@
         noPermission: false
       }
     },
+    async beforeRouteUpdate (to, from, next) {
+      await this.setCurrentOrg()
+      next()
+    },
     async mounted () {
-      const orgName = this.$route.params.org
-      const orgs = this.$store.state.user.orgs
-      let org = _.find(orgs, {org: orgName})
-      if (!this.$store.getters['user/hasRootRole']) {
-        if (!org) {
-          this.noPermission = true
-          return
+      await this.setCurrentOrg()
+    },
+    methods: {
+      async setCurrentOrg () {
+        const orgName = this.$route.params.org
+        const orgs = this.$store.state.user.orgs
+        let org = _.find(orgs, {org: orgName})
+        if (org) {
+          if (!this.$store.getters['user/hasRootRole'] && !_.find(org.roles, 'read')) {
+            this.noPermission = true
+            return
+          }
+        } else {
+          if (this.$store.getters['user/hasRootRole']) {
+            org = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}`)
+            org.roles = ['read', 'write', 'admin']
+          } else {
+            this.noPermission = true
+            return
+          }
         }
-        if (_.find(org.roles, 'read')) {
-          this.noPermission = true
-          return
-        }
+        const o = _.cloneDeep(org)
+        this.$store.dispatch('user/setCurrentOrg', o)
       }
-      if (!org) {
-        org = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}`)
-        org.roles = ['read', 'write']
-      }
-
-      const o = _.cloneDeep(org)
-      this.$store.dispatch('user/setCurrentOrg', o)
     }
   }
 </script>

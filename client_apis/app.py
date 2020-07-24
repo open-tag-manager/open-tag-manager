@@ -182,7 +182,7 @@ def organization_info(org):
 def invite_org_user(org):
     r = app.current_request.json_body
     response = get_role_table().get_item(Key={'organization': org, 'username': r['username']})
-    if not 'Item' in response:
+    if 'Item' not in response:
         get_role_table().put_item(Item={'organization': org, 'username': r['username'], 'roles': r['roles']})
         return Response({'username': r['username'], 'organization': org, 'roles': r['roles']}, status_code=201)
 

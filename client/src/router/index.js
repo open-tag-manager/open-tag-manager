@@ -34,9 +34,9 @@ export default (store, plugins) => {
     }
 
     if (user && user.signInUserSession) {
-      const orgs = await Vue.prototype.$Amplify.API.get('OTMClientAPI', '/orgs')
-      store.dispatch('user/setUser', {user, orgs})
-      return user
+      const userData = await Vue.prototype.$Amplify.API.get('OTMClientAPI', '/user')
+      store.dispatch('user/setUser', {user: userData})
+      return userData
     } else {
       store.dispatch('user/unsetUser')
       return null

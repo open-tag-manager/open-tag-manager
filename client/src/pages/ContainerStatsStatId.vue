@@ -25,23 +25,29 @@
 </template>
 
 <script>
-  import {statIdToInfo} from '../lib/StatId'
-
   export default {
+    data () {
+      return {
+        stat: null
+      }
+    },
     async mounted () {
+      const stat = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.$route.params.name}/stats/${this.$route.params.statid}`)
+      this.stat = stat
       if (this.$route.name === 'Container-Stats-StatId') {
         this.$router.push({name: 'Container-Stats-StatId-Pages', params: this.$route.params})
       }
     },
     computed: {
-      statinfo () {
-        return statIdToInfo(this.$route.params.statid)
-      },
       statTerm () {
-        return this.statinfo.term
+        if (this.stat) {
+          return this.stat.term
+        }
       },
       statLabel () {
-        return this.statinfo.label
+        if (this.stat) {
+          return this.stat.label
+        }
       },
       currentPage () {
         if (this.$route.name === 'Container-Stats-StatId-URLGraph-URL') {

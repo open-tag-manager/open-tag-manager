@@ -53,8 +53,8 @@ def get_container_stats(org, name):
         for item in table_response['Items']:
             stat_info = item.copy()
             stat_info.pop('tid')
+            stat_info['timestamp'] = str(stat_info['timestamp'])
             if stat_info['status'] == 'COMPLETE':
-                stat_info['timestamp'] = str(stat_info['timestamp'])
                 stat_info['file_url'] = s3_client.generate_presigned_url(
                     'get_object', {
                         'Key': stat_info['file_key'], 'Bucket': os.environ.get('OTM_STATS_BUCKET')
@@ -68,10 +68,30 @@ def get_container_stats(org, name):
 
     return Response(results, headers=headers)
 
-
 @stats_routes.route('/{file}', methods=['GET'], cors=True, authorizer=authorizer)
 @check_org_permission('read')
 def get_container_stats_data(org, name, file):
+    file_table_info = get_stat_table().get_item(Key={'tid': org + '/' + name, 'timestamp': Decimal(file)})
+    if not 'Item' in file_table_info:
+        return Response(body={'error': 'not found'}, status_code=404)
+
+    file_info = file_table_info['Item']
+
+    stat_info = file_info.copy()
+    stat_info.pop('tid')
+    stat_info.pop('timestamp')
+    if stat_info['status'] == 'COMPLETE':
+        stat_info['file_url'] = s3_client.generate_presigned_url(
+            'get_object', {
+                'Key': stat_info['file_key'], 'Bucket': os.environ.get('OTM_STATS_BUCKET')
+            }
+        )
+    return stat_info
+
+
+@stats_routes.route('/{file}/urls', methods=['GET'], cors=True, authorizer=authorizer)
+@check_org_permission('read')
+def get_container_stats_url_data(org, name, file):
     file_table_info = get_stat_table().get_item(Key={'tid': org + '/' + name, 'timestamp': Decimal(file)})
 
     if not 'Item' in file_table_info:
@@ -200,7 +220,15 @@ def make_container_stats(org, name):
         containerOverrides={'command': command}
     )
 
-    item = {'tid': org + '/' + name, 'timestamp': ts, 'status': 'QUEUED', 'label': '', 'job_id': job['jobId']}
+    item = {
+        'tid': org + '/' + name,
+        'timestamp': ts,
+        'status': 'QUEUED',
+        'label': '',
+        'job_id': job['jobId'],
+        'stime': int(stime),
+        'etime': int(etime)
+    }
     if 'label' in body:
         item['label'] = body['label']
 

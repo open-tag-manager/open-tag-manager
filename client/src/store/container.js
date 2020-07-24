@@ -3,7 +3,8 @@ const state = {
   editableSwaggerDoc: null,
   swaggerDocRevision: 0,
   container: null,
-  containers: []
+  org: null,
+  containers: null
 }
 
 const mutations = {
@@ -15,7 +16,8 @@ const mutations = {
   EDIT_SWAGGER_DOC (state, {swaggerDoc}) {
     state.editableSwaggerDoc = swaggerDoc
   },
-  SET_CONTAINER (state, {container}) {
+  SET_CONTAINER (state, {org, container}) {
+    state.org = org
     state.container = container
   },
   SET_CONTAINERS (state, {containers}) {
@@ -24,19 +26,29 @@ const mutations = {
 }
 
 const actions = {
-  async fetchSwaggerDoc (ctx, {org, container}) {
-    const data = await this.app.$Amplify.API.get('OTMClientAPI', `/orgs/${org}/containers/${container}/swagger_doc`)
-    ctx.commit('SET_SWAGGER_DOC', {swaggerDoc: JSON.stringify(data)})
+  async fetchContainer ({commit}, {org, container}) {
+    const data = await this.app.$Amplify.API.get('OTMClientAPI', `/orgs/${org}/containers/${container}`)
+    commit('SET_CONTAINER', {container: data, org: org})
+    commit('SET_SWAGGER_DOC', {swaggerDoc: JSON.stringify(data.swagger_doc)})
   },
-  editSwaggerDoc (ctx, {swaggerDoc}) {
-    ctx.commit('EDIT_SWAGGER_DOC', {swaggerDoc})
+  async saveContainer ({commit, state}, params) {
+    const data = await this.app.$Amplify.API.put('OTMClientAPI', `/orgs/${state.org}/containers/${state.container.tid}`, {body: params})
+    commit('SET_CONTAINER', {container: data, org: state.org})
   },
-  async saveSwaggerDoc (ctx, {org, container}) {
-    await this.app.$Amplify.API.put('OTMClientAPI', `/orgs/${org}/containers/${container}/swagger_doc`, {body: JSON.parse(ctx.state.editableSwaggerDoc)})
-    ctx.commit('SET_SWAGGER_DOC', {swaggerDoc: ctx.state.editableSwaggerDoc, r: ctx.state.swaggerDocRevision + 1})
+  editSwaggerDoc ({commit}, {swaggerDoc}) {
+    commit('EDIT_SWAGGER_DOC', {swaggerDoc})
   },
-  setCurrentContainer (ctx, {container}) {
-    ctx.commit('SET_CONTAINER', {container})
+  async saveSwaggerDoc ({commit, dispatch, state}) {
+    await dispatch('saveContainer', {swagger_doc: JSON.parse(state.editableSwaggerDoc)})
+    commit('SET_SWAGGER_DOC', {swaggerDoc: state.editableSwaggerDoc, r: state.swaggerDocRevision + 1})
+  },
+  setCurrentContainer ({commit}, {org, container}) {
+    commit('SET_CONTAINER', {org, container})
+    if (container) {
+      commit('SET_SWAGGER_DOC', {swaggerDoc: JSON.stringify(container.swagger_doc)})
+    } else {
+      commit('SET_SWAGGER_DOC', {swaggerDoc: null})
+    }
   },
   async fetchContainers (ctx, {org}) {
     const data = await this.app.$Amplify.API.get('OTMClientAPI', `/orgs/${org}/containers`)

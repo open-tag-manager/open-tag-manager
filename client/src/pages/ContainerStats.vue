@@ -46,17 +46,22 @@
           <tr>
             <th>Report Term</th>
             <th>Label</th>
+            <th>Status</th>
           </tr>
           </thead>
           <tbody>
-          <tr v-for="stat in formattedStats">
+          <tr v-for="stat in stats">
             <td>
-              <router-link
-                :to="{name: 'Container-Stats-StatId', params: {org: $route.params.org, name: $route.params.name, statid: stat.name}}">
-                {{ stat.term || stat.name }}
+              <router-link v-if="stat.status === 'COMPLETE'"
+                :to="{name: 'Container-Stats-StatId', params: {org: $route.params.org, name: $route.params.name, statid: stat.timestamp}}">
+                {{ stat.term || stat.timestamp }}
               </router-link>
+              <span v-else>
+                {{ stat.term || stat.timestamp }}
+              </span>
             </td>
             <td>{{stat.label}}</td>
+            <td>{{stat.status}}</td>
           </tr>
           </tbody>
         </table>
@@ -71,7 +76,6 @@
 <script>
   import moment from 'moment-timezone'
   import flatPickr from 'vue-flatpickr-component'
-  import {statIdToInfo} from '../lib/StatId'
 
   export default {
     components: {flatPickr},
@@ -92,17 +96,6 @@
       const name = this.$route.params.name
       this.name = name
       await this.reload()
-    },
-    computed: {
-      formattedStats () {
-        if (!this.stats) {
-          return []
-        }
-
-        return this.stats.map((s) => {
-          return statIdToInfo(s.key)
-        })
-      }
     },
     methods: {
       async makeReport () {

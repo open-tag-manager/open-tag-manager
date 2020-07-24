@@ -91,8 +91,7 @@
       async render () {
         this.isLoading = true
         const statId = this.$route.params.statid
-        const file = statId.match(/\/([^/]+\.json)$/)[1]
-        const data = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.$route.params.name}/stats/${encodeURIComponent(file)}`, {
+        const data = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.$route.params.name}/stats/${encodeURIComponent(statId)}/urls`, {
           queryStringParameters: {
             url_filter: this.url
           }
