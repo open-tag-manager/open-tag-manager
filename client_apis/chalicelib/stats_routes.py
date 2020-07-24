@@ -1,12 +1,14 @@
 from chalice import Blueprint, Response
-from botocore.errorfactory import ClientError
-from . import authorizer, s3, s3_client, batch_client, has_role, get_container_data, get_config_data
+from . import app, authorizer, s3, s3_client, batch_client, check_org_permission, get_stat_table, check_json_body
 from urllib.parse import urlparse
 import os
 import re
 import json
 import datetime
 import uuid
+import time
+from decimal import Decimal
+from boto3.dynamodb.conditions import Key
 
 stats_routes = Blueprint(__name__)
 
@@ -30,162 +32,169 @@ def _match_url(pattern, url):
 
 
 @stats_routes.route('/', methods=['GET'], cors=True, authorizer=authorizer)
+@check_org_permission('read')
 def get_container_stats(org, name):
-    app = stats_routes._current_app
-    if not has_role(app, org, 'read'):
-        return Response(body={'error': 'permission error'}, status_code=401)
+    next_key = None
+    if app.current_request.query_params and 'next' in app.current_request.query_params:
+        next_key = json.loads(app.current_request.query_params['next'])
 
-    config = get_config_data(org)
-    (data, container) = get_container_data(org, name, config)
+    args = {
+        'KeyConditionExpression': Key('tid').eq(org + '/' + name),
+        'Limit': 100,
+        'ScanIndexForward': False
+    }
 
-    if data is None:
-        return Response(body={'error': 'not found'}, status_code=404)
+    if next_key:
+        args['ExclusiveStartKey'] = next_key
 
-    o_prefix = ''
-    if org != 'root':
-        o_prefix = org + '/'
+    table_response = get_stat_table().query(**args)
+    results = []
+    if 'Items' in table_response:
+        for item in table_response['Items']:
+            stat_info = item.copy()
+            stat_info.pop('tid')
+            stat_info['timestamp'] = str(stat_info['timestamp'])
+            if stat_info['status'] == 'COMPLETE':
+                stat_info['file_url'] = s3_client.generate_presigned_url(
+                    'get_object', {
+                        'Key': stat_info['file_key'], 'Bucket': os.environ.get('OTM_STATS_BUCKET')
+                    }
+                )
+            results.append(stat_info)
 
-    bucket = os.environ.get('OTM_STATS_BUCKET')
-    prefix = (os.environ.get('OTM_STATS_PREFIX') or '') + o_prefix + name + '/'
-    response = s3_client.list_objects(Bucket=bucket, Prefix=prefix)
-    result = []
-    contents = []
-    if 'Contents' in response:
-        contents = response['Contents']
+    headers = {}
+    if 'LastEvaluatedKey' in table_response:
+        headers['X-NEXT-KEY'] = json.dumps(table_response['LastEvaluatedKey'])
 
-    for content in reversed(contents):
-        url = s3_client.generate_presigned_url('get_object', {'Key': content['Key'], 'Bucket': bucket})
-        file_name = re.match(r'^(.*/)?(.*)', content['Key'])[2]
-        result.append({'url': url, 'key': content['Key'], 'name': file_name})
-
-    return result
-
+    return Response(results, headers=headers)
 
 @stats_routes.route('/{file}', methods=['GET'], cors=True, authorizer=authorizer)
+@check_org_permission('read')
 def get_container_stats_data(org, name, file):
-    app = stats_routes._current_app
-    if not has_role(app, org, 'read'):
-        return Response(body={'error': 'permission error'}, status_code=401)
-
-    config = get_config_data(org)
-    (data, container) = get_container_data(org, name, config)
-
-    if data is None:
+    file_table_info = get_stat_table().get_item(Key={'tid': org + '/' + name, 'timestamp': Decimal(file)})
+    if not 'Item' in file_table_info:
         return Response(body={'error': 'not found'}, status_code=404)
 
-    o_prefix = ''
-    if org != 'root':
-        o_prefix = org + '/'
+    file_info = file_table_info['Item']
+
+    stat_info = file_info.copy()
+    stat_info.pop('tid')
+    stat_info.pop('timestamp')
+    if stat_info['status'] == 'COMPLETE':
+        stat_info['file_url'] = s3_client.generate_presigned_url(
+            'get_object', {
+                'Key': stat_info['file_key'], 'Bucket': os.environ.get('OTM_STATS_BUCKET')
+            }
+        )
+    return stat_info
+
+
+@stats_routes.route('/{file}/urls', methods=['GET'], cors=True, authorizer=authorizer)
+@check_org_permission('read')
+def get_container_stats_url_data(org, name, file):
+    file_table_info = get_stat_table().get_item(Key={'tid': org + '/' + name, 'timestamp': Decimal(file)})
+
+    if not 'Item' in file_table_info:
+        return Response(body={'error': 'not found'}, status_code=404)
+
+    file_info = file_table_info['Item']
+
+    if not file_info['status'] == 'COMPLETE':
+        return Response(body={'error': 'the result data had not been created yet'}, status_code=404)
 
     bucket = os.environ.get('OTM_STATS_BUCKET')
-    prefix = (os.environ.get('OTM_STATS_PREFIX') or '') + o_prefix + name + '_raw/'
-    object = s3.Object(bucket, prefix + file)
+    object = s3.Object(bucket, file_info['raw_file_key'])
     query_params = app.current_request.query_params
     url_filter = None
 
     if query_params and 'url_filter' in query_params:
         url_filter = query_params['url_filter']
 
-    try:
-        response = object.get()
-        data = json.loads(response['Body'].read())
+    response = object.get()
+    data = json.loads(response['Body'].read())
 
-        if url_filter:
-            states = []
-            p_states = []
-            new_result = []
-            result = data['result']
+    if url_filter:
+        states = []
+        p_states = []
+        new_result = []
+        result = data['result']
 
-            for r in result:
-                url = _normalizeUrl(r['url'])
-                p_url = _normalizeUrl(r['p_url'])
+        for r in result:
+            url = _normalizeUrl(r['url'])
+            p_url = _normalizeUrl(r['p_url'])
 
-                if _match_url(url_filter, url) or _match_url(url_filter, p_url):
-                    r['url'] = url
-                    r['p_url'] = p_url
+            if _match_url(url_filter, url) or _match_url(url_filter, p_url):
+                r['url'] = url
+                r['p_url'] = p_url
 
-                    dr = [r2 for r2 in new_result if
-                          r2['url'] == url and r2['p_url'] == p_url and r2['state'] == r['state'] and r2['p_state'] ==
-                          r['p_state']]
-                    if len(dr) > 0:
-                        dr[0]['count'] += r['count']
-                    else:
-                        states.append(r['state'])
-                        p_states.append(r['p_state'])
-                        new_result.append(r)
+                dr = [r2 for r2 in new_result if
+                      r2['url'] == url and r2['p_url'] == p_url and r2['state'] == r['state'] and r2['p_state'] ==
+                      r['p_state']]
+                if len(dr) > 0:
+                    dr[0]['count'] += r['count']
+                else:
+                    states.append(r['state'])
+                    p_states.append(r['p_state'])
+                    new_result.append(r)
 
-            diff_states = list(set(p_states) - set(states))
-            for st in diff_states:
-                if st is None:
-                    continue
-                if not re.match(r'^click_', st):
-                    continue
+        diff_states = list(set(p_states) - set(states))
+        for st in diff_states:
+            if st is None:
+                continue
+            if not re.match(r'^click_', st):
+                continue
 
-                sdata = [r2 for r2 in result if r2['state'] == st]
+            sdata = [r2 for r2 in result if r2['state'] == st]
 
-                if len(sdata) > 0:
-                    dr = [r2 for r2 in new_result if r2['p_state'] == st]
-                    for node in dr:
-                        node['p_title'] = sdata[0]['label']
-                        node['p_label'] = sdata[0]['label']
-                        node['p_xpath'] = sdata[0]['xpath']
-                        node['p_a_id'] = sdata[0]['a_id']
-                        node['p_class'] = sdata[0]['class']
+            if len(sdata) > 0:
+                dr = [r2 for r2 in new_result if r2['p_state'] == st]
+                for node in dr:
+                    node['p_title'] = sdata[0]['label']
+                    node['p_label'] = sdata[0]['label']
+                    node['p_xpath'] = sdata[0]['xpath']
+                    node['p_a_id'] = sdata[0]['a_id']
+                    node['p_class'] = sdata[0]['class']
 
-            data['result'] = new_result
+        data['result'] = new_result
 
-            if 'event_table' in data:
-                del data['event_table']
+        if 'event_table' in data:
+            del data['event_table']
 
-        return data
-    except ClientError:
-        return Response(body={'error': 'not found'}, status_code=404)
+    return data
 
 
 @stats_routes.route('/{file}/events', methods=['GET'], cors=True, authorizer=authorizer)
+@check_org_permission('read')
 def get_container_stats_data_event(org, name, file):
-    app = stats_routes._current_app
-    if not has_role(app, org, 'read'):
-        return Response(body={'error': 'permission error'}, status_code=401)
-
-    config = get_config_data(org)
-    (data, container) = get_container_data(org, name, config)
-
-    if data is None:
+    file_table_info = get_stat_table().get_item(Key={'tid': org + '/' + name, 'timestamp': Decimal(file)})
+    if not 'Item' in file_table_info:
         return Response(body={'error': 'not found'}, status_code=404)
 
-    o_prefix = ''
-    if org != 'root':
-        o_prefix = org + '/'
+    file_info = file_table_info['Item']
+
+    if not file_info['status'] == 'COMPLETE':
+        return Response(body={'error': 'the result data had not been created yet'}, status_code=404)
 
     bucket = os.environ.get('OTM_STATS_BUCKET')
-    prefix = (os.environ.get('OTM_STATS_PREFIX') or '') + o_prefix + name + '_raw/'
-    object = s3.Object(bucket, prefix + file)
-    try:
-        response = object.get()
-        data = json.loads(response['Body'].read())
+    raw_obj = s3.Object(bucket, file_info['raw_file_key'])
+    response = raw_obj.get()
+    data = json.loads(response['Body'].read())
 
-        del data['result']
+    del data['result']
 
-        return data
-    except ClientError:
-        return Response(body={'error': 'not found'}, status_code=404)
+    return data
 
 
 @stats_routes.route('/', methods=['POST'], cors=True, authorizer=authorizer)
+@check_org_permission('write')
+@check_json_body({
+    'stime': {'type': 'integer'},
+    'etime': {'type': 'integer'},
+    'label': {'type': 'string'}
+})
 def make_container_stats(org, name):
-    app = stats_routes._current_app
-    if not has_role(app, org, 'write'):
-        return Response(body={'error': 'permission error'}, status_code=401)
-
     request = app.current_request
     body = request.json_body
-
-    config = get_config_data(org)
-    (data, container) = get_container_data(org, name, config)
-
-    if data is None:
-        return Response(body={'error': 'not found'}, status_code=404)
 
     today = datetime.datetime.today()
     yesterday = today - datetime.timedelta(days=+1)
@@ -200,40 +209,9 @@ def make_container_stats(org, name):
     if body and 'etime' in body:
         etime = str(int(body['etime']))
 
-    o_prefix = ''
-    if org != 'root':
-        o_prefix = org + '/'
-
-    command = [
-        'python',
-        'app.py',
-        '-d',
-        os.environ.get('STATS_ATHENA_DATABASE'),
-        '-p',
-        os.environ.get('STATS_ATHENA_TABLE'),
-        '-t',
-        os.environ.get('OTM_STATS_BUCKET'),
-        '-n',
-        (os.environ.get('OTM_STATS_PREFIX') or '') + o_prefix + name + '/',
-        '-r',
-        (os.environ.get('OTM_STATS_PREFIX') or '') + o_prefix + name + '_raw/',
-        '-u',
-        (os.environ.get('OTM_USAGE_PREFIX') or ''),
-        '--result-bucket',
-        os.environ.get('STATS_ATHENA_RESULT_BUCKET'),
-        '--query-org',
-        org,
-        '--query-tid',
-        name,
-        '--query-stime',
-        stime,
-        '--query-etime',
-        etime
-    ]
-
-    if body and 'label' in body:
-        command.append('--target-suffix')
-        command.append(body['label'])
+    ts = Decimal(time.time())
+    command = ['python', 'app.py', '--query-org', org, '--query-tid', name,
+               '--query-stime', stime, '--query-etime', etime, '--file-key', str(ts)]
 
     job = batch_client.submit_job(
         jobName=('otm_data_retriever_' + name + '_stat_' + str(uuid.uuid4())),
@@ -241,5 +219,19 @@ def make_container_stats(org, name):
         jobDefinition=os.environ.get('STATS_BATCH_JOB_DEFINITION'),
         containerOverrides={'command': command}
     )
+
+    item = {
+        'tid': org + '/' + name,
+        'timestamp': ts,
+        'status': 'QUEUED',
+        'label': '',
+        'job_id': job['jobId'],
+        'stime': int(stime),
+        'etime': int(etime)
+    }
+    if 'label' in body:
+        item['label'] = body['label']
+
+    get_stat_table().put_item(Item=item)
 
     return Response(body={'queue': job['jobId']}, status_code=201)

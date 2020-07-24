@@ -8,7 +8,6 @@
 </template>
 
 <script>
-  import _ from 'lodash'
   import {getTree} from '../lib/UrlTree'
   import axios from 'axios'
   import SwaggerSample from '../components/SwaggerSample'
@@ -23,16 +22,11 @@
       }
     },
     async mounted () {
-      await this.$store.dispatch('container/fetchSwaggerDoc', {
-        org: this.$route.params.org,
-        container: this.$route.params.name
-      })
-      const stats = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.$route.params.name}/stats`)
-      const stat = _.find(stats, {key: this.$route.params.statid})
+      const stat = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.$route.params.name}/stats/${this.$route.params.statid}`)
       if (!stat) {
         return
       }
-      const data = await axios.get(stat.url)
+      const data = await axios.get(stat.file_url)
       this.urls = data.data.urls
       this.urlTree = getTree(this.urls, this.$store.getters['container/getSwaggetDocPaths'])
       this.originalUrlTree = getTree(this.urls)

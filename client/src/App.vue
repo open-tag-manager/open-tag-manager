@@ -15,7 +15,7 @@
         </b-nav-text>
         <b-nav-form class="mr-2">
           <b-form-select v-model="currentOrg" @change="changeOrg">
-            <option :value="org" v-for="org in $store.state.user.orgs" :key="org.org">{{org.org}}</option>
+            <option :value="org" v-for="org in $store.state.user.user.orgs" :key="org.org">{{org.org}}</option>
           </b-form-select>
         </b-nav-form>
         <b-nav-item :to="'/orgs/' + currentOrg.org + '/settings/containers'" v-if="currentOrg">

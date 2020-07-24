@@ -1,102 +1,109 @@
-from chalice import CognitoUserPoolAuthorizer
+from chalice import CognitoUserPoolAuthorizer, Chalice, Response
+from cerberus import Validator
 import os
 from boto3.dynamodb.conditions import Key
-from botocore.errorfactory import ClientError
 import boto3
-import json
-import copy
+import re
 
 from .script_generator import ScriptGenerator
 from .upload import S3Uploader
 
+app = Chalice(app_name="open_tag_manager")
+app.debug = bool(os.environ.get('DEBUG'))
+app.experimental_feature_flags.update(['BLUEPRINTS'])
+
 authorizer = CognitoUserPoolAuthorizer('UserPool', provider_arns=[str(os.environ.get('OTM_COGNITO_USER_POOL_ARN'))])
 dynamodb = boto3.resource('dynamodb')
+cognito_idp_client = boto3.client('cognito-idp')
 s3 = boto3.resource('s3')
 s3_client = boto3.client('s3')
 batch_client = boto3.client('batch')
+
+
+def get_cognito_user_pool_id():
+    return re.search(r"/(.+)$", os.environ.get('OTM_COGNITO_USER_POOL_ARN'))[1]
 
 
 def get_role_table():
     return dynamodb.Table(str(os.environ.get('OTM_ROLE_DYNAMODB_TABLE')))
 
 
-def get_roles(app):
+def get_user_table():
+    return dynamodb.Table(str(os.environ.get('OTM_USER_DYNAMODB_TABLE')))
+
+
+def get_org_table():
+    return dynamodb.Table(str(os.environ.get('OTM_ORG_DYNAMODB_TABLE')))
+
+
+def get_stat_table():
+    return dynamodb.Table(str(os.environ.get('OTM_STAT_DYNAMODB_TABLE')))
+
+
+def get_container_table():
+    return dynamodb.Table(str(os.environ.get('OTM_CONTAINER_DYNAMODB_TABLE')))
+
+
+def get_current_user_name():
     if 'authorizer' in app.current_request.context:
-        username = app.current_request.context['authorizer']['claims']['cognito:username']
+        return app.current_request.context['authorizer']['claims']['cognito:username']
 
-        item = get_role_table().query(
-            KeyConditionExpression=Key('username').eq(username)
-        )
-        if not 'Items' in item:
-            return []
-
-        result = []
-        for role in item['Items']:
-            result.append({'org': role['organization'], 'roles': role['roles']})
-    else:
-        # for local test environment
-        result = [{'org': 'root', 'roles': ['write', 'read']}, {'org': 'sample', 'roles': ['write', 'read']}]
-
-    freezed_orgs = []
-    try:
-        response = s3.Object(os.environ.get('OTM_BUCKET'), 'freezed.json').get()
-        freezed_orgs = json.loads(response['Body'].read())
-    except ClientError:
-        pass
-
-    for item in result:
-        item['freezed'] = item['org'] in freezed_orgs
-
-    return result
+    # local environment
+    return os.environ.get('TEST_USER') or 'root'
 
 
-def has_role(app, org, role_name):
-    for role in get_roles(app):
-        if (role['org'] == org or role['org'] == 'root') and role_name in role['roles']:
-            if org == 'root':
-                return True
+def has_permission(org, role):
+    item = get_role_table().query(
+        KeyConditionExpression=Key('username').eq(get_current_user_name())
+    )
+    for r in item['Items']:
+        if r['organization'] == 'root' and 'admin' in r['roles']:
+            return True
 
-            if role_name == 'write':
-                return not role['freezed']
-            else:
-                return True
+        if r['organization'] == org and role in r['roles']:
+            return True
 
     return False
 
 
-def get_config_data(org):
-    prefix = ''
-    if org != 'root':
-        prefix = org + '/'
+def check_org_permission(role):
+    def __decorator(func):
+        def inner(*args, **kwargs):
+            org = app.current_request.uri_params['org']
+            if not has_permission(org, role):
+                return Response(body={'error': 'permission error'}, status_code=401)
+            return func(*args, **kwargs)
 
-    try:
-        response = s3.Object(os.environ.get('OTM_BUCKET'), prefix + 'config.json').get()
-        return json.loads(response['Body'].read())
-    except ClientError:
-        return {}
+        return inner
 
-
-def put_config_data(org, config):
-    prefix = ''
-    if org != 'root':
-        prefix = org + '/'
-    s3.Object(os.environ.get('OTM_BUCKET'), prefix + 'config.json').put(Body=json.dumps(config),
-                                                                        ContentType='application/json')
+    return __decorator
 
 
-def get_container_data(org, name, config):
-    prefix = ''
-    if org != 'root':
-        prefix = org + '/'
+def check_root_admin():
+    def __decorator(func):
+        def inner(*args, **kwargs):
+            if not has_permission('root', 'admin'):
+                return Response(body={'error': 'permission error'}, status_code=401)
+            return func(*args, **kwargs)
 
-    containers = config['containers']
-    c = list(filter(lambda x: x['name'] == name, containers))
-    if len(c) <= 0:
-        return (None, None)
+        return inner
 
-    container = c[0]
-    try:
-        response = s3.Object(os.environ.get('OTM_BUCKET'), 'containers/' + prefix + name + '.json').get()
-        return (json.loads(response['Body'].read()), container)
-    except ClientError:
-        return (copy.copy(container), container)
+    return __decorator
+
+
+def check_json_body(schema):
+    def __decorator(func):
+        def inner(*args, **kwargs):
+            request = app.current_request.json_body
+            if request is None:
+                return Response(body={'error': 'bad request'}, status_code=400)
+
+            v = Validator(schema)
+            if v.validate(request):
+                return func(*args, **kwargs)
+            else:
+                return Response(body={'error': 'bad request', 'error_fields': v.errors}, status_code=400)
+
+        return inner
+
+    return __decorator

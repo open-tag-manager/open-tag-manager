@@ -48,6 +48,15 @@
     {
       "Effect": "Allow",
       "Action": [
+        "cognito-identity:*"
+      ],
+      "Resource": [
+        "arn:aws:cognito-idp:us-west-1:xxxx:userpool/USER_POOL_ID"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
         "batch:SubmitJob"
       ],
       "Resource": [

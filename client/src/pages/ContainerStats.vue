@@ -27,7 +27,7 @@
             <div class="d-flex">
               <div class="form-group">
                 <label for="label">Report Label</label>
-                <input type="text" id="label" v-model="label" class="form-control" pattern="[a-zA-Z]+">
+                <input type="text" id="label" v-model="label" class="form-control">
               </div>
             </div>
             <button type="submit" class="btn btn-primary" :disabled="!(stime && etime)">Make Report</button>
@@ -46,17 +46,22 @@
           <tr>
             <th>Report Term</th>
             <th>Label</th>
+            <th>Status</th>
           </tr>
           </thead>
           <tbody>
-          <tr v-for="stat in formattedStats">
+          <tr v-for="stat in stats">
             <td>
-              <router-link
-                :to="{name: 'Container-Stats-StatId', params: {org: $route.params.org, name: $route.params.name, statid: stat.name}}">
-                {{ stat.term || stat.name }}
+              <router-link v-if="stat.status === 'COMPLETE'"
+                :to="{name: 'Container-Stats-StatId', params: {org: $route.params.org, name: $route.params.name, statid: stat.timestamp}}">
+                {{ getTerm(stat) || stat.timestamp }}
               </router-link>
+              <span v-else>
+                {{ getTerm(stat) || stat.timestamp }}
+              </span>
             </td>
             <td>{{stat.label}}</td>
+            <td>{{stat.status}}</td>
           </tr>
           </tbody>
         </table>
@@ -71,7 +76,6 @@
 <script>
   import moment from 'moment-timezone'
   import flatPickr from 'vue-flatpickr-component'
-  import {statIdToInfo} from '../lib/StatId'
 
   export default {
     components: {flatPickr},
@@ -93,26 +97,15 @@
       this.name = name
       await this.reload()
     },
-    computed: {
-      formattedStats () {
-        if (!this.stats) {
-          return []
-        }
-
-        return this.stats.map((s) => {
-          return statIdToInfo(s.key)
-        })
-      }
-    },
     methods: {
       async makeReport () {
         const toast = this.$toasted.show('Request stats..')
         const body = {}
         if (this.stime) {
-          body.stime = moment.tz(this.stime, this.timezone).format('x')
+          body.stime = parseInt(moment.tz(this.stime, this.timezone).format('x'))
         }
         if (this.etime) {
-          body.etime = moment.tz(this.etime, this.timezone).format('x')
+          body.etime = parseInt(moment.tz(this.etime, this.timezone).format('x'))
         }
         if (this.label) {
           body.label = this.label
@@ -122,6 +115,10 @@
         toast.goAway(0)
         this.$toasted.show('Requested!', {duration: 3000})
         this.label = null
+        await this.reload()
+      },
+      getTerm (stat) {
+        return `${moment(stat.stime).format('YYYY/MM/DD HH:mm:ss')} 〜 ${moment(stat.etime).format('YYYY/MM/DD HH:mm:ss')}`
       },
       async reload () {
         this.stats = null

@@ -147,12 +147,14 @@
   export default {
     data () {
       return {
-        container: null,
         label: null,
         siteDomains: null
       }
     },
     computed: {
+      container () {
+        return this.$store.state.container.container
+      },
       triggers () {
         const preset = [
           {
@@ -231,18 +233,9 @@
       }
     },
     async created () {
-      const name = this.$route.params.name
-      const container = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${name}`)
-      await this.$store.dispatch('container/fetchSwaggerDoc', {org: this.$route.params.org, container: name})
-      if (!container.observers) {
-        container.observers = []
-      }
-      if (!container.triggers) {
-        container.triggers = []
-      }
-      this.container = container
-      this.label = container.label
-      const domains = container.domains
+      await this.$store.dispatch('container/fetchContainer', {container: this.$route.params.name, org: this.$route.params.org})
+      this.label = this.container.label
+      const domains = this.container.domains
       if (Array.isArray(domains)) {
         this.siteDomains = domains.join(',')
       }
@@ -298,26 +291,19 @@
         this.container.triggers = _.reject(this.container.triggers, {id: trigger.id})
       },
       async deploy () {
-        this.container = await this.$Amplify.API.put('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.container.name}`, {
-          body: {
-            observers: this.container.observers,
-            triggers: this.container.triggers
-          }
+        await this.$store.dispatch('container/saveContainer', {
+          observers: this.container.observers,
+          triggers: this.container.triggers
         })
       },
       async save () {
-        this.container = await this.$Amplify.API.put('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.container.name}`, {
-          body: {
-            label: this.label,
-            domains: this.siteDomains.split(',').filter(d => d)
-          }
+        await this.$store.dispatch('container/saveContainer', {
+          label: this.label,
+          domains: this.siteDomains.split(',').filter(d => d)
         })
       },
       async saveSwaggerDoc () {
-        await this.$store.dispatch('container/saveSwaggerDoc', {
-          org: this.$route.params.org,
-          container: this.$route.params.name
-        })
+        await this.$store.dispatch('container/saveSwaggerDoc')
       },
       inputType (observer) {
         const action = this.getAction(observer.type)

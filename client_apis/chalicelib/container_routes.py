@@ -1,12 +1,14 @@
 from chalice import Blueprint, Response
-from . import ScriptGenerator, S3Uploader, s3, authorizer, get_config_data, has_role, put_config_data, \
-    get_container_data
+from . import app, ScriptGenerator, S3Uploader, s3, authorizer, check_org_permission, \
+    get_container_table, check_json_body
 from botocore.errorfactory import ClientError
 import string
 import random
 import time
 import os
 import json
+from boto3.dynamodb.conditions import Key
+from decimal import Decimal
 
 container_routes = Blueprint(__name__)
 
@@ -15,125 +17,114 @@ def randomname(n):
     return ''.join(random.choices(string.ascii_letters + string.digits, k=n))
 
 
-def make_random_name(org):
-    config = get_config_data(org)
-    if not 'containers' in config:
-        config['containers'] = []
-    containers = config['containers']
-    name = 'OTM-' + randomname(8).upper();
-    if len(list(filter(lambda x: x['name'] == name, containers))) > 0:
-        return make_random_name(org)
-
+def make_random_name():
+    name = 'OTM-' + randomname(8).upper()
     return name
 
 
-def put_container_data(org, name, config):
-    prefix = ''
-    if org != 'root':
-        prefix = org + '/'
-
-    s3.Object(os.environ.get('OTM_BUCKET'), 'containers/' + prefix + name + '.json').put(Body=json.dumps(config),
-                                                                                         ContentType='application/json')
-
-
 @container_routes.route('/', cors=True, methods=['GET'], authorizer=authorizer)
+@check_org_permission('read')
 def containers(org):
-    app = container_routes._current_app
-    if not has_role(app, org, 'read'):
-        return Response(body={'error': 'permission error'}, status_code=401)
+    next_key = None
+    if app.current_request.query_params and 'next' in app.current_request.query_params:
+        next_key = json.loads(app.current_request.query_params['next'])
 
-    config = get_config_data(org)
-    if not 'containers' in config:
-        return []
+    args = {
+        'KeyConditionExpression': Key('organization').eq(org),
+        'IndexName': 'organization_index',
+        'Limit': 100
+    }
 
-    return config['containers']
+    if next_key:
+        args['ExclusiveStartKey'] = next_key
+
+    table_response = get_container_table().query(**args)
+    results = []
+    if 'Items' in table_response:
+        for item in table_response['Items']:
+            d = item.copy()
+            d.pop('organization')
+            results.append(d)
+
+    headers = {}
+    if 'LastEvaluatedKey' in table_response:
+        headers['X-NEXT-KEY'] = json.dumps(table_response['LastEvaluatedKey'])
+
+    return Response(results, headers=headers)
 
 
 @container_routes.route('/', cors=True, methods=['POST'], authorizer=authorizer)
+@check_org_permission('write')
+@check_json_body({
+    'label': {'type': 'string', 'required': True, 'empty': False}
+})
 def create_container(org):
-    app = container_routes._current_app
-    if not has_role(app, org, 'write'):
-        return Response(body={'error': 'permission error'}, status_code=401)
-
     request = app.current_request
     body = request.json_body
-    if not 'name' in body:
-        return Response(body={'error': 'name is required'}, status_code=400)
-
-    config = get_config_data(org)
-    if not 'containers' in config:
-        config['containers'] = []
-    containers = config['containers']
-    if len(list(filter(lambda x: x['name'] == body['name'], containers))) > 0:
-        return Response(body={'error': 'duplicated container'}, status_code=400)
-
-    ts = int(time.time())
+    ts = Decimal(time.time())
     new_container = {
-        'name': make_random_name(org),
-        'org': org,
-        'label': body['name'],
+        'tid': make_random_name(),
+        'organization': org,
+        'label': body['label'],
         'created_at': ts,
         'updated_at': ts,
-        'domains': []
+        'observers': [],
+        'triggers': [],
+        'domains': [],
+        'swagger_doc': {}
     }
-    config['containers'].append(new_container)
-    put_config_data(org, config)
 
+    get_container_table().put_item(Item=new_container)
     return new_container
 
 
 @container_routes.route('/{name}', cors=True, methods=['GET'], authorizer=authorizer)
+@check_org_permission('read')
 def get_container(org, name):
-    app = container_routes._current_app
-    if not has_role(app, org, 'read'):
-        return Response(body={'error': 'permission error'}, status_code=401)
+    container_info = get_container_table().get_item(Key={'tid': name})
+    if 'Item' in container_info:
+        if not container_info['Item']['organization'] == org:
+            return Response(body={'error': 'not found'}, status_code=404)
 
-    config = get_config_data(org)
-    (data, container) = get_container_data(org, name, config)
-
-    if data is None:
+        return container_info['Item']
+    else:
         return Response(body={'error': 'not found'}, status_code=404)
-
-    return data
 
 
 @container_routes.route('/{name}', methods=['PUT'], cors=True, authorizer=authorizer)
+@check_json_body({
+    'label': {'type': 'string', 'required': False, 'empty': False},
+    'observers': {'type': 'list', 'required': False, 'schema': {'type': 'dict'}},
+    'triggers': {'type': 'list', 'required': False, 'schema': {'type': 'dict'}},
+    'domains': {'type': 'list', 'required': False, 'schema': {'type': 'string'}},
+    'swagger_doc': {'type': 'dict', 'required': False}
+})
+@check_org_permission('write')
 def put_container(org, name):
-    app = container_routes._current_app
-    if not has_role(app, org, 'write'):
-        return Response(body={'error': 'permission error'}, status_code=401)
+    container_info = get_container_table().get_item(Key={'tid': name})
+    if not 'Item' in container_info:
+        return Response(body={'error': 'not found'}, status_code=404)
 
-    config = get_config_data(org)
-    (data, container) = get_container_data(org, name, config)
+    current_container = container_info['Item']
 
-    if data is None:
+    if not current_container['organization'] == org:
         return Response(body={'error': 'not found'}, status_code=404)
 
     request = app.current_request
     body = request.json_body
-    ts = int(time.time())
-    data['org'] = org
 
+    ts = Decimal(time.time())
+    current_container['updated_at'] = ts
     if 'observers' in body:
-        if not isinstance(body['observers'], list):
-            return Response(body={'error': 'observers should set by array'}, status_code=400)
-        data['observers'] = body['observers']
-
+        current_container['observers'] = body['observers']
     if 'triggers' in body:
-        if not isinstance(body['triggers'], list):
-            return Response(body={'error': 'triggers should set by array'}, status_code=400)
-        data['triggers'] = body['triggers']
-
-    if 'label' in body and body['label']:
-        container['label'] = data['label'] = body['label']
-
+        current_container['triggers'] = body['triggers']
     if 'domains' in body:
-        if not isinstance(body['domains'], list):
-            return Response(body={'error': 'domains should set by array'}, status_code=400)
-        container['domains'] = data['domains'] = body['domains']
-
-    container['updated_at'] = ts
-    data['updated_at'] = ts
+        current_container['domains'] = body['domains']
+    if 'label' in body:
+        current_container['label'] = body['label']
+    if 'swagger_doc' in body:
+        current_container['swagger_doc'] = body['swagger_doc']
 
     # publish javascript
     prefix = ''
@@ -141,31 +132,25 @@ def put_container(org, name):
         prefix = org + '/'
 
     generator = ScriptGenerator(os.environ.get('OTM_URL'), os.environ.get('COLLECT_URL'))
-    generator.import_config(data)
+    generator.import_config(current_container)
     script = generator.generate()
     uploader = S3Uploader(None, script_bucket=os.environ.get('OTM_BUCKET'), otm_path=os.environ.get('OTM_URL'))
     uploader.upload_script(prefix + name + '.js', script)
 
-    data['script'] = uploader.script_url()
+    current_container['script'] = uploader.script_url()
     if os.environ.get('OTM_SCRIPT_CDN'):
-        data['script'] = uploader.script_url_cdn(os.environ.get('OTM_SCRIPT_CDN'))
+        current_container['script'] = uploader.script_url_cdn(os.environ.get('OTM_SCRIPT_CDN'))
 
-    put_config_data(org, config)
-    put_container_data(org, name, data)
+    get_container_table().put_item(Item=current_container)
 
-    return data
+    return current_container
 
 
 @container_routes.route('/{name}', methods=['DELETE'], cors=True, authorizer=authorizer)
+@check_org_permission('write')
 def delete_container(org, name):
-    app = container_routes._current_app
-    if not has_role(app, org, 'write'):
-        return Response(body={'error': 'permission error'}, status_code=401)
-
-    config = get_config_data(org)
-    (data, container) = get_container_data(org, name, config)
-
-    if data is None:
+    container_info = get_container_table().get_item(Key={'tid': name})
+    if not 'Item' in container_info:
         return Response(body={'error': 'not found'}, status_code=404)
 
     prefix = ''
@@ -177,7 +162,6 @@ def delete_container(org, name):
     except ClientError:
         pass
 
-    config['containers'].remove(container)
-    put_config_data(org, config)
+    get_container_table().delete_item(Key={'tid': name})
 
     return Response(body='', status_code=204)

@@ -114,6 +114,13 @@ resource "aws_cloudfront_distribution" "otm_collect_distribution" {
     response_page_path = "/collect.html"
   }
 
+  custom_error_response {
+    error_caching_min_ttl = 3600
+    error_code = 404
+    response_code = 200
+    response_page_path = "/collect.html"
+  }
+
   tags = var.aws_resource_tags
 }
 
@@ -324,6 +331,34 @@ resource "aws_dynamodb_table" "otm_role" {
   }
 }
 
+resource "aws_dynamodb_table" "otm_container" {
+  name = "${terraform.workspace}_otm_container"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key = "tid"
+
+  attribute {
+    name = "tid"
+    type = "S"
+  }
+
+  attribute {
+    name = "organization"
+    type = "S"
+  }
+
+  attribute {
+    name = "created_at"
+    type = "N"
+  }
+
+  global_secondary_index {
+    name               = "organization_index"
+    hash_key           = "organization"
+    range_key          = "created_at"
+    projection_type    = "ALL"
+  }
+}
+
 resource "aws_dynamodb_table" "otm_stat" {
   name = "${terraform.workspace}_otm_stat"
   billing_mode = "PAY_PER_REQUEST"
@@ -441,7 +476,8 @@ resource "aws_iam_policy" "log_stat_s3_access_policy" {
       ],
       "Resource": [
         "${aws_dynamodb_table.otm_org.arn}",
-        "${aws_dynamodb_table.otm_stat.arn}"
+        "${aws_dynamodb_table.otm_stat.arn}",
+        "${aws_dynamodb_table.otm_container.arn}"
       ]
     }
   ]
@@ -478,7 +514,15 @@ resource "aws_batch_job_definition" "otm_data_retriever" {
   "vcpus": 2,
   "volumes": [],
   "environment": [
-    {"name": "AWS_DEFAULT_REGION", "value": "${var.aws_region}"}
+    {"name": "AWS_DEFAULT_REGION", "value": "${var.aws_region}"},
+    {"name": "OTM_STATS_BUCKET", "value": "${aws_s3_bucket.otm_stats.bucket}"},
+    {"name": "OTM_STATS_PREFIX", "value": "stats/"},
+    {"name": "OTM_USAGE_PREFIX", "value": "usage/"},
+    {"name": "STATS_ATHENA_RESULT_BUCKET", "value": "${aws_s3_bucket.otm_athena.bucket}"},
+    {"name": "STATS_ATHENA_RESULT_PREFIX", "value": ""},
+    {"name": "STATS_ATHENA_DATABASE", "value": "${aws_athena_database.otm.name}"},
+    {"name": "STATS_ATHENA_TABLE", "value": "otm_collect"},
+    {"name": "OTM_STAT_DYNAMODB_TABLE", "value": "${aws_dynamodb_table.otm_stat.name}"}
   ],
   "mountPoints": [],
   "ulimits": []

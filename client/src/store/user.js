@@ -5,9 +5,8 @@ const getters = {
     return !!state.user
   },
   hasRootRole (state) {
-    const root = _.find(state.orgs, {org: 'root'})
-
-    return root && root.roles.includes('write')
+    const root = _.find(state.user.orgs, {org: 'root'})
+    return root && root.roles.includes('admin')
   }
 }
 
@@ -18,10 +17,15 @@ const state = {
 }
 
 const mutations = {
-  SET_USER (state, {user, orgs}) {
+  SET_USER (state, {user}) {
     state.user = user
-    state.orgs = orgs
-    state.currentOrg = _.first(state.orgs)
+    if (state.user === null) {
+      state.orgs = null
+      state.currentOrg = null
+    } else {
+      state.orgs = user.orgs
+      state.currentOrg = _.first(state.orgs)
+    }
   },
   SET_CURRENT_ORG (state, org) {
     state.currentOrg = org
@@ -29,11 +33,11 @@ const mutations = {
 }
 
 const actions = {
-  setUser (ctx, {user, orgs}) {
-    ctx.commit('SET_USER', {user, orgs})
+  setUser (ctx, {user}) {
+    ctx.commit('SET_USER', {user})
   },
   unsetUser (ctx) {
-    ctx.commit('SET_USER', {user: null, orgs: []})
+    ctx.commit('SET_USER', {user: null})
     ctx.commit('SET_CURRENT_ORG', null)
   },
   async signOut (ctx) {

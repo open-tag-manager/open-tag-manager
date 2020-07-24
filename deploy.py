@@ -118,6 +118,10 @@ def main():
     dynamo_user_table = dynamo_user_values['id']
     dynamo_user_table_arn = dynamo_user_values['arn']
 
+    dynamo_container_values = [x for x in common_resources if x['address'] == 'aws_dynamodb_table.otm_container'][0]['values']
+    dynamo_container_table = dynamo_container_values['id']
+    dynamo_container_table_arn = dynamo_container_values['arn']
+
     dynamo_stat_values = [x for x in common_resources if x['address'] == 'aws_dynamodb_table.otm_stat'][0]['values']
     dynamo_stat_table = dynamo_stat_values['id']
     dynamo_stat_table_arn = dynamo_stat_values['arn']
@@ -159,6 +163,7 @@ def main():
         env['OTM_USER_DYNAMODB_TABLE'] = dynamo_user_table
         env['OTM_STAT_DYNAMODB_TABLE'] = dynamo_stat_table
         env['OTM_ORG_DYNAMODB_TABLE'] = dynamo_org_table
+        env['OTM_CONTAINER_DYNAMODB_TABLE'] = dynamo_container_table
         env['OTM_STATS_BUCKET'] = stat_bucket
         env['OTM_STATS_PREFIX'] = 'stats/'
         env['OTM_USAGE_PREFIX'] = 'usage/'
@@ -207,6 +212,9 @@ def main():
         config['Statement'][2]['Resource'].append(dynamo_user_table_arn)
         config['Statement'][2]['Resource'].append(dynamo_org_table_arn)
         config['Statement'][2]['Resource'].append(dynamo_stat_table_arn)
+        config['Statement'][2]['Resource'].append(dynamo_container_table_arn)
+        config['Statement'][3]['Resource'] = []
+        config['Statement'][3]['Resource'].append(cognito_user_pool_arn)
 
     with open('./client_apis/.chalice/policy-%s.json' % environment, 'w') as f:
         json.dump(config, f, indent=4)
@@ -405,34 +413,6 @@ TBLPROPERTIES ('has_encrypted_data'='false')
     ], check=True)
 
     print('9.2. user data')
-    subprocess.run([
-        'aws',
-        'dynamodb',
-        'update-item',
-        '--table-name',
-        dynamo_user_table,
-        '--key',
-        json.dumps({'username': {'S': 'root'}}),
-        '--update-expression',
-        'SET created_at = if_not_exists(created_at, :c), updated_at = if_not_exists(updated_at, :u)',
-        '--expression-attribute-values',
-        json.dumps({':c': {'N': str(int(time.time()))}, ':u': {'N': str(int(time.time()))}})
-    ], check=True)
-    subprocess.run([
-        'aws',
-        'dynamodb',
-        'update-item',
-        '--table-name',
-        dynamo_role_table,
-        '--key',
-        json.dumps({'username': {'S': 'root'}, 'organization': {'S': 'root'}}),
-        '--update-expression',
-        'SET #r = if_not_exists(#r, :r)',
-        '--expression-attribute-names',
-        json.dumps({'#r': 'roles'}),
-        '--expression-attribute-values',
-        json.dumps({':r': {'L': [{'S': 'read'}, {'S': 'write'}, {'S': 'admin'}]}})
-    ], check=True)
     if os.environ.get('ROOT_EMAIL'):
         idp_result = subprocess.run([
             'aws',
@@ -457,6 +437,38 @@ TBLPROPERTIES ('has_encrypted_data'='false')
                 'Name=email,Value=%s' % os.environ.get('ROOT_EMAIL'),
                 'Name=email_verified,Value=true'
             ], check=True)
+        subprocess.run([
+            'aws',
+            'dynamodb',
+            'update-item',
+            '--table-name',
+            dynamo_user_table,
+            '--key',
+            json.dumps({'username': {'S': 'root'}}),
+            '--update-expression',
+            'SET created_at = if_not_exists(created_at, :c), updated_at = if_not_exists(updated_at, :u), email = :e',
+            '--expression-attribute-values',
+            json.dumps({':c': {'N': str(int(time.time()))},
+                        ':u': {'N': str(int(time.time()))},
+                        ':e': {'S': os.environ.get('ROOT_EMAIL')}})
+        ], check=True)
+        subprocess.run([
+            'aws',
+            'dynamodb',
+            'update-item',
+            '--table-name',
+            dynamo_role_table,
+            '--key',
+            json.dumps({'username': {'S': 'root'}, 'organization': {'S': 'root'}}),
+            '--update-expression',
+            'SET #r = if_not_exists(#r, :r)',
+            '--expression-attribute-names',
+            json.dumps({'#r': 'roles'}),
+            '--expression-attribute-values',
+            json.dumps({':r': {'L': [{'S': 'read'}, {'S': 'write'}, {'S': 'admin'}]}})
+        ], check=True)
+    else:
+        print('Skip to add user data because ROOT_EMAIL is blank')
 
     print("Deployed: https://%s/" % client_domain)
 

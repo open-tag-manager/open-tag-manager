@@ -74,14 +74,13 @@
       },
       async render () {
         this.isLoading = true
-        const stats = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.$route.params.name}/stats`)
-        const stat = _.find(stats, {key: this.$route.params.statid})
+        const stat = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.$route.params.name}/stats/${this.$route.params.statid}`)
         if (!stat) {
           this.isLoading = false
           return
         }
 
-        const data = await axios.get(stat.url)
+        const data = await axios.get(stat.file_url)
         if (data.data.meta.version !== 3) {
           console.log('version miss match')
           this.isLoading = false

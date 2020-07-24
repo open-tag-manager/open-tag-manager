@@ -73,10 +73,6 @@
       }
     },
     async mounted () {
-      await this.$store.dispatch('container/fetchSwaggerDoc', {
-        org: this.$route.params.org,
-        container: this.$route.params.name
-      })
       await this.loadData()
     },
     methods: {
@@ -166,11 +162,10 @@
       },
       async loadData () {
         this.isLoading = true
-        const config = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.$route.params.name}`)
-        this.config = config
-        const stats = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.$route.params.name}/stats`)
-        const stat = _.find(stats, {key: this.$route.params.statid})
-        const data = await axios.get(stat.url)
+        await this.$store.dispatch('container/fetchContainer', {container: this.$route.params.name, org: this.$route.params.org})
+        this.config = this.$store.state.container.container
+        const stat = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.$route.params.name}/stats/${this.$route.params.statid}`)
+        const data = await axios.get(stat.file_url)
         this.tableData = convertUrlForTableData(data.data.table, this.swaggerDoc)
         this.summarize()
         this.isLoading = false
