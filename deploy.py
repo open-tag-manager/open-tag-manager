@@ -209,10 +209,15 @@ def main():
         config['Statement'][1]['Resource'].append('arn:aws:s3:::%s' % stat_bucket)
         config['Statement'][2]['Resource'] = []
         config['Statement'][2]['Resource'].append(dynamo_role_table_arn)
+        config['Statement'][2]['Resource'].append(dynamo_role_table_arn + '/*')
         config['Statement'][2]['Resource'].append(dynamo_user_table_arn)
+        config['Statement'][2]['Resource'].append(dynamo_user_table_arn + '/*')
         config['Statement'][2]['Resource'].append(dynamo_org_table_arn)
+        config['Statement'][2]['Resource'].append(dynamo_org_table_arn + '/*')
         config['Statement'][2]['Resource'].append(dynamo_stat_table_arn)
+        config['Statement'][2]['Resource'].append(dynamo_stat_table_arn + '/*')
         config['Statement'][2]['Resource'].append(dynamo_container_table_arn)
+        config['Statement'][2]['Resource'].append(dynamo_container_table_arn + '/*')
         config['Statement'][3]['Resource'] = []
         config['Statement'][3]['Resource'].append(cognito_user_pool_arn)
 

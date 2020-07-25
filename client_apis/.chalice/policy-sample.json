@@ -48,7 +48,7 @@
     {
       "Effect": "Allow",
       "Action": [
-        "cognito-identity:*"
+        "cognito-idp:*"
       ],
       "Resource": [
         "arn:aws:cognito-idp:us-west-1:xxxx:userpool/USER_POOL_ID"
