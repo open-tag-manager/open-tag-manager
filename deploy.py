@@ -261,7 +261,7 @@ def main():
         'COGNITO_COOKIE_STORAGE_DOMAIN': client_domain,
         'COGNITO_COOKIE_SECURE': '1',
         'ADMIN_TITLE': os.environ.get('ADMIN_TITLE'),
-        'ADMIN_HEADER_SCRIPT': os.environ.get('ADMIN_HEADER_SCRIPT')
+        'ADMIN_HEADER_SCRIPT': os.environ.get('ADMIN_HEADER_SCRIPT'),
         'BASE_PATH': ''
     }
 
