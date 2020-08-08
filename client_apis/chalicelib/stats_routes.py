@@ -66,7 +66,7 @@ def get_container_stats(org, name):
     if 'LastEvaluatedKey' in table_response:
         headers['X-NEXT-KEY'] = json.dumps(table_response['LastEvaluatedKey'])
 
-    return Response(results, headers=headers)
+    return Response({'items': results, 'next': headers.get('X-NEXT-KEY')}, headers=headers)
 
 @stats_routes.route('/{file}', methods=['GET'], cors=True, authorizer=authorizer)
 @check_org_permission('read')

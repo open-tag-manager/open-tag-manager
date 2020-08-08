@@ -14,6 +14,7 @@ app.experimental_feature_flags.update(['BLUEPRINTS'])
 
 authorizer = CognitoUserPoolAuthorizer('UserPool', provider_arns=[str(os.environ.get('OTM_COGNITO_USER_POOL_ARN'))])
 dynamodb = boto3.resource('dynamodb')
+dynamodb_client = boto3.client('dynamodb')
 cognito_idp_client = boto3.client('cognito-idp')
 s3 = boto3.resource('s3')
 s3_client = boto3.client('s3')

@@ -123,7 +123,7 @@
       },
       async loadContainers () {
         const data = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}/containers`)
-        this.containers = data
+        this.containers = data.items
       },
       async deleteContainer (name) {
         await this.$Amplify.API.del('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${name}`)

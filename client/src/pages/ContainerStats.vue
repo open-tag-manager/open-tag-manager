@@ -123,7 +123,7 @@
       async reload () {
         this.stats = null
         const stats = await this.$Amplify.API.get('OTMClientAPI', `/orgs/${this.$route.params.org}/containers/${this.name}/stats`)
-        this.stats = stats
+        this.stats = stats.items
       }
     }
   }

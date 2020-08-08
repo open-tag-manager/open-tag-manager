@@ -50,7 +50,7 @@ def containers(org):
     if 'LastEvaluatedKey' in table_response:
         headers['X-NEXT-KEY'] = json.dumps(table_response['LastEvaluatedKey'])
 
-    return Response(results, headers=headers)
+    return Response({'items': results, 'next': headers.get('X-NEXT-KEY')}, headers=headers)
 
 
 @container_routes.route('/', cors=True, methods=['POST'], authorizer=authorizer)

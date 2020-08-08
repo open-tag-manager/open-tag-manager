@@ -17,6 +17,7 @@ import ContainerStatsStatIdURLGraphURL from '@/pages/ContainerStatsStatIdURLGrap
 import ContainerStatsStatIdURLTree from '@/pages/ContainerStatsStatIdURLTree'
 import OrgSettings from '@/pages/OrgSettings'
 import OrgSettingsContainers from '@/pages/OrgSettingsContainers'
+import OrgSettingUsers from '@/pages/OrgSettingUsers'
 
 import * as AmplifyModules from 'aws-amplify'
 import {AmplifyPlugin, AmplifyEventBus} from 'aws-amplify-vue'
@@ -132,6 +133,11 @@ export default (store, plugins) => {
                 path: 'containers',
                 name: 'Org-Settings-Containers',
                 component: OrgSettingsContainers
+              },
+              {
+                path: 'users',
+                name: 'Org-Settings-Users',
+                component: OrgSettingUsers
               }
             ]
           }

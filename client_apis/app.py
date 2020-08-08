@@ -1,6 +1,7 @@
 from chalice import Response
 from chalicelib import app, authorizer, get_current_user_name, check_root_admin, check_org_permission, \
-    get_role_table, get_org_table, check_json_body, get_user_table, cognito_idp_client, get_cognito_user_pool_id
+    get_role_table, get_org_table, check_json_body, get_user_table, cognito_idp_client, get_cognito_user_pool_id, \
+    dynamodb_client
 from chalicelib.container_routes import container_routes
 from chalicelib.stats_routes import stats_routes
 import importlib
@@ -11,6 +12,9 @@ from decimal import Decimal
 
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
+from boto3.dynamodb.types import TypeDeserializer
+
+deser = TypeDeserializer()
 
 
 @app.route('/', cors=True, authorizer=authorizer)
@@ -147,7 +151,7 @@ def organizations():
     if 'LastEvaluatedKey' in table_response:
         headers['X-NEXT-KEY'] = json.dumps(table_response['LastEvaluatedKey'])
 
-    return Response(results, headers=headers)
+    return Response({'items': results, 'next': headers.get('X-NEXT-KEY')}, headers=headers)
 
 
 @app.route('/orgs', cors=True, authorizer=authorizer, methods=['POST'])
@@ -178,9 +182,14 @@ def organization_info(org):
 @app.route('/orgs/{org}/users', methods=['POST'], cors=True, authorizer=authorizer)
 @check_org_permission('admin')
 @check_json_body({'username': {'type': 'string', 'required': True},
-                  'roles': {'type': 'list', 'allowed': ['admin', 'read', 'write']}})
+                  'roles': {'type': 'list', 'allowed': ['admin', 'read', 'write'], 'required': True}})
 def invite_org_user(org):
     r = app.current_request.json_body
+
+    user_info = get_user_table().get_item(Key={'username': r['username']})
+    if 'Item' not in user_info:
+        return Response(body={'error': 'user not found'}, status_code=400)
+
     response = get_role_table().get_item(Key={'organization': org, 'username': r['username']})
     if 'Item' not in response:
         get_role_table().put_item(Item={'organization': org, 'username': r['username'], 'roles': r['roles']})
@@ -200,6 +209,19 @@ def remove_org_user(org, username):
     return Response(body={'error': 'not found'}, status_code=404)
 
 
+@app.route('/orgs/{org}/users/{username}', methods=['PUT'], cors=True, authorizer=authorizer)
+@check_org_permission('admin')
+@check_json_body({'roles': {'type': 'list', 'allowed': ['admin', 'read', 'write'], 'required': True}})
+def update_org_user(org, username):
+    r = app.current_request.json_body
+    response = get_role_table().get_item(Key={'organization': org, 'username': username})
+    if 'Item' in response:
+        get_role_table().put_item(Item={'organization': org, 'username': username, 'roles': r['roles']})
+        return Response({'username': username, 'organization': org, 'roles': r['roles']}, status_code=201)
+
+    return Response(body={'error': 'not found'}, status_code=404)
+
+
 @app.route('/orgs/{org}/users', methods=['GET'], cors=True, authorizer=authorizer)
 @check_org_permission('read')
 def org_users(org):
@@ -210,7 +232,7 @@ def org_users(org):
     args = {
         'KeyConditionExpression': Key('organization').eq(org),
         'IndexName': 'organization_index',
-        'Limit': 100,
+        'Limit': 100
     }
 
     if next_key:
@@ -223,11 +245,24 @@ def org_users(org):
             result = {'username': item['username'], 'roles': item['roles']}
             results.append(result)
 
+    # bind user's information
+    if len(results) > 0:
+        table_name = str(os.environ.get('OTM_USER_DYNAMODB_TABLE'))
+        user_info = dynamodb_client.batch_get_item(RequestItems={
+            table_name: {
+                'Keys': [{'username': {'S': d.get('username')}} for d in results]
+            }
+        })
+        for user in user_info['Responses'][table_name]:
+            record = [d for d in results if d['username'] == user['username']['S']][0]
+            for field_key in user:
+                record[field_key] = deser.deserialize(user[field_key])
+
     headers = {}
     if 'LastEvaluatedKey' in table_response:
         headers['X-NEXT-KEY'] = json.dumps(table_response['LastEvaluatedKey'])
 
-    return Response(results, headers=headers)
+    return Response({'items': results, 'next': headers.get('X-NEXT-KEY')}, headers=headers)
 
 
 app.register_blueprint(container_routes, url_prefix='/orgs/{org}/containers')

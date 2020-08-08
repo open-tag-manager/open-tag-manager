@@ -52,7 +52,7 @@ const actions = {
   },
   async fetchContainers (ctx, {org}) {
     const data = await this.app.$Amplify.API.get('OTMClientAPI', `/orgs/${org}/containers`)
-    ctx.commit('SET_CONTAINERS', {containers: data})
+    ctx.commit('SET_CONTAINERS', {containers: data.items})
   }
 }
 
