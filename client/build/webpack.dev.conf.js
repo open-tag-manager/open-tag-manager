@@ -55,7 +55,9 @@ const devWebpackConfig = merge(baseWebpackConfig, {
     new HtmlWebpackPlugin({
       filename: 'index.html',
       template: 'index.html',
-      inject: true
+      inject: true,
+      adminTitle: process.env.ADMIN_TITLE || 'OTM Admin Console',
+      adminHeaderScript: process.env.ADMIN_HEADER_SCRIPT
     }),
     // copy custom static assets
     new CopyWebpackPlugin([

@@ -3,7 +3,10 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0">
-    <title>otm-client</title>
+    <title><%= htmlWebpackPlugin.options.adminTitle %></title>
+    <% if(htmlWebpackPlugin.options.adminHeaderScript) { %>
+    <script src="<%= htmlWebpackPlugin.options.adminHeaderScript %>"></script>
+    <% } %>
   </head>
   <body>
     <div id="app"></div>

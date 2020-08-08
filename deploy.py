@@ -260,6 +260,8 @@ def main():
         'COGNITO_USER_POOL_WEB_CLIENT_ID': cognito_user_pool_client_id,
         'COGNITO_COOKIE_STORAGE_DOMAIN': client_domain,
         'COGNITO_COOKIE_SECURE': '1',
+        'ADMIN_TITLE': os.environ.get('ADMIN_TITLE'),
+        'ADMIN_HEADER_SCRIPT': os.environ.get('ADMIN_HEADER_SCRIPT')
         'BASE_PATH': ''
     }
 
@@ -402,6 +404,7 @@ TBLPROPERTIES ('has_encrypted_data'='false')
     ], check=True)
 
     print('9. add seed data')
+    ts = str(int(time.time()))
     print('9.1. org data')
     subprocess.run([
         'aws',
@@ -414,7 +417,7 @@ TBLPROPERTIES ('has_encrypted_data'='false')
         '--update-expression',
         'SET created_at = if_not_exists(created_at, :c), updated_at = if_not_exists(updated_at, :u)',
         '--expression-attribute-values',
-        json.dumps({':c': {'N': str(int(time.time()))}, ':u': {'N': str(int(time.time()))}})
+        json.dumps({':c': {'N': ts}, ':u': {'N': ts}})
     ], check=True)
 
     print('9.2. user data')
