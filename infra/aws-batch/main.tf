@@ -7,7 +7,7 @@ terraform {
 
 
 resource "aws_iam_role" "ecs_instance_role" {
-  name = "${terraform.workspace}_otm_ecs_instance_role"
+  name               = "${terraform.workspace}_otm_ecs_instance_role"
   assume_role_policy = <<EOF
 {
     "Version": "2012-10-17",
@@ -25,7 +25,7 @@ EOF
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_instance_role" {
-  role = aws_iam_role.ecs_instance_role.name
+  role       = aws_iam_role.ecs_instance_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
 }
 
@@ -35,7 +35,7 @@ resource "aws_iam_instance_profile" "ecs_instance_role" {
 }
 
 resource "aws_iam_role" "aws_batch_service_role" {
-  name = "${terraform.workspace}_otm_aws_batch_service_role"
+  name               = "${terraform.workspace}_otm_aws_batch_service_role"
   assume_role_policy = <<EOF
 {
     "Version": "2012-10-17",
@@ -53,26 +53,26 @@ EOF
 }
 
 resource "aws_iam_role_policy_attachment" "aws_batch_service_role" {
-  role = aws_iam_role.aws_batch_service_role.name
+  role       = aws_iam_role.aws_batch_service_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSBatchServiceRole"
 }
 
 resource "aws_security_group" "batch" {
-  name = "${terraform.workspace}_otm_batch_compute_environment_security_group"
+  name   = "${terraform.workspace}_otm_batch_compute_environment_security_group"
   vpc_id = aws_vpc.otm.id
   ingress {
     from_port = 0
-    to_port = 0
-    protocol = "-1"
-    self = true
+    to_port   = 0
+    protocol  = "-1"
+    self      = true
   }
 
   egress {
     from_port = 0
-    to_port = 0
-    protocol = "-1"
+    to_port   = 0
+    protocol  = "-1"
     cidr_blocks = [
-      "0.0.0.0/0"]
+    "0.0.0.0/0"]
   }
 
   tags = var.aws_resource_tags
@@ -80,13 +80,17 @@ resource "aws_security_group" "batch" {
 
 resource "aws_vpc" "otm" {
   cidr_block = "10.1.0.0/16"
-  tags = var.aws_resource_tags
+  tags = merge(var.aws_resource_tags, {
+    Name = "OTM Shared VPC (${terraform.workspace})"
+  })
 }
 
 resource "aws_internet_gateway" "gw" {
   vpc_id = aws_vpc.otm.id
 
-  tags = var.aws_resource_tags
+  tags = merge(var.aws_resource_tags, {
+    Name = "OTM Shared IWG (${terraform.workspace})"
+  })
 }
 
 resource "aws_route_table" "r" {
@@ -97,18 +101,22 @@ resource "aws_route_table" "r" {
     gateway_id = aws_internet_gateway.gw.id
   }
 
-  tags = var.aws_resource_tags
+  tags = merge(var.aws_resource_tags, {
+    Name = "OTM Route Table (${terraform.workspace})"
+  })
 }
 
 resource "aws_subnet" "otm" {
-  vpc_id = aws_vpc.otm.id
-  cidr_block = "10.1.1.0/24"
+  vpc_id                  = aws_vpc.otm.id
+  cidr_block              = "10.1.1.0/24"
   map_public_ip_on_launch = true
-  tags = var.aws_resource_tags
+  tags = merge(var.aws_resource_tags, {
+    Name = "OTM Public Subnet (${terraform.workspace})"
+  })
 }
 
 resource "aws_route_table_association" "route_table_a" {
-  subnet_id = aws_subnet.otm.id
+  subnet_id      = aws_subnet.otm.id
   route_table_id = aws_route_table.r.id
 }
 
@@ -131,15 +139,15 @@ resource "aws_batch_compute_environment" "compute_environment" {
     tags = var.aws_resource_tags
   }
   service_role = aws_iam_role.aws_batch_service_role.arn
-  type = "MANAGED"
+  type         = "MANAGED"
   depends_on = [
     aws_iam_role_policy_attachment.aws_batch_service_role
   ]
 }
 
 resource "aws_batch_job_queue" "otm" {
-  name = "${terraform.workspace}_otm"
-  state = "ENABLED"
+  name     = "${terraform.workspace}_otm"
+  state    = "ENABLED"
   priority = 1
   compute_environments = [
     aws_batch_compute_environment.compute_environment.arn
