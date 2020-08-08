@@ -22,6 +22,10 @@
           <fa-icon icon="cog"></fa-icon>
           Setting
         </b-nav-item>
+        <b-nav-item to="/admin/orgs" v-if="$store.getters['user/hasRootRole']">
+          <fa-icon icon="cog"></fa-icon>
+          Admin
+        </b-nav-item>
         <b-nav-item href="#" @click.prevent="signOut">Sign out
         </b-nav-item>
       </b-navbar-nav>

@@ -64,6 +64,25 @@ def get_user(username):
     return get_user_response(username)
 
 
+@app.route('/users/{username}', cors=True, authorizer=authorizer, methods=['DELETE'])
+@check_root_admin()
+def delete_user(username):
+    user_info = get_user_response(username)
+    if not user_info:
+        return Response(body={'error': 'not found'}, status_code=400)
+
+    role_info = get_role_table().query(
+        KeyConditionExpression=Key('username').eq(username)
+    )
+
+    for role in role_info['Items']:
+        get_role_table().delete_item(Key={'username': username, 'organization': role['organization']})
+
+    get_user_table().delete_item(Key={'username': username})
+    cognito_idp_client.admin_delete_user(UserPoolId=get_cognito_user_pool_id(), Username=username)
+    return Response(body=None, status_code=204)
+
+
 @app.route('/users', cors=True, authorizer=authorizer, methods=['GET'])
 @check_root_admin()
 def get_all_users():
@@ -82,19 +101,26 @@ def get_all_users():
     results = []
     if 'Items' in table_response:
         for item in table_response['Items']:
+            role_info = get_role_table().query(
+                KeyConditionExpression=Key('username').eq(item['username'])
+            )
             result = {
                 'username': item['username'],
                 'created_at': item['created_at'] if 'created_at' in item else None,
                 'updated_at': item['updated_at'] if 'updated_at' in item else None,
                 'email': item['email'] if 'email' in item else None
             }
+            for role in role_info['Items']:
+                if 'orgs' not in result:
+                    result['orgs'] = []
+                result['orgs'].append({'org': role['organization'], 'roles': role['roles']})
             results.append(result)
 
     headers = {}
     if 'LastEvaluatedKey' in table_response:
         headers['X-NEXT-KEY'] = json.dumps(table_response['LastEvaluatedKey'])
 
-    return Response(results, headers=headers)
+    return Response({'items': results, 'next': headers.get('X-NEXT-KEY')}, headers=headers)
 
 
 @app.route('/users', cors=True, authorizer=authorizer, methods=['POST'])

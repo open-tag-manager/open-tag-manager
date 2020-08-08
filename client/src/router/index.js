@@ -17,7 +17,10 @@ import ContainerStatsStatIdURLGraphURL from '@/pages/ContainerStatsStatIdURLGrap
 import ContainerStatsStatIdURLTree from '@/pages/ContainerStatsStatIdURLTree'
 import OrgSettings from '@/pages/OrgSettings'
 import OrgSettingsContainers from '@/pages/OrgSettingsContainers'
-import OrgSettingUsers from '@/pages/OrgSettingUsers'
+import OrgSettingsUsers from '@/pages/OrgSettingsUsers'
+import Admin from '@/pages/Admin'
+import AdminOrgs from '@/pages/AdminOrgs'
+import AdminUsers from '@/pages/AdminUsers'
 
 import * as AmplifyModules from 'aws-amplify'
 import {AmplifyPlugin, AmplifyEventBus} from 'aws-amplify-vue'
@@ -63,6 +66,24 @@ export default (store, plugins) => {
         name: 'NoOrg',
         component: NoOrgError,
         meta: {secret: true}
+      },
+      {
+        path: '/admin',
+        name: 'Admin',
+        component: Admin,
+        meta: {secret: true},
+        children: [
+          {
+            path: 'orgs',
+            name: 'Admin-Orgs',
+            component: AdminOrgs
+          },
+          {
+            path: 'users',
+            name: 'Admin-Users',
+            component: AdminUsers
+          }
+        ]
       },
       {
         path: '/orgs/:org',
@@ -137,7 +158,7 @@ export default (store, plugins) => {
               {
                 path: 'users',
                 name: 'Org-Settings-Users',
-                component: OrgSettingUsers
+                component: OrgSettingsUsers
               }
             ]
           }

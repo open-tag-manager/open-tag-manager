@@ -25,7 +25,7 @@
   export default {
     async mounted () {
       if (this.$route.name === 'Org-Settings') {
-        this.$router.push({name: 'Org-Settings-Containers', params: {org: this.$route.params.org}})
+        this.$router.replace({name: 'Org-Settings-Containers', params: {org: this.$route.params.org}})
       }
     }
   }
