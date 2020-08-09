@@ -49,6 +49,11 @@
           }
         }
         const o = _.cloneDeep(org)
+
+        if (this.$store.getters['user/hasRootRole']) {
+          o.roles = ['read', 'write', 'admin']
+        }
+
         this.$store.dispatch('user/setCurrentOrg', o)
       }
     }
