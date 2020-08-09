@@ -35,7 +35,7 @@
         const orgs = this.$store.state.user.orgs
         let org = _.find(orgs, {org: orgName})
         if (org) {
-          if (!this.$store.getters['user/hasRootRole'] && !_.find(org.roles, 'read')) {
+          if (!this.$store.getters['user/hasRootRole'] && !org.roles.includes('read')) {
             this.noPermission = true
             return
           }
