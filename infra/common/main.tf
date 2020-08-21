@@ -541,7 +541,8 @@ resource "aws_batch_job_definition" "otm_data_retriever" {
     {"name": "STATS_ATHENA_TABLE", "value": "otm_collect"},
     {"name": "USAGE_ATHENA_TABLE", "value": "otm_usage"},
     {"name": "OTM_STAT_DYNAMODB_TABLE", "value": "${aws_dynamodb_table.otm_stat.name}"},
-    {"name": "OTM_USAGE_DYNAMODB_TABLE", "value": "${aws_dynamodb_table.otm_usage.name}"}
+    {"name": "OTM_USAGE_DYNAMODB_TABLE", "value": "${aws_dynamodb_table.otm_usage.name}"},
+    {"name": "OTM_CONTAINER_DYNAMODB_TABLE", "value": "${aws_dynamodb_table.otm_container.name}"}
   ],
   "mountPoints": [],
   "ulimits": []
