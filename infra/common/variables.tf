@@ -52,3 +52,7 @@ variable "aws_resource_tags" {
   default = {
   }
 }
+variable "aws_cloudwatch_event_usage_enable" {
+  type = bool
+  default = true
+}
