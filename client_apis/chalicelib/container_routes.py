@@ -1,6 +1,7 @@
 from chalice import Blueprint, Response
-from . import app, ScriptGenerator, S3Uploader, s3, authorizer, check_org_permission, \
-    get_container_table, check_json_body
+from . import app, ScriptGenerator, S3Uploader, s3, authorizer
+from .dynamodb import get_container_table
+from .decorator import check_org_permission, check_json_body
 from botocore.errorfactory import ClientError
 import string
 import random

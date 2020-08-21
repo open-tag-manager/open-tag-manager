@@ -126,6 +126,10 @@ def main():
     dynamo_stat_table = dynamo_stat_values['id']
     dynamo_stat_table_arn = dynamo_stat_values['arn']
 
+    dynamo_usage_values = [x for x in common_resources if x['address'] == 'aws_dynamodb_table.otm_usage'][0]['values']
+    dynamo_usage_table = dynamo_usage_values['id']
+    dynamo_usage_table_arn = dynamo_usage_values['arn']
+
     job_definition = [x for x in common_resources if x['address'] == 'aws_batch_job_definition.otm_data_retriever'][0]['values']['id']
 
     sns_topic = [x for x in common_resources if x['address'] == 'aws_sns_topic.otm_collect_log_topic'][0]['values']['name']
@@ -164,6 +168,7 @@ def main():
         env['OTM_STAT_DYNAMODB_TABLE'] = dynamo_stat_table
         env['OTM_ORG_DYNAMODB_TABLE'] = dynamo_org_table
         env['OTM_CONTAINER_DYNAMODB_TABLE'] = dynamo_container_table
+        env['OTM_USAGE_DYNAMODB_TABLE'] = dynamo_usage_table
         env['OTM_STATS_BUCKET'] = stat_bucket
         env['OTM_STATS_PREFIX'] = 'stats/'
         env['OTM_USAGE_PREFIX'] = 'usage/'
@@ -218,6 +223,8 @@ def main():
         config['Statement'][2]['Resource'].append(dynamo_stat_table_arn + '/*')
         config['Statement'][2]['Resource'].append(dynamo_container_table_arn)
         config['Statement'][2]['Resource'].append(dynamo_container_table_arn + '/*')
+        config['Statement'][2]['Resource'].append(dynamo_usage_table_arn)
+        config['Statement'][2]['Resource'].append(dynamo_usage_table_arn + '/*')
         config['Statement'][3]['Resource'] = []
         config['Statement'][3]['Resource'].append(cognito_user_pool_arn)
 

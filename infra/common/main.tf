@@ -376,6 +376,23 @@ resource "aws_dynamodb_table" "otm_stat" {
   }
 }
 
+resource "aws_dynamodb_table" "otm_usage" {
+  name = "${terraform.workspace}_otm_usage"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key = "organization"
+  range_key = "month"
+
+  attribute {
+    name = "organization"
+    type = "S"
+  }
+
+  attribute {
+    name = "month"
+    type = "N"
+  }
+}
+
 resource "aws_iam_role" "ecs_task_role" {
   name = "${terraform.workspace}_otm_ecs_task_role"
   assume_role_policy = <<EOF
@@ -522,7 +539,9 @@ resource "aws_batch_job_definition" "otm_data_retriever" {
     {"name": "STATS_ATHENA_RESULT_PREFIX", "value": ""},
     {"name": "STATS_ATHENA_DATABASE", "value": "${aws_athena_database.otm.name}"},
     {"name": "STATS_ATHENA_TABLE", "value": "otm_collect"},
-    {"name": "OTM_STAT_DYNAMODB_TABLE", "value": "${aws_dynamodb_table.otm_stat.name}"}
+    {"name": "USAGE_ATHENA_TABLE", "value": "otm_usage"},
+    {"name": "OTM_STAT_DYNAMODB_TABLE", "value": "${aws_dynamodb_table.otm_stat.name}"},
+    {"name": "OTM_USAGE_DYNAMODB_TABLE", "value": "${aws_dynamodb_table.otm_usage.name}"}
   ],
   "mountPoints": [],
   "ulimits": []
@@ -537,7 +556,7 @@ resource "aws_s3_bucket" "otm_athena" {
 }
 
 resource "aws_athena_database" "otm" {
-  name = "${terraform.workspace}_${terraform.workspace}_otm"
+  name = "${terraform.workspace}_otm"
   bucket = aws_s3_bucket.otm_athena.bucket
 }
 

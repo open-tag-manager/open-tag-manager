@@ -18,6 +18,7 @@ import ContainerStatsStatIdURLTree from '@/pages/ContainerStatsStatIdURLTree'
 import OrgSettings from '@/pages/OrgSettings'
 import OrgSettingsContainers from '@/pages/OrgSettingsContainers'
 import OrgSettingsUsers from '@/pages/OrgSettingsUsers'
+import OrgSettingsUsage from '@/pages/OrgSettingsUsage'
 import Admin from '@/pages/Admin'
 import AdminOrgs from '@/pages/AdminOrgs'
 import AdminUsers from '@/pages/AdminUsers'
@@ -159,6 +160,11 @@ export default (store, plugins) => {
                 path: 'users',
                 name: 'Org-Settings-Users',
                 component: OrgSettingsUsers
+              },
+              {
+                path: 'usage',
+                name: 'Org-Settings-Usage',
+                component: OrgSettingsUsage
               }
             ]
           }

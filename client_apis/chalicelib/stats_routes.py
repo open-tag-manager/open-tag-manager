@@ -1,5 +1,7 @@
 from chalice import Blueprint, Response
-from . import app, authorizer, s3, s3_client, batch_client, check_org_permission, get_stat_table, check_json_body
+from . import app, authorizer, s3, s3_client, batch_client
+from .decorator import check_org_permission, check_json_body
+from .dynamodb import get_stat_table
 from urllib.parse import urlparse
 import os
 import re
