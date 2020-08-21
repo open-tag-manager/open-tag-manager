@@ -21,7 +21,13 @@ script.src = "%s";
 script.onload = function() {
   OTM.init("%s", %s)
 }
-document.body.appendChild(script);
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', function() {
+    document.body.appendChild(script);
+  });
+} else {
+  document.body.appendChild(script);
+}
 })()
 ''' % (self._src_url, self._collect_url, json.dumps(self._config, ensure_ascii=False))
 
