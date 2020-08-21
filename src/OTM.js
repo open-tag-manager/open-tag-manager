@@ -331,8 +331,8 @@ class OTM {
     this.prevState = null
     this.prevTime = null
     this.state = null
-    this.name = options.name || ''
-    this.org = options.org || ''
+    this.name = options.name || options.tid || ''
+    this.org = options.org || options.organization || ''
 
     const parsedUrl = url.parse(this.url, true)
     if (parsedUrl.query._op === '1') {
