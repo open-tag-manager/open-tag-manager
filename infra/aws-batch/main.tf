@@ -143,6 +143,9 @@ resource "aws_batch_compute_environment" "compute_environment" {
   depends_on = [
     aws_iam_role_policy_attachment.aws_batch_service_role
   ]
+  lifecycle {
+    ignore_changes = [compute_resources[0].desired_vcpus,]
+  }
 }
 
 resource "aws_batch_job_queue" "otm" {
