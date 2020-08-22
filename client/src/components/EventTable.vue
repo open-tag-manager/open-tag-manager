@@ -17,6 +17,7 @@
       <th scope="col" @click="sort('count')">Count
         <stat-table-sort-order-allow v-if="sortBy === 'count'" :order="order"></stat-table-sort-order-allow>
       </th>
+      <th></th>
     </tr>
     </thead>
     <tbody>
@@ -26,6 +27,13 @@
       <td class="state">{{r.state}}</td>
       <td class="label">{{r.label}}</td>
       <td>{{r.count}}</td>
+      <td>
+        <div v-for="item in $store.state.eventTableAction" :key="item.name">
+          <b-button variant="primary" size="sm"  :to="{name: item.name, params: {org: $route.params.org}, query: {url: r.url, target: r.state}}">
+            {{ item.label }}
+          </b-button>
+        </div>
+      </td>
     </tr>
     </tbody>
   </table>

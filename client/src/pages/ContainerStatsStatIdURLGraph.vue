@@ -62,10 +62,7 @@
       }
     },
     async mounted () {
-      await this.$store.dispatch('container/fetchSwaggerDoc', {
-        org: this.$route.params.org,
-        container: this.$route.params.name
-      })
+      await this.$store.dispatch('container/fetchContainer', {container: this.$route.params.name, org: this.$route.params.org})
       await this.render()
     },
     methods: {

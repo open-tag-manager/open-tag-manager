@@ -10,7 +10,9 @@ export default (plugins) => {
   const options = {
     state: {
       containerMenu: [],
-      orgMenu: []
+      orgMenu: [],
+      urlTableAction: [],
+      eventTableAction: []
     },
     mutations: {
       addContainerMenu (state, menuData) {
@@ -18,6 +20,12 @@ export default (plugins) => {
       },
       addOrgMenu (state, menuData) {
         state.orgMenu = [...state.orgMenu, menuData]
+      },
+      addTableAction (state, action) {
+        state.urlTableAction = [...state.urlTableAction, action]
+      },
+      addEventTableAction (state, action) {
+        state.eventTableAction = [...state.eventTableAction, action]
       }
     },
     actions: {
@@ -26,6 +34,12 @@ export default (plugins) => {
       },
       addOrgMenu ({commit}, menuData) {
         commit('addOrgMenu', menuData)
+      },
+      addTableAction ({commit}, action) {
+        commit('addTableAction', action)
+      },
+      addEventTableAction ({commit}, action) {
+        commit('addEventTableAction', action)
       }
     },
     modules: {user, container}

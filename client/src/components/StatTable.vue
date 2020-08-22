@@ -41,6 +41,7 @@
       <th scope="col" @click="sort('max_plt')" v-if="metricsFilter.includes('max_plt')">FP (MAX)
         <stat-table-sort-order-allow v-if="sortBy === 'max_plt'" :order="order"></stat-table-sort-order-allow>
       </th>
+      <th></th>
     </tr>
     </thead>
     <tbody>
@@ -60,6 +61,13 @@
       <td v-if="metricsFilter.includes('max_scroll_y')">{{col.max_scroll_y}}</td>
       <td v-if="metricsFilter.includes('avg_plt')">{{col.avg_plt}}</td>
       <td v-if="metricsFilter.includes('max_plt')">{{col.max_plt}}</td>
+      <td>
+        <div v-for="item in $store.state.urlTableAction" :key="item.name">
+          <b-button variant="primary" size="sm"  :to="{name: item.name, params: {org: $route.params.org}, query: {url: col.url, target: 'pageview'}}">
+            {{ item.label }}
+          </b-button>
+        </div>
+      </td>
     </tr>
     </tbody>
   </table>
