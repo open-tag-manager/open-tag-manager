@@ -494,7 +494,8 @@ resource "aws_iam_policy" "log_stat_s3_access_policy" {
       "Resource": [
         "${aws_dynamodb_table.otm_org.arn}",
         "${aws_dynamodb_table.otm_stat.arn}",
-        "${aws_dynamodb_table.otm_container.arn}"
+        "${aws_dynamodb_table.otm_container.arn}",
+        "${aws_dynamodb_table.otm_usage.arn}"
       ]
     }
   ]
