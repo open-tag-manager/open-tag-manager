@@ -31,6 +31,7 @@ GROUP BY type, org, tid
 
         result_athena = self._execute_athena_query(sql)
         if result_athena['QueryExecution']['Status']['State'] != 'SUCCEEDED':
+            print(result_athena)
             raise Exception('Cannot execute query')
 
         result = {}

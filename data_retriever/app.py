@@ -67,6 +67,7 @@ JSON_EXTRACT_SCALAR(qs, '$.o_a_id')
 
         result_athena = self._execute_athena_query(sql)
         if result_athena['QueryExecution']['Status']['State'] != 'SUCCEEDED':
+            print(result_athena)
             raise Exception('Cannot execute query')
 
         self._save_usage_report(self.options['target_bucket'], self.options['query_org'], self.options['query_tid'],
@@ -207,6 +208,7 @@ ORDER BY count DESC
 
         result_athena = self._execute_athena_query(sql2)
         if result_athena['QueryExecution']['Status']['State'] != 'SUCCEEDED':
+            print(result_athena)
             raise Exception('Cannot execute query')
 
         self._save_usage_report(self.options['target_bucket'], self.options['query_org'], self.options['query_tid'],
@@ -286,6 +288,7 @@ JSON_EXTRACT_SCALAR(qs, '$.el')
 
         result_athena = self._execute_athena_query(sql3)
         if result_athena['QueryExecution']['Status']['State'] != 'SUCCEEDED':
+            print(result_athena)
             raise Exception('Cannot execute query')
 
         result_data = self.s3.Bucket(self.options['athena_result_bucket']).Object(
