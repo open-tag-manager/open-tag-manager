@@ -267,7 +267,7 @@ def main():
         'COGNITO_USER_POOL_WEB_CLIENT_ID': cognito_user_pool_client_id,
         'COGNITO_COOKIE_STORAGE_DOMAIN': client_domain,
         'COGNITO_COOKIE_SECURE': '1',
-        'ADMIN_TITLE': str(os.environ.get('ADMIN_TITLE')),
+        'ADMIN_TITLE': os.environ.get('ADMIN_TITLE') or '',
         'ADMIN_HEADER_SCRIPT': str(os.environ.get('ADMIN_HEADER_SCRIPT')),
         'BASE_PATH': ''
     }
