@@ -474,6 +474,8 @@ class OTM {
       this.observers = options.observers
     }
 
+    this.notify('init')
+
     if (options.triggers) {
       for (let trigger of options.triggers) {
         if (trigger.type === 'timer') {
