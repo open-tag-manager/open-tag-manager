@@ -158,6 +158,10 @@
       triggers () {
         const preset = [
           {
+            id: 'init',
+            name: 'init'
+          },
+          {
             id: 'pageview',
             name: 'pageview'
           },
