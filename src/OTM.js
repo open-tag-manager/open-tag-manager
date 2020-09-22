@@ -92,12 +92,13 @@ class OTM {
 
           break
         case 'script':
+          const bindParams = Object.assign({name: observer.name, target}, params)
           if (typeof options.script === 'function') {
-            options.script(params)
+            options.script(bindParams)
           } else {
             // eslint-disable-next-line no-eval
             const func = eval('(function(params){' + options.script + '})')
-            func(params)
+            func(bindParams)
           }
           break
         case 'load-script':
