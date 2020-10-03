@@ -29,7 +29,7 @@
       <td>{{r.count}}</td>
       <td>
         <div v-for="item in $store.state.eventTableAction" :key="item.name">
-          <b-button variant="primary" size="sm"  :to="{name: item.name, params: {org: $route.params.org}, query: {url: r.url, target: r.state}}">
+          <b-button variant="primary" size="sm"  :to="{name: item.name, params: {org: $route.params.org}, query: {url: r.url, target: r.state, label: r.label}}">
             {{ item.label }}
           </b-button>
         </div>
