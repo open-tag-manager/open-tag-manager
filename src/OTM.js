@@ -1,5 +1,5 @@
-import 'navigator.sendbeacon'
-import Cookies from 'cookies-js'
+import Cookies from 'js-cookie'
+import {WebCollector} from '@open-tag-manager/web-collector'
 import uuidV4 from 'uuid/v4'
 import JsSHA from 'jssha'
 import url from 'url'
@@ -13,8 +13,6 @@ if ('PerformanceLongTaskTiming' in window) {
   })
   g.o.observe({entryTypes: ['longtask']})
 }
-
-const OTM_VERSION = 1
 
 class OTM {
   constructor () {
@@ -110,26 +108,18 @@ class OTM {
     }
   }
 
-  performance (category, variable, params = {}) {
+  performance (category, variable, time, params = {}) {
     if (this.preview) {
       console.log('performance', name, params)
       return
     }
-    params.v = OTM_VERSION
-    params.tid = this.name
-    params.dl = document.URL
-    params.dt = document.title.substring(0, 120)
-    params.t = 'timing'
-    params.o_cts = (new Date()).getTime()
-    params.o_psid = this.viewUUID
-    params.o_ps = this.prevState
-    params.o_r = uuidV4()
-    params.utc = category
-    params.utv = variable
-    const esc = encodeURIComponent
-    const query = Object.keys(params).map(k => `${esc(k)}=${esc(params[k])}`).join('&')
-    const url = `${this.endpoint}?${query}`
-    navigator.sendBeacon(url)
+    const collectParams = Object.assign({}, params)
+    collectParams.dt = document.title.substring(0, 120)
+    collectParams.o_cts = (new Date()).getTime()
+    collectParams.o_psid = this.viewUUID
+    collectParams.o_ps = this.prevState
+    collectParams.o_r = uuidV4()
+    this.webCollector.timing(category, variable, time, collectParams)
   }
 
   call (name, target, params = {}) {
@@ -139,36 +129,18 @@ class OTM {
     }
 
     const collectParams = Object.assign({}, params)
-
-    collectParams.v = OTM_VERSION
-    collectParams.tid = this.name
-    collectParams.dl = document.URL
     collectParams.dt = document.title.substring(0, 120)
-    collectParams.de = document.charset
-    collectParams.sd = window.screen.colorDepth + '-bit'
-    collectParams.ul = navigator.language
-    collectParams.sr = window.screen.width + 'x' + window.screen.height
-    collectParams.vp = window.innerWidth + 'x' + window.innerHeight
-    if (target === 'pageview') {
-      collectParams.t = 'pageview'
-    } else {
-      collectParams.t = 'event'
-    }
-    collectParams.cid = this.userUUID
-    collectParams.ec = target
-    collectParams.ea = name
     collectParams.o_cts = (new Date()).getTime()
     collectParams.o_pl = this.prevUrl
     collectParams.o_psid = this.viewUUID
     collectParams.o_ps = this.prevState
     collectParams.o_s = this.state
     collectParams.o_r = uuidV4()
-
-    const esc = encodeURIComponent
-    const query = Object.keys(collectParams).map(k => `${esc(k)}=${esc(collectParams[k])}`).join('&')
-
-    const url = `${this.endpoint}?${query}`
-    navigator.sendBeacon(url)
+    if (target === 'pageview') {
+      this.webCollector.pageview(collectParams)
+    } else {
+      this.webCollector.event(target, name, null, collectParams)
+    }
   }
 
   _scrollTop (targetElement = null) {
@@ -337,6 +309,11 @@ class OTM {
     this.name = options.name || options.tid || ''
     this.org = options.org || options.organization || ''
 
+    this.webCollector = new WebCollector(this.name)
+    this.webCollector.endpoint = endpoint
+    this.webCollector.useQueryString = true
+    this.webCollector.useBeacon = true
+
     const parsedUrl = url.parse(this.url, true)
     if (parsedUrl.query._op === '1') {
       console.log('OTM Preview MODE')
@@ -353,12 +330,6 @@ class OTM {
           element.style.border = '3px red solid'
         }
       }
-    }
-
-    this.userUUID = Cookies.get('_kk')
-    if (!this.userUUID) {
-      this.userUUID = uuidV4()
-      Cookies.set('_kk', this.userUUID, {expires: 60 * 60 * 24 * 365 * 2})
     }
 
     let ref = null
@@ -555,7 +526,7 @@ class OTM {
     }
 
     ttiPolyfill.getFirstConsistentlyInteractive().then((tti) => {
-      this.performance('pageview', 'ttl', {o_ttl: parseInt(tti)})
+      this.performance('pageview', 'ttl', parseInt(tti), {o_ttl: parseInt(tti)})
     })
   }
 

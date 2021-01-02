@@ -29,10 +29,10 @@
     "webpack-merge": "^4.1.0"
   },
   "dependencies": {
-    "cookies-js": "^1.2.3",
+    "@open-tag-manager/web-collector": "^0.1.2",
+    "js-cookie": "^2.2.1",
     "jssha": "^2.3.1",
     "lodash.template": "^4.5.0",
-    "navigator.sendbeacon": "^0.0.14",
     "tti-polyfill": "^0.2.2",
     "url": "^0.11.0",
     "uuid": "^3.0.1"
