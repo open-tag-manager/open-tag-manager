@@ -12,7 +12,12 @@
           Containers
         </v-list-item>
         <v-divider />
-        <v-list-item>
+        <v-list-item
+          :to="{
+            name: 'orgs-name-setting-users',
+            params: { name: currentOrg },
+          }"
+        >
           <v-list-item-icon>
             <v-icon>mdi-account-multiple</v-icon>
           </v-list-item-icon>

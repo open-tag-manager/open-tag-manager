@@ -42,6 +42,26 @@ export default class Session extends VuexModule {
     this.context.commit('setOtmUser', null)
   }
 
+  get hasAdminRole() {
+    return (orgName: string): boolean => {
+      if (this.hasRootAdminRole) {
+        return true
+      }
+
+      if (this.otmUser) {
+        if (
+          this.otmUser.orgs.find((o) => {
+            return o.org === orgName && o.roles.includes('admin')
+          })
+        ) {
+          return true
+        }
+      }
+
+      return false
+    }
+  }
+
   get hasRootAdminRole(): boolean {
     if (this.otmUser) {
       if (
