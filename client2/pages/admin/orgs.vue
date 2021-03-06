@@ -1,6 +1,7 @@
 <template>
   <v-container>
     <h2 class="mb-4">Orgs</h2>
+
     <v-simple-table class="mb-4">
       <thead>
         <tr>
@@ -20,6 +21,7 @@
         </tr>
       </tbody>
     </v-simple-table>
+    <v-progress-linear v-if="isLoading" indeterminate />
 
     <v-btn v-if="next" class="mb-4" @click="loadNext">Load next</v-btn>
 
@@ -54,6 +56,8 @@ export default class AdminOrgs extends Vue {
   @Ref()
   form: VForm
 
+  isLoading: boolean = false
+
   newOrgName: string = ''
   newValid: boolean = false
   nameRules = [
@@ -75,17 +79,21 @@ export default class AdminOrgs extends Vue {
   next: string | null = null
 
   async load() {
+    this.isLoading = true
     const data: PaginationItem<IOrg> = await API.get('OTMClientAPI', '/orgs')
     this.orgs = data.items
     this.next = data.next
+    this.isLoading = false
   }
 
   async loadNext() {
+    this.isLoading = true
     const data: PaginationItem<IOrg> = await API.get('OTMClientAPI', '/orgs', {
       queryStringParameters: { next: this.next },
     })
     this.orgs = [...this.orgs, ...data.items]
     this.next = data.next
+    this.isLoading = false
   }
 
   async createOrg() {

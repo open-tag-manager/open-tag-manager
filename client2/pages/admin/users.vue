@@ -31,6 +31,8 @@
         </tr>
       </tbody>
     </v-simple-table>
+    <v-progress-linear v-if="isLoading" indeterminate />
+
     <v-btn v-if="next" class="mb-4" @click="loadNext">Load next</v-btn>
 
     <h2 class="mb-2">Invite user</h2>
@@ -72,6 +74,8 @@ export default class AdminUsers extends Vue {
   @Ref()
   userForm: VForm
 
+  isLoading: boolean = false
+
   newUserValid: boolean = false
   newUserName: string = ''
   newUserEmail: string = ''
@@ -96,12 +100,15 @@ export default class AdminUsers extends Vue {
   next: string | null = null
 
   async load() {
+    this.isLoading = true
     const data: PaginationItem<IUser> = await API.get('OTMClientAPI', '/users')
     this.users = data.items
     this.next = data.next
+    this.isLoading = false
   }
 
   async loadNext() {
+    this.isLoading = true
     const data: PaginationItem<IUser> = await API.get(
       'OTMClientAPI',
       '/users',
@@ -109,6 +116,7 @@ export default class AdminUsers extends Vue {
     )
     this.users = [...this.users, ...data.items]
     this.next = data.next
+    this.isLoading = false
   }
 
   async removeUser(user: IUser) {
