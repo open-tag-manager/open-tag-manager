@@ -11,6 +11,11 @@
           <v-btn text v-bind="attrs" v-on="on">{{ user.username }}</v-btn>
         </template>
         <v-list>
+          <v-list-item
+            v-if="$store.getters['session/hasRootAdminRole']"
+            :to="{ name: 'admin-users' }"
+            >Admin Setting</v-list-item
+          >
           <v-list-item @click="signOut">Sign out</v-list-item>
         </v-list>
       </v-menu>
