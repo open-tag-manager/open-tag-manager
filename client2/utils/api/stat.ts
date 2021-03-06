@@ -5,13 +5,9 @@ export interface IStat {
   etime: number
   status: string
   timestamp: string
-  // eslint-disable-next-line camelcase
   job_id: string
-  // eslint-disable-next-line camelcase
   raw_file_key: string
-  // eslint-disable-next-line camelcase
   file_key: string
-  // eslint-disable-next-line camelcase
   file_url: string
 }
 
@@ -60,5 +56,18 @@ export interface IStatData {
   table: IStatDataTable[]
   url_links: IStatDataLink[]
   urls: string[]
+}
+
+export interface IStatEventTable {
+  label: string | null
+  state: string | null
+  title: string | null
+  url: string | null
+  count: number
+}
+
+export interface IStatEventData {
+  meta: IStatDataMeta
+  event_table: IStatEventTable[]
 }
 /* eslint-enable */

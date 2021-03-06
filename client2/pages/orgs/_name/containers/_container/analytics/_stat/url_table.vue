@@ -1,5 +1,6 @@
 <template>
   <v-container>
+    <stat-line-chart v-if="!isLoading" :data="table" />
     <v-data-table :headers="headers" :items="table" :loading="isLoading">
     </v-data-table>
   </v-container>
@@ -11,8 +12,10 @@ import { API } from '@aws-amplify/api'
 import OrgContainerStat from '~/components/OrgContainerStat'
 import { IContainer } from '~/utils/api/container'
 import { IStat, IStatData, IStatDataTable } from '~/utils/api/stat'
-
-@Component
+import StatLineChart from '~/components/StatLineChart.vue'
+@Component({
+  components: { StatLineChart },
+})
 export default class UrlTable extends OrgContainerStat {
   isLoading: boolean = false
   container?: IContainer
