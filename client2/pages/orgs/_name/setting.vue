@@ -23,7 +23,12 @@
           </v-list-item-icon>
           Users
         </v-list-item>
-        <v-list-item>
+        <v-list-item
+          :to="{
+            name: 'orgs-name-setting-usage',
+            params: { name: currentOrg },
+          }"
+        >
           <v-list-item-icon>
             <v-icon>mdi-chart-bell-curve-cumulative</v-icon>
           </v-list-item-icon>

@@ -56,7 +56,7 @@
 <script lang="ts">
 import { Component, Ref } from 'nuxt-property-decorator'
 import { API } from '@aws-amplify/api'
-import OrgContainer from '~/components/OrgContainer'
+import Org from '~/components/Org'
 import { IOrgUser } from '~/utils/api/user'
 import { PaginationItem } from '~/utils/api/paginationItem'
 import OrgUserTableRow from '~/components/OrgUserTableRow.vue'
@@ -66,7 +66,7 @@ import VForm from '~/utils/VForm'
 @Component({
   components: { OrgUserTableRow },
 })
-export default class OrgsSettingUsers extends OrgContainer {
+export default class OrgsSettingUsers extends Org {
   @Ref()
   inviteForm: VForm
 
