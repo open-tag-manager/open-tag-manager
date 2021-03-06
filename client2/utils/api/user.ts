@@ -9,5 +9,6 @@ export interface IUser {
   // eslint-disable-next-line camelcase
   updated_at: number
   username: string
+  email?: string
   orgs: IUserOrgRole[]
 }
