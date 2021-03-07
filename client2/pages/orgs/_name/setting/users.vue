@@ -68,7 +68,7 @@ import VForm from '~/utils/VForm'
 })
 export default class OrgsSettingUsers extends Org {
   @Ref()
-  inviteForm: VForm
+  inviteForm?: VForm
 
   isLoading: boolean = false
 
@@ -76,7 +76,7 @@ export default class OrgsSettingUsers extends Org {
   snackbarMessage: string = ''
 
   users: IOrgUser[] = []
-  next: string = ''
+  next: string | null = null
 
   validUser: boolean = true
   newUserName: string = ''
@@ -88,7 +88,8 @@ export default class OrgsSettingUsers extends Org {
     this.isLoading = true
     const data: PaginationItem<IOrgUser> = await API.get(
       'OTMClientAPI',
-      `/orgs/${this.currentOrg}/users`
+      `/orgs/${this.currentOrg}/users`,
+      {}
     )
     this.users = data.items
     this.next = data.next

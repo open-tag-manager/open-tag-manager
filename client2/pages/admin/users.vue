@@ -72,7 +72,7 @@ import VForm from '~/utils/VForm'
 @Component
 export default class AdminUsers extends Vue {
   @Ref()
-  userForm: VForm
+  userForm?: VForm
 
   isLoading: boolean = false
 
@@ -101,7 +101,11 @@ export default class AdminUsers extends Vue {
 
   async load() {
     this.isLoading = true
-    const data: PaginationItem<IUser> = await API.get('OTMClientAPI', '/users')
+    const data: PaginationItem<IUser> = await API.get(
+      'OTMClientAPI',
+      '/users',
+      {}
+    )
     this.users = data.items
     this.next = data.next
     this.isLoading = false
@@ -120,7 +124,7 @@ export default class AdminUsers extends Vue {
   }
 
   async removeUser(user: IUser) {
-    await API.del('OTMClientAPI', `/users/${user.username}`)
+    await API.del('OTMClientAPI', `/users/${user.username}`, {})
     await this.load()
   }
 

@@ -43,13 +43,13 @@
 <script lang="ts">
 import { Component, Vue, Emit, Ref, Prop } from 'vue-property-decorator'
 import { API } from '@aws-amplify/api'
-import { parse as parseDate, format as formatDate } from 'date-fns'
+import { parse as parseDate } from 'date-fns'
 import VForm from '~/utils/VForm'
 
 @Component
 export default class NewStatForm extends Vue {
   @Ref()
-  form: VForm
+  form?: VForm
 
   @Prop({ type: String, required: true })
   orgName!: string

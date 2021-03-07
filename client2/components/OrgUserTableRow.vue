@@ -92,12 +92,13 @@ export default class OrgUserTableRow extends Vue {
   async removeUser() {
     await API.del(
       'OTMClientAPI',
-      `/orgs/${this.orgName}/users/${this.user.username}`
+      `/orgs/${this.orgName}/users/${this.user.username}`,
+      {}
     )
   }
 
   get isSelf() {
-    return session.otmUser.username === this.user.username
+    return session.otmUser!.username === this.user.username
   }
 }
 </script>

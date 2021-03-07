@@ -51,13 +51,14 @@ export default class OrgsSettingUsage extends Org {
   isLoading: boolean = false
 
   usages: IOrgUsage[] = []
-  next: string = ''
+  next: string | null = null
 
   async load() {
     this.isLoading = true
     const data: PaginationItem<IOrgUsage> = await API.get(
       'OTMClientAPI',
-      `/orgs/${this.currentOrg}/usages`
+      `/orgs/${this.currentOrg}/usages`,
+      {}
     )
     this.usages = data.items
     this.next = data.next
