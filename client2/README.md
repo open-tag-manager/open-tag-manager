@@ -1,20 +1,26 @@
-# client2
+# OTM Client
 
-## Build Setup
+## Build
 
-```bash
-# install dependencies
-$ yarn install
+TBD
 
-# serve with hot reload at localhost:3000
-$ yarn dev
+## Local development
 
-# build for production and launch server
-$ yarn build
-$ yarn start
+Fistly, make development infrastructure by using `deploy.py`. Read `../README.md`.
 
-# generate static project
-$ yarn generate
+And start api locally:
+
+```
+cd ../client_apis
+DEBUG=1 AWS_PROFILE="YOUR_AWS_PROFILE" chalice local
 ```
 
-For detailed explanation on how things work, check out [Nuxt.js docs](https://nuxtjs.org).
+And run following command for client development:
+
+```
+AWS_DEFAULT_REGION="YOUR_REGION" \
+COGNITO_IDENTITY_POOL_ID="YOUR_REGION:YOUR_ID" \
+COGNITO_USER_POOL_ID="YOUR_REGION_YOUR_ID" \
+COGNITO_USER_POOL_WEB_CLIENT_ID="YOUR_CLIENT_ID" \
+yarn run dev
+```
