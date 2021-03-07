@@ -3,11 +3,16 @@
     <h1>Analytics</h1>
 
     <h2>Create new analytics</h2>
-    <new-stat-form />
+    <new-stat-form
+      :org-name="currentOrg"
+      :container-name="currentContainer"
+      @create="load"
+    />
 
-    <h2>View analytics history</h2>
-    <v-skeleton-loader v-if="isLoading" type="list-item" />
-    <v-list v-else-if="stats">
+    <h2 class="mb-2">View analytics history</h2>
+    <v-btn class="mb-2" @click="load">Reload</v-btn>
+    <v-progress-linear v-if="isLoading" indeterminate />
+    <v-list v-if="stats">
       <v-list-item
         v-for="stat in stats"
         :key="stat.file_key"
