@@ -36,65 +36,21 @@
     <v-btn v-if="next" class="mb-4" @click="loadNext">Load next</v-btn>
 
     <h2 class="mb-2">Invite user</h2>
-    <v-form ref="userForm" v-model="newUserValid" @submit.prevent="createUser">
-      <v-row>
-        <v-col>
-          <v-text-field
-            v-model="newUserName"
-            label="Username"
-            aria-required="true"
-            :rules="userNameRules"
-          />
-        </v-col>
-        <v-col>
-          <v-text-field
-            v-model="newUserEmail"
-            :rules="emailRules"
-            label="Email"
-            aria-required="true"
-          />
-        </v-col>
-        <v-col>
-          <v-btn type="submit" :disabled="!newUserValid">Create</v-btn>
-        </v-col>
-      </v-row>
-    </v-form>
+    <invite-user-form @create="load" />
   </v-container>
 </template>
 
 <script lang="ts">
-import { Component, Vue, Ref } from 'vue-property-decorator'
+import { Component, Vue } from 'vue-property-decorator'
 import { API } from '@aws-amplify/api'
 import { IUser } from '~/utils/api/user'
 import { PaginationItem } from '~/utils/api/paginationItem'
-import VForm from '~/utils/VForm'
-
-@Component
+import InviteUserForm from '~/components/InviteUserForm.vue'
+@Component({
+  components: { InviteUserForm },
+})
 export default class AdminUsers extends Vue {
-  @Ref()
-  userForm?: VForm
-
   isLoading: boolean = false
-
-  newUserValid: boolean = false
-  newUserName: string = ''
-  newUserEmail: string = ''
-  userNameRules = [
-    (v: any) => !!v || 'Name is required',
-    (v: any) => {
-      if (!v) {
-        return true
-      }
-
-      if (!(v as string).match(/^[0-9A-Za-z_-]+$/)) {
-        return 'Correct character is [0-9A-Za-z_-]'
-      }
-
-      return true
-    },
-  ]
-
-  emailRules = [(v: any) => !!v || 'Email is required']
 
   users: IUser[] = []
   next: string | null = null
@@ -125,17 +81,6 @@ export default class AdminUsers extends Vue {
 
   async removeUser(user: IUser) {
     await API.del('OTMClientAPI', `/users/${user.username}`, {})
-    await this.load()
-  }
-
-  async createUser() {
-    await API.post('OTMClientAPI', '/users', {
-      body: {
-        username: this.newUserName,
-        email: this.newUserEmail,
-      },
-    })
-    this.userForm?.reset()
     await this.load()
   }
 
