@@ -44,16 +44,6 @@ def main():
 
     print('1.2. deploy infra')
 
-    for filename in glob.iglob('./infra/common/plugin_*.tf'):
-        os.remove(filename)
-
-    for filename in glob.iglob('./plugins/*/infra/*.tf'):
-        tfname_base = os.path.split(filename)
-        with open(tfname_base[0] + '/../package.json', 'r') as f:
-            package = json.load(f)
-            plugin_name = package['name']
-        os.symlink('../../' + filename, './infra/common/plugin_' + plugin_name + tfname_base[1])
-
     terraform_init_cmd[3] = '-backend-config=key=common'
     subprocess.run(terraform_init_cmd, cwd='./infra/common', check=True)
     subprocess.run(['terraform', 'workspace', 'new', environment], cwd='./infra/common', check=False)
@@ -182,28 +172,8 @@ def main():
         env['STATS_ATHENA_TABLE'] = 'otm_collect'
         env['STATS_ATHENA_RESULT_BUCKET'] = athena_bucket
 
-        # apply plugin configuration from env
-        for config_file in glob.iglob('./plugins/*/config.json.sample'):
-            with open(config_file, 'r') as cf:
-                config_data = json.load(cf)
-                if 'api' in config_data:
-                    for k in config_data['api']:
-                        if k in os.environ:
-                            env[k] = os.environ.get(k)
-
-        # overwrite plugin configuration from file
-        for config_file in glob.iglob('./plugins/*/config.json'):
-            with open(config_file, 'r') as cf:
-                config_data = json.load(cf)
-                if 'api' in config_data:
-                    for k in config_data['api']:
-                        env[k] = config_data['api'][k]
-
     with open('./admin_api/.chalice/config.json', 'w') as f:
         json.dump(config, f, indent=4)
-
-    import admin_api.install_plugin
-    admin_api.install_plugin.main()
 
     with open('./admin_api/.chalice/policy-sample.json', 'r') as f:
         config = json.load(f)
@@ -237,9 +207,6 @@ def main():
 
     print('4. deploy data_retriever')
 
-    import data_retriever.install_plugin
-    data_retriever.install_plugin.main()
-
     p = subprocess.Popen(['aws', 'ecr', 'get-login', '--no-include-email'], stdout=subprocess.PIPE)
     p.wait()
     subprocess.run(p.stdout.readlines()[0].decode('utf-8').split(), check=True)
@@ -271,15 +238,6 @@ def main():
         'ADMIN_HEADER_SCRIPT': os.environ.get('ADMIN_HEADER_SCRIPT') or '',
         'BASE_PATH': ''
     }
-
-    # apply plugin configuration from env
-    for config_file in glob.iglob('./plugins/*/config.json.sample'):
-        with open(config_file, 'r') as cf:
-            config_data = json.load(cf)
-            if 'api' in config_data:
-                for k in config_data['client']:
-                    if k in os.environ:
-                        client_build_env[k] = os.environ.get(k)
 
     subprocess.run(['npm', 'run', 'build'], env=client_build_env, cwd='./client', check=True)
     subprocess.run(['aws', 's3', 'sync', './client/dist/', 's3://%s/' % client_bucket, '--acl=public-read'], check=True)

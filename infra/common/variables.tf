@@ -56,3 +56,8 @@ variable "aws_cloudwatch_event_usage_enable" {
   type = bool
   default = true
 }
+
+variable "aws_cloudwatch_event_goal_enable" {
+  type = bool
+  default = false
+}
