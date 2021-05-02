@@ -215,32 +215,32 @@ def main():
                    check=True)
     subprocess.run(['docker', 'push', '%s:latest' % repository_url], cwd='./data_retriever', check=True)
 
-    print('5. deploy client frontend')
-    with open('./admin_api/.chalice/deployed/%s.json' % environment, 'r') as f:
-        api_resource = json.load(f)
+    # print('5. deploy client frontend')
+    # with open('./admin_api/.chalice/deployed/%s.json' % environment, 'r') as f:
+    #     api_resource = json.load(f)
 
-    subprocess.run(['yarn', 'install'], cwd='./client', check=True)
-    subprocess.run(['yarn', 'install-otm-plugin'], cwd='./client', check=True)
+    # subprocess.run(['yarn', 'install'], cwd='./client', check=True)
+    # subprocess.run(['yarn', 'install-otm-plugin'], cwd='./client', check=True)
 
-    client_build_env = {
-        'NODE_ENV': 'production',
-        'PATH': os.environ.get('PATH'),
-        'API_BASE_URL': api_resource['resources'][2]['rest_api_url'],
-        'ASSETS_PUBLIC_PATH': "https://%s/" % client_domain,
-        'COGNITO_IDENTITY_POOL_ID': cognito_identify_pool_id,
-        'COGNITO_REGION': region,
-        'COGNITO_IDENTITY_POOL_REGION': region,
-        'COGNITO_USER_POOL_ID': cognito_user_pool_id,
-        'COGNITO_USER_POOL_WEB_CLIENT_ID': cognito_user_pool_client_id,
-        'COGNITO_COOKIE_STORAGE_DOMAIN': client_domain,
-        'COGNITO_COOKIE_SECURE': '1',
-        'ADMIN_TITLE': os.environ.get('ADMIN_TITLE') or '',
-        'ADMIN_HEADER_SCRIPT': os.environ.get('ADMIN_HEADER_SCRIPT') or '',
-        'BASE_PATH': ''
-    }
+    # client_build_env = {
+    #     'NODE_ENV': 'production',
+    #     'PATH': os.environ.get('PATH'),
+    #     'API_BASE_URL': api_resource['resources'][2]['rest_api_url'],
+    #     'ASSETS_PUBLIC_PATH': "https://%s/" % client_domain,
+    #     'COGNITO_IDENTITY_POOL_ID': cognito_identify_pool_id,
+    #     'COGNITO_REGION': region,
+    #     'COGNITO_IDENTITY_POOL_REGION': region,
+    #     'COGNITO_USER_POOL_ID': cognito_user_pool_id,
+    #     'COGNITO_USER_POOL_WEB_CLIENT_ID': cognito_user_pool_client_id,
+    #     'COGNITO_COOKIE_STORAGE_DOMAIN': client_domain,
+    #     'COGNITO_COOKIE_SECURE': '1',
+    #     'ADMIN_TITLE': os.environ.get('ADMIN_TITLE') or '',
+    #     'ADMIN_HEADER_SCRIPT': os.environ.get('ADMIN_HEADER_SCRIPT') or '',
+    #     'BASE_PATH': ''
+    # }
 
-    subprocess.run(['npm', 'run', 'build'], env=client_build_env, cwd='./client', check=True)
-    subprocess.run(['aws', 's3', 'sync', './client/dist/', 's3://%s/' % client_bucket, '--acl=public-read'], check=True)
+    # subprocess.run(['npm', 'run', 'build'], env=client_build_env, cwd='./client', check=True)
+    # subprocess.run(['aws', 's3', 'sync', './client/dist/', 's3://%s/' % client_bucket, '--acl=public-read'], check=True)
 
     print('6. invalidate client / otm.js')
     subprocess.run(
