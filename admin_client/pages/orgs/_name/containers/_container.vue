@@ -33,6 +33,17 @@
         </v-list-item>
         <v-list-item
           :to="{
+            name: 'orgs-name-containers-container-goals',
+            params: { name: currentOrg, container: currentContainer },
+          }"
+        >
+          <v-list-item-icon>
+            <v-icon>mdi-flag</v-icon>
+          </v-list-item-icon>
+          Goal
+        </v-list-item>
+        <v-list-item
+          :to="{
             name: 'orgs-name-containers-container-edit',
             params: { name: currentOrg, container: currentContainer },
           }"

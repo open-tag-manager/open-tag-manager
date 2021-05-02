@@ -5,6 +5,8 @@ import chalicelib.dynamodb as dynamodb
 from chalicelib.container_routes import container_routes
 from chalicelib.stats_routes import stats_routes
 from chalicelib.usage_routes import usage_routes
+from chalicelib.goal_routes import goal_routes
+from chalicelib.payment_routes import payment_routes
 import importlib
 import json
 import os
@@ -295,8 +297,5 @@ def org_users(org):
 app.register_blueprint(container_routes, url_prefix='/orgs/{org}/containers')
 app.register_blueprint(stats_routes, url_prefix='/orgs/{org}/containers/{name}/stats')
 app.register_blueprint(usage_routes, url_prefix='/orgs/{org}/usages')
-
-plugins = json.loads(os.environ.get('OTM_PLUGINS'), encoding='utf-8')
-for plugin in plugins:
-    module = importlib.import_module('chalicelib.otmplugins.' + plugin['package'] + '.' + plugin['module'])
-    app.register_blueprint(module.plugin_app, url_prefix=plugin['urlPrefix'])
+app.register_blueprint(goal_routes, url_prefix='/orgs/{org}/containers/{name}/goals')
+app.register_blueprint(payment_routes, url_prefix='/orgs/{org}/payments')
