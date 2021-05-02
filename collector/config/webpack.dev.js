@@ -9,7 +9,7 @@ module.exports = webpackMerge(commonConfig, {
     new HtmlWebpackPlugin({
       template: 'src/sample.html',
       filename: 'sample.html',
-      inject: 'head'
+      inject: false
     })
   ]
 });

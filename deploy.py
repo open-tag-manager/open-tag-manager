@@ -147,17 +147,17 @@ def main():
 
     repository_url = [x for x in common_resources if x['address'] == 'aws_ecr_repository.otm_data_retriever'][0]['values']['repository_url']
 
-    shutil.copy('./client_apis/.chalice/config.json.sample', './client_apis/.chalice/config.json')
+    shutil.copy('./admin_api/.chalice/config.json.sample', './admin_api/.chalice/config.json')
     shutil.copy('./log_formatter/.chalice/config.json.sample', './log_formatter/.chalice/config.json')
 
     print('2. deploy otm.js')
-    subprocess.run(['yarn', 'install'], check=True)
-    subprocess.run(['npm', 'run', 'build'], env={'NODE_ENV': 'production', 'PATH': os.environ.get('PATH')}, check=True)
-    subprocess.run(['aws', 's3', 'cp', './dist/otm.js', 's3://%s/otm.js' % script_bucket, '--acl=public-read'],
+    subprocess.run(['yarn', 'install'], cwd='./collector', check=True)
+    subprocess.run(['npm', 'run', 'build'], cwd='./collector', env={'NODE_ENV': 'production', 'PATH': os.environ.get('PATH')}, check=True)
+    subprocess.run(['aws', 's3', 'cp', './collector/dist/otm.js', 's3://%s/otm.js' % script_bucket, '--acl=public-read'],
                    check=True)
 
     print('3. deploy client API')
-    with open('./client_apis/.chalice/config.json', 'r') as f:
+    with open('./admin_api/.chalice/config.json', 'r') as f:
         config = json.load(f)
         env = config['environment_variables']
         env['OTM_BUCKET'] = script_bucket
@@ -199,13 +199,13 @@ def main():
                     for k in config_data['api']:
                         env[k] = config_data['api'][k]
 
-    with open('./client_apis/.chalice/config.json', 'w') as f:
+    with open('./admin_api/.chalice/config.json', 'w') as f:
         json.dump(config, f, indent=4)
 
-    import client_apis.install_plugin
-    client_apis.install_plugin.main()
+    import admin_api.install_plugin
+    admin_api.install_plugin.main()
 
-    with open('./client_apis/.chalice/policy-sample.json', 'r') as f:
+    with open('./admin_api/.chalice/policy-sample.json', 'r') as f:
         config = json.load(f)
         config['Statement'][1]['Resource'] = []
         config['Statement'][1]['Resource'].append('arn:aws:s3:::%s/*' % script_bucket)
@@ -228,11 +228,11 @@ def main():
         config['Statement'][3]['Resource'] = []
         config['Statement'][3]['Resource'].append(cognito_user_pool_arn)
 
-    with open('./client_apis/.chalice/policy-%s.json' % environment, 'w') as f:
+    with open('./admin_api/.chalice/policy-%s.json' % environment, 'w') as f:
         json.dump(config, f, indent=4)
 
-    subprocess.run(['pip', 'install', '-r', 'requirements.txt'], cwd='./client_apis', check=True)
-    subprocess.run(['chalice', 'deploy', '--no-autogen-policy', '--stage=%s' % environment], cwd='./client_apis',
+    subprocess.run(['pip', 'install', '-r', 'requirements.txt'], cwd='./admin_api', check=True)
+    subprocess.run(['chalice', 'deploy', '--no-autogen-policy', '--stage=%s' % environment], cwd='./admin_api',
                    check=True)
 
     print('4. deploy data_retriever')
@@ -249,7 +249,7 @@ def main():
     subprocess.run(['docker', 'push', '%s:latest' % repository_url], cwd='./data_retriever', check=True)
 
     print('5. deploy client frontend')
-    with open('./client_apis/.chalice/deployed/%s.json' % environment, 'r') as f:
+    with open('./admin_api/.chalice/deployed/%s.json' % environment, 'r') as f:
         api_resource = json.load(f)
 
     subprocess.run(['yarn', 'install'], cwd='./client', check=True)
@@ -325,44 +325,44 @@ def main():
     print('8.1. collect table')
     athena_query = '''
 CREATE EXTERNAL TABLE IF NOT EXISTS %s.otm_collect(
-  `datetime` timestamp, 
-  `x_edge_location` string, 
-  `sc_bytes` string, 
-  `c_ip` string, 
-  `cs_method` string, 
-  `cs_host` string, 
-  `cs_uri_stem` string, 
-  `cs_status` string, 
-  `cs_referer` string, 
-  `cs_user_agent` string, 
-  `cs_uri_query` string, 
-  `cs_cookie` string, 
-  `cs_x_edge_result_type` string, 
-  `cs_x_edge_request_id` string, 
-  `x_host_header` string, 
-  `cs_protocol` string, 
-  `cs_bytes` string, 
-  `time_taken` string, 
-  `x_forwarded_for` string, 
-  `ssl_protocol` string, 
-  `ssl_cipher` string, 
-  `x_edge_response_result_type` string, 
-  `cs_protocol_version` string, 
-  `fle_status` string, 
+  `datetime` timestamp,
+  `x_edge_location` string,
+  `sc_bytes` string,
+  `c_ip` string,
+  `cs_method` string,
+  `cs_host` string,
+  `cs_uri_stem` string,
+  `cs_status` string,
+  `cs_referer` string,
+  `cs_user_agent` string,
+  `cs_uri_query` string,
+  `cs_cookie` string,
+  `cs_x_edge_result_type` string,
+  `cs_x_edge_request_id` string,
+  `x_host_header` string,
+  `cs_protocol` string,
+  `cs_bytes` string,
+  `time_taken` string,
+  `x_forwarded_for` string,
+  `ssl_protocol` string,
+  `ssl_cipher` string,
+  `x_edge_response_result_type` string,
+  `cs_protocol_version` string,
+  `fle_status` string,
   `fle_encrypted_fields` string,
   `qs` string
 )
-PARTITIONED BY ( 
-  `org` string, 
+PARTITIONED BY (
+  `org` string,
   `tid` string,
-  `year` int, 
-  `month` int, 
+  `year` int,
+  `month` int,
   `day` int)
-ROW FORMAT SERDE 
-  'org.openx.data.jsonserde.JsonSerDe' 
-STORED AS INPUTFORMAT 
-  'org.apache.hadoop.mapred.TextInputFormat' 
-OUTPUTFORMAT 
+ROW FORMAT SERDE
+  'org.openx.data.jsonserde.JsonSerDe'
+STORED AS INPUTFORMAT
+  'org.apache.hadoop.mapred.TextInputFormat'
+OUTPUTFORMAT
   'org.apache.hadoop.hive.ql.io.IgnoreKeyTextOutputFormat'
 LOCATION
   's3://%s/formatted'
@@ -384,17 +384,17 @@ CREATE EXTERNAL TABLE IF NOT EXISTS %s.otm_usage(
   `type` string,
   `size` bigint
 )
-PARTITIONED BY ( 
-  `org` string, 
+PARTITIONED BY (
+  `org` string,
   `tid` string,
-  `year` int, 
-  `month` int, 
+  `year` int,
+  `month` int,
   `day` int)
-ROW FORMAT SERDE 
-  'org.openx.data.jsonserde.JsonSerDe' 
-STORED AS INPUTFORMAT 
-  'org.apache.hadoop.mapred.TextInputFormat' 
-OUTPUTFORMAT 
+ROW FORMAT SERDE
+  'org.openx.data.jsonserde.JsonSerDe'
+STORED AS INPUTFORMAT
+  'org.apache.hadoop.mapred.TextInputFormat'
+OUTPUTFORMAT
   'org.apache.hadoop.hive.ql.io.IgnoreKeyTextOutputFormat'
 LOCATION
   's3://%s/usage'
