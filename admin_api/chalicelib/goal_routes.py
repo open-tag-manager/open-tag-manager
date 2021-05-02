@@ -141,7 +141,7 @@ def update_goal_request(org, name, goal):
             jobName=('otm_data_retriever_' + name + '_goal_term_' + str(uuid.uuid4())),
             jobQueue=os.environ.get('STATS_BATCH_JOB_QUEUE'),
             jobDefinition=os.environ.get('STATS_BATCH_JOB_DEFINITION'),
-            containerOverrides={'command': ['python', 'otmplugins/otm-goal-plugin/goal_term.py'], 'environment': [
+            containerOverrides={'command': ['python', 'goal_term.py'], 'environment': [
                 {'name': 'TID', 'value': name},
                 {'name': 'GOAL_ID', 'value': goal},
                 {'name': 'STARTDATE', 'value': body['startdate']},
