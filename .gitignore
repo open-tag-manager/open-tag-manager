@@ -11,5 +11,3 @@ infra/**/*.log
 .terraform/
 *-terraform.tfvars
 terraform.tfvars
-plugins/*
-!plugins/.gitkeep
