@@ -704,13 +704,38 @@ resource "aws_route53_record" "client" {
   }
 }
 
+resource "aws_cognito_user_pool" "otm" {
+  name = "${terraform.workspace}_otm_user"
+  auto_verified_attributes = ["email"]
+  alias_attributes = ["email"]
+  schema {
+    attribute_data_type = "String"
+    name = "email"
+    required = true
+  }
+  username_configuration {
+    case_sensitive = false
+  }
+  tags = var.aws_resource_tags
+  lifecycle {
+    ignore_changes = [schema]
+  }
+}
+
+resource "aws_cognito_user_pool_client" "otm" {
+  name = "${terraform.workspace}_otm_web_client"
+  user_pool_id = aws_cognito_user_pool.otm.id
+  generate_secret = false
+}
+
 resource "aws_cognito_identity_pool" "otm" {
   identity_pool_name = "${terraform.workspace}_otm_id"
   allow_unauthenticated_identities = false
 
   cognito_identity_providers {
-    client_id = var.aws_cognito_user_pool_client_id
-    provider_name = "cognito-idp.${var.aws_region}.amazonaws.com/${var.aws_cognito_user_pool_id}"
+    client_id = aws_cognito_user_pool_client.otm.id
+    provider_name = aws_cognito_user_pool.otm.endpoint
     server_side_token_check = false
   }
+  tags = var.aws_resource_tags
 }

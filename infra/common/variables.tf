@@ -39,12 +39,6 @@ variable "aws_route53_client_zone_id" {
   type = string
   default = ""
 }
-variable "aws_cognito_user_pool_id" {
-  type = string
-}
-variable "aws_cognito_user_pool_client_id" {
-  type = string
-}
 
 variable "aws_s3_bucket_prefix" {}
 variable "aws_resource_tags" {
