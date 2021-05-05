@@ -1,1 +1,1 @@
-aws_s3_bucket_prefix            = ""
+aws_s3_bucket_prefix = ""
