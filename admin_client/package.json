@@ -19,6 +19,7 @@
     "@aws-amplify/storage": "^3.4.0",
     "@aws-amplify/ui-vue": "^1.0.7",
     "@nuxt/typescript-runtime": "^2.0.0",
+    "axios": "^0.21.1",
     "core-js": "^3.6.5",
     "d3-array": "^2.11.0",
     "d3-axis": "^2.0.0",
