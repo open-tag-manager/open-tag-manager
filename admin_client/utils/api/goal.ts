@@ -12,4 +12,10 @@ export interface IGoal {
   label?: string | null
   label_match?: TGoalMatchPattern
 }
+
+export interface IGoalResultData {
+  date: string
+  e_count: number
+  u_count: number
+}
 /* eslint-enable  */

@@ -58,7 +58,7 @@ import { timeFormat as d3timeFormat } from 'd3-time-format'
 import { subDays } from 'date-fns'
 import { axisLeft as d3axisLeft, axisBottom as d3axisBottom } from 'd3-axis'
 import { line as d3line } from 'd3-shape'
-import { IGoal } from '~/utils/api/goal'
+import { IGoal, IGoalResultData } from '~/utils/api/goal'
 import OrgContainer from '~/components/OrgContainer'
 
 @Component
@@ -69,19 +69,24 @@ export default class GoalResultCard extends OrgContainer {
   async mounted() {
     const componentElement = d3select(this.$el)
     const graphElement = componentElement.select('.graph')
-    const width = graphElement.node().clientWidth
+    const width = (graphElement.node() as Element).clientWidth
     const margin = { left: 40, right: 10, top: 5, bottom: 30 }
     const height = 200
     const svg = graphElement.append('svg')
     svg.attr('width', width).attr('height', height)
-    const d = await axios.get(this.goal.result_url)
-    const data = d.data as object[]
+
+    if (!this.goal.result_url) {
+      return
+    }
+
+    const d = await axios.get<IGoalResultData[]>(this.goal.result_url)
+    const data = d.data
     if (data.length === 0) {
       return
     }
 
     const formatTime = d3timeFormat('%Y-%m-%d')
-    const dateRange = d3extent(data, (d) => new Date(d.date))
+    const dateRange = d3extent(data, (d) => new Date(d.date)) as [Date, Date]
     const newData = d3timeDays(subDays(dateRange[0], 1), dateRange[1]).map(
       (d) => {
         const date = formatTime(d)
@@ -109,7 +114,7 @@ export default class GoalResultCard extends OrgContainer {
             }
             return d.e_count
           })
-        ),
+        ) as number,
       ])
       .range([height - margin.bottom, margin.top])
 
@@ -128,7 +133,7 @@ export default class GoalResultCard extends OrgContainer {
       .style('position', 'absolute')
       .style('z-index', 255)
 
-    const bisect = d3bisector((d) => {
+    const bisect = d3bisector((d: IGoalResultData) => {
       return new Date(d.date)
     })
 
@@ -154,7 +159,11 @@ export default class GoalResultCard extends OrgContainer {
           if (i < newData.length) {
             const d0 = newData[i - 1]
             const d1 = newData[i]
-            d = x0 - new Date(d0.date) > new Date(d1.date) - x0 ? d1 : d0
+            d =
+              x0.getTime() - new Date(d0.date).getTime() >
+              new Date(d1.date).getTime() - x0.getTime()
+                ? d1
+                : d0
           } else {
             d = newData[newData.length - 1]
           }
@@ -179,7 +188,7 @@ export default class GoalResultCard extends OrgContainer {
       .attr('stroke-width', 1.5)
       .attr(
         'd',
-        d3line()
+        d3line<IGoalResultData>()
           .x((d) => {
             return xScale(new Date(d.date))
           })
@@ -191,7 +200,14 @@ export default class GoalResultCard extends OrgContainer {
       .append('g')
       .attr('class', 'x-axis')
       .attr('transform', `translate(${[0, height - margin.bottom].join(',')})`)
-      .call(d3axisBottom(xScale).tickFormat(d3timeFormat('%m/%d')))
+      .call(
+        d3axisBottom(xScale).tickFormat(
+          d3timeFormat('%m/%d') as (
+            dv: number | Date | { valueOf(): number },
+            i: number
+          ) => string
+        )
+      )
     svg
       .append('g')
       .attr('class', 'y-axis')
@@ -206,7 +222,8 @@ export default class GoalResultCard extends OrgContainer {
   async deleteGoal() {
     await API.del(
       'OTMClientAPI',
-      `/orgs/${this.currentOrg}/containers/${this.currentContainer}/goals/${this.goal.id}`
+      `/orgs/${this.currentOrg}/containers/${this.currentContainer}/goals/${this.goal.id}`,
+      {}
     )
   }
 }
