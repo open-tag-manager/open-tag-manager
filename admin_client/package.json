@@ -12,10 +12,12 @@
     "test": "jest"
   },
   "dependencies": {
-    "@aws-amplify/api": "^3.2.10",
-    "@aws-amplify/auth": "^3.4.17",
-    "@aws-amplify/core": "^3.8.2",
-    "@aws-amplify/ui-vue": "^0.2.34",
+    "@aws-amplify/api": "^3.2.30",
+    "@aws-amplify/auth": "^3.4.30",
+    "@aws-amplify/core": "^3.8.22",
+    "@aws-amplify/interactions": "^3.3.30",
+    "@aws-amplify/storage": "^3.4.0",
+    "@aws-amplify/ui-vue": "^1.0.7",
     "@nuxt/typescript-runtime": "^2.0.0",
     "core-js": "^3.6.5",
     "d3-array": "^2.11.0",
@@ -27,7 +29,7 @@
     "d3-time-format": "^3.0.0",
     "date-fns": "^2.16.1",
     "lodash-es": "^4.17.21",
-    "nuxt": "^2.15.2",
+    "nuxt": "^2.15.6",
     "nuxt-client-init-module": "^0.1.9",
     "nuxt-property-decorator": "^2.8.8",
     "uuid": "^8.3.2"
