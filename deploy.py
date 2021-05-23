@@ -221,7 +221,7 @@ def main():
 
     subprocess.run(['yarn', 'install'], cwd='./admin_client', check=True)
 
-    open('./admin_client/.env', 'w') as f:
+    with open('./admin_client/.env', 'w') as f:
         f.write('AWS_DEFAULT_REGION=%s\n' % region)
         f.write('COGNITO_IDENTITY_POOL_ID=%s\n' % cognito_identify_pool_id)
         f.write('COGNITO_USER_POOL_ID=%s\n' % cognito_user_pool_id)
