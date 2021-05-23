@@ -19,8 +19,8 @@ export default {
 
   // Global page headers (https://go.nuxtjs.dev/config-head)
   head: {
-    titleTemplate: '%s - client2',
-    title: 'client2',
+    titleTemplate: '%s - OTM Admin Console',
+    title: 'OTM Admin Console',
     meta: [
       { charset: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },

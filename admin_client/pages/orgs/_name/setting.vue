@@ -42,10 +42,16 @@
 </template>
 
 <script lang="ts">
-import { Component, Vue } from 'vue-property-decorator'
+import { Component, Vue } from 'nuxt-property-decorator'
 
 @Component
 export default class OrgsSetting extends Vue {
+  head() {
+    return {
+      title: `${this.currentOrg}'s Setting`,
+    }
+  }
+
   get currentOrg(): String {
     return this.$route.params.name
   }

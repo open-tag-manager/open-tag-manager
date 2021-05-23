@@ -1,7 +1,5 @@
-import Vue from 'vue'
 import Amplify from '@aws-amplify/core'
 import '@aws-amplify/ui-vue'
-import { API, APIClass } from '@aws-amplify/api'
 
 Amplify.configure({
   aws_project_region: process.env.awsRegion,
@@ -25,14 +23,3 @@ Amplify.configure({
     ],
   },
 })
-
-// @ts-ignore
-Vue.use(Amplify)
-
-declare module 'vue/types/vue' {
-  interface Vue {
-    $amplifyAPI: APIClass
-  }
-}
-
-Vue.prototype.$amplifyAPI = API

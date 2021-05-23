@@ -34,7 +34,7 @@
 
 <script lang="ts">
 import API from '@aws-amplify/api'
-import { Component } from 'vue-property-decorator'
+import { Component } from 'nuxt-property-decorator'
 import { PaginationItem } from '~/utils/api/paginationItem'
 import { IContainer } from '~/utils/api/container'
 import Org from '~/components/Org'
@@ -42,6 +42,12 @@ import Org from '~/components/Org'
 @Component
 export default class OrgsName extends Org {
   containers: IContainer[] | null = null
+
+  head() {
+    return {
+      title: `${this.currentOrg}'s Containers`,
+    }
+  }
 
   async created() {
     const response: PaginationItem<IContainer> = await API.get(

@@ -18,12 +18,18 @@
 </template>
 
 <script lang="ts">
-import { Component, Vue } from 'vue-property-decorator'
+import { Component, Vue } from 'nuxt-property-decorator'
 import { IUserOrgRole } from '~/utils/api/user'
 import { session } from '~/store'
 
 @Component({ middleware: 'authenticated' })
 export default class OrgsIndex extends Vue {
+  head() {
+    return {
+      title: 'Organizations',
+    }
+  }
+
   get orgs(): IUserOrgRole[] | undefined {
     return session.otmUser?.orgs
   }
