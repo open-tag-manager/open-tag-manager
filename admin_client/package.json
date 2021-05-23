@@ -38,6 +38,7 @@
   "devDependencies": {
     "@nuxt/types": "^2.15.2",
     "@nuxt/typescript-build": "^2.0.6",
+    "@nuxtjs/dotenv": "^1.4.1",
     "@nuxtjs/eslint-config": "^3.1.0",
     "@nuxtjs/eslint-config-typescript": "^3.0.0",
     "@nuxtjs/eslint-module": "^2.0.0",
