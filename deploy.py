@@ -44,16 +44,6 @@ def main():
 
     print('1.2. deploy infra')
 
-    for filename in glob.iglob('./infra/common/plugin_*.tf'):
-        os.remove(filename)
-
-    for filename in glob.iglob('./plugins/*/infra/*.tf'):
-        tfname_base = os.path.split(filename)
-        with open(tfname_base[0] + '/../package.json', 'r') as f:
-            package = json.load(f)
-            plugin_name = package['name']
-        os.symlink('../../' + filename, './infra/common/plugin_' + plugin_name + tfname_base[1])
-
     terraform_init_cmd[3] = '-backend-config=key=common'
     subprocess.run(terraform_init_cmd, cwd='./infra/common', check=True)
     subprocess.run(['terraform', 'workspace', 'new', environment], cwd='./infra/common', check=False)
@@ -147,17 +137,17 @@ def main():
 
     repository_url = [x for x in common_resources if x['address'] == 'aws_ecr_repository.otm_data_retriever'][0]['values']['repository_url']
 
-    shutil.copy('./client_apis/.chalice/config.json.sample', './client_apis/.chalice/config.json')
+    shutil.copy('./admin_api/.chalice/config.json.sample', './admin_api/.chalice/config.json')
     shutil.copy('./log_formatter/.chalice/config.json.sample', './log_formatter/.chalice/config.json')
 
     print('2. deploy otm.js')
-    subprocess.run(['yarn', 'install'], check=True)
-    subprocess.run(['npm', 'run', 'build'], env={'NODE_ENV': 'production', 'PATH': os.environ.get('PATH')}, check=True)
-    subprocess.run(['aws', 's3', 'cp', './dist/otm.js', 's3://%s/otm.js' % script_bucket, '--acl=public-read'],
+    subprocess.run(['yarn', 'install'], cwd='./collector', check=True)
+    subprocess.run(['npm', 'run', 'build'], cwd='./collector', env={'NODE_ENV': 'production', 'PATH': os.environ.get('PATH')}, check=True)
+    subprocess.run(['aws', 's3', 'cp', './collector/dist/otm.js', 's3://%s/otm.js' % script_bucket, '--acl=public-read'],
                    check=True)
 
     print('3. deploy client API')
-    with open('./client_apis/.chalice/config.json', 'r') as f:
+    with open('./admin_api/.chalice/config.json', 'r') as f:
         config = json.load(f)
         env = config['environment_variables']
         env['OTM_BUCKET'] = script_bucket
@@ -182,30 +172,10 @@ def main():
         env['STATS_ATHENA_TABLE'] = 'otm_collect'
         env['STATS_ATHENA_RESULT_BUCKET'] = athena_bucket
 
-        # apply plugin configuration from env
-        for config_file in glob.iglob('./plugins/*/config.json.sample'):
-            with open(config_file, 'r') as cf:
-                config_data = json.load(cf)
-                if 'api' in config_data:
-                    for k in config_data['api']:
-                        if k in os.environ:
-                            env[k] = os.environ.get(k)
-
-        # overwrite plugin configuration from file
-        for config_file in glob.iglob('./plugins/*/config.json'):
-            with open(config_file, 'r') as cf:
-                config_data = json.load(cf)
-                if 'api' in config_data:
-                    for k in config_data['api']:
-                        env[k] = config_data['api'][k]
-
-    with open('./client_apis/.chalice/config.json', 'w') as f:
+    with open('./admin_api/.chalice/config.json', 'w') as f:
         json.dump(config, f, indent=4)
 
-    import client_apis.install_plugin
-    client_apis.install_plugin.main()
-
-    with open('./client_apis/.chalice/policy-sample.json', 'r') as f:
+    with open('./admin_api/.chalice/policy-sample.json', 'r') as f:
         config = json.load(f)
         config['Statement'][1]['Resource'] = []
         config['Statement'][1]['Resource'].append('arn:aws:s3:::%s/*' % script_bucket)
@@ -228,17 +198,14 @@ def main():
         config['Statement'][3]['Resource'] = []
         config['Statement'][3]['Resource'].append(cognito_user_pool_arn)
 
-    with open('./client_apis/.chalice/policy-%s.json' % environment, 'w') as f:
+    with open('./admin_api/.chalice/policy-%s.json' % environment, 'w') as f:
         json.dump(config, f, indent=4)
 
-    subprocess.run(['pip', 'install', '-r', 'requirements.txt'], cwd='./client_apis', check=True)
-    subprocess.run(['chalice', 'deploy', '--no-autogen-policy', '--stage=%s' % environment], cwd='./client_apis',
+    subprocess.run(['pip', 'install', '-r', 'requirements.txt'], cwd='./admin_api', check=True)
+    subprocess.run(['chalice', 'deploy', '--no-autogen-policy', '--stage=%s' % environment], cwd='./admin_api',
                    check=True)
 
     print('4. deploy data_retriever')
-
-    import data_retriever.install_plugin
-    data_retriever.install_plugin.main()
 
     p = subprocess.Popen(['aws', 'ecr', 'get-login', '--no-include-email'], stdout=subprocess.PIPE)
     p.wait()
@@ -249,40 +216,31 @@ def main():
     subprocess.run(['docker', 'push', '%s:latest' % repository_url], cwd='./data_retriever', check=True)
 
     print('5. deploy client frontend')
-    with open('./client_apis/.chalice/deployed/%s.json' % environment, 'r') as f:
+    with open('./admin_api/.chalice/deployed/%s.json' % environment, 'r') as f:
         api_resource = json.load(f)
 
-    subprocess.run(['yarn', 'install'], cwd='./client', check=True)
-    subprocess.run(['yarn', 'install-otm-plugin'], cwd='./client', check=True)
+    subprocess.run(['yarn', 'install'], cwd='./admin_client', check=True)
+
+    with open('./admin_client/.env', 'w') as f:
+        f.write('AWS_DEFAULT_REGION=%s\n' % region)
+        f.write('COGNITO_IDENTITY_POOL_ID=%s\n' % cognito_identify_pool_id)
+        f.write('COGNITO_USER_POOL_ID=%s\n' % cognito_user_pool_id)
+        f.write('COGNITO_USER_POOL_WEB_CLIENT_ID=%s\n' % cognito_user_pool_client_id)
 
     client_build_env = {
         'NODE_ENV': 'production',
         'PATH': os.environ.get('PATH'),
         'API_BASE_URL': api_resource['resources'][2]['rest_api_url'],
-        'ASSETS_PUBLIC_PATH': "https://%s/" % client_domain,
         'COGNITO_IDENTITY_POOL_ID': cognito_identify_pool_id,
-        'COGNITO_REGION': region,
-        'COGNITO_IDENTITY_POOL_REGION': region,
+        'AWS_DEFAULT_REGION': region,
         'COGNITO_USER_POOL_ID': cognito_user_pool_id,
         'COGNITO_USER_POOL_WEB_CLIENT_ID': cognito_user_pool_client_id,
         'COGNITO_COOKIE_STORAGE_DOMAIN': client_domain,
-        'COGNITO_COOKIE_SECURE': '1',
-        'ADMIN_TITLE': os.environ.get('ADMIN_TITLE') or '',
-        'ADMIN_HEADER_SCRIPT': os.environ.get('ADMIN_HEADER_SCRIPT') or '',
-        'BASE_PATH': ''
+        'COGNITO_COOKIE_SECURE': '1'
     }
 
-    # apply plugin configuration from env
-    for config_file in glob.iglob('./plugins/*/config.json.sample'):
-        with open(config_file, 'r') as cf:
-            config_data = json.load(cf)
-            if 'api' in config_data:
-                for k in config_data['client']:
-                    if k in os.environ:
-                        client_build_env[k] = os.environ.get(k)
-
-    subprocess.run(['npm', 'run', 'build'], env=client_build_env, cwd='./client', check=True)
-    subprocess.run(['aws', 's3', 'sync', './client/dist/', 's3://%s/' % client_bucket, '--acl=public-read'], check=True)
+    subprocess.run(['yarn', 'run', 'build'], env=client_build_env, cwd='./admin_client', check=True)
+    subprocess.run(['aws', 's3', 'sync', './admin_client/dist/', 's3://%s/' % client_bucket, '--acl=public-read'], check=True)
 
     print('6. invalidate client / otm.js')
     subprocess.run(
@@ -325,44 +283,44 @@ def main():
     print('8.1. collect table')
     athena_query = '''
 CREATE EXTERNAL TABLE IF NOT EXISTS %s.otm_collect(
-  `datetime` timestamp, 
-  `x_edge_location` string, 
-  `sc_bytes` string, 
-  `c_ip` string, 
-  `cs_method` string, 
-  `cs_host` string, 
-  `cs_uri_stem` string, 
-  `cs_status` string, 
-  `cs_referer` string, 
-  `cs_user_agent` string, 
-  `cs_uri_query` string, 
-  `cs_cookie` string, 
-  `cs_x_edge_result_type` string, 
-  `cs_x_edge_request_id` string, 
-  `x_host_header` string, 
-  `cs_protocol` string, 
-  `cs_bytes` string, 
-  `time_taken` string, 
-  `x_forwarded_for` string, 
-  `ssl_protocol` string, 
-  `ssl_cipher` string, 
-  `x_edge_response_result_type` string, 
-  `cs_protocol_version` string, 
-  `fle_status` string, 
+  `datetime` timestamp,
+  `x_edge_location` string,
+  `sc_bytes` string,
+  `c_ip` string,
+  `cs_method` string,
+  `cs_host` string,
+  `cs_uri_stem` string,
+  `cs_status` string,
+  `cs_referer` string,
+  `cs_user_agent` string,
+  `cs_uri_query` string,
+  `cs_cookie` string,
+  `cs_x_edge_result_type` string,
+  `cs_x_edge_request_id` string,
+  `x_host_header` string,
+  `cs_protocol` string,
+  `cs_bytes` string,
+  `time_taken` string,
+  `x_forwarded_for` string,
+  `ssl_protocol` string,
+  `ssl_cipher` string,
+  `x_edge_response_result_type` string,
+  `cs_protocol_version` string,
+  `fle_status` string,
   `fle_encrypted_fields` string,
   `qs` string
 )
-PARTITIONED BY ( 
-  `org` string, 
+PARTITIONED BY (
+  `org` string,
   `tid` string,
-  `year` int, 
-  `month` int, 
+  `year` int,
+  `month` int,
   `day` int)
-ROW FORMAT SERDE 
-  'org.openx.data.jsonserde.JsonSerDe' 
-STORED AS INPUTFORMAT 
-  'org.apache.hadoop.mapred.TextInputFormat' 
-OUTPUTFORMAT 
+ROW FORMAT SERDE
+  'org.openx.data.jsonserde.JsonSerDe'
+STORED AS INPUTFORMAT
+  'org.apache.hadoop.mapred.TextInputFormat'
+OUTPUTFORMAT
   'org.apache.hadoop.hive.ql.io.IgnoreKeyTextOutputFormat'
 LOCATION
   's3://%s/formatted'
@@ -384,17 +342,17 @@ CREATE EXTERNAL TABLE IF NOT EXISTS %s.otm_usage(
   `type` string,
   `size` bigint
 )
-PARTITIONED BY ( 
-  `org` string, 
+PARTITIONED BY (
+  `org` string,
   `tid` string,
-  `year` int, 
-  `month` int, 
+  `year` int,
+  `month` int,
   `day` int)
-ROW FORMAT SERDE 
-  'org.openx.data.jsonserde.JsonSerDe' 
-STORED AS INPUTFORMAT 
-  'org.apache.hadoop.mapred.TextInputFormat' 
-OUTPUTFORMAT 
+ROW FORMAT SERDE
+  'org.openx.data.jsonserde.JsonSerDe'
+STORED AS INPUTFORMAT
+  'org.apache.hadoop.mapred.TextInputFormat'
+OUTPUTFORMAT
   'org.apache.hadoop.hive.ql.io.IgnoreKeyTextOutputFormat'
 LOCATION
   's3://%s/usage'

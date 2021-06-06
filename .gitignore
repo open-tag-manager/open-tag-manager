@@ -8,9 +8,6 @@ terraform.tfstate.backup
 account.json
 infra/common/plugin_*
 infra/**/*.log
-data_retriever/otmplugins/*
 .terraform/
 *-terraform.tfvars
 terraform.tfvars
-plugins/*
-!plugins/.gitkeep

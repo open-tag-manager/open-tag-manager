@@ -1,0 +1,4 @@
+boto3
+cerberus
+simplejson
+stripe==2.43.0

@@ -1,4 +1,4 @@
-FROM nikolaik/python-nodejs:python3.6-nodejs10-stretch
+FROM nikolaik/python-nodejs:python3.6-nodejs12-stretch
 
 
 RUN apt-get update; apt-get -y install unzip apt-transport-https \

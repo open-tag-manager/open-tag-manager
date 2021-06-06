@@ -1,0 +1,9 @@
+__pycache__/
+.chalice/deployments/
+.chalice/deployed.json
+.chalice/venv/
+.chalice/config.json
+.chalice/policy-*.json
+.chalice/deployed/*
+!.chalice/policy-sample.json
+npm-debug.log
