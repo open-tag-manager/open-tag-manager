@@ -3,8 +3,8 @@ import {WebCollector} from '@open-tag-manager/web-collector'
 import uuidV4 from 'uuid/v4'
 import JsSHA from 'jssha'
 import url from 'url'
-import ttiPolyfill from 'tti-polyfill'
 import template from 'lodash.template'
+import {getCLS, getFID, getLCP} from 'web-vitals'
 
 if ('PerformanceLongTaskTiming' in window) {
   let g = window.__tti = {e: []}
@@ -525,9 +525,12 @@ class OTM {
       this.notify('pageview')
     }
 
-    ttiPolyfill.getFirstConsistentlyInteractive().then((tti) => {
-      this.performance('pageview', 'ttl', parseInt(tti), {o_ttl: parseInt(tti)})
-    })
+    const sendWebVital = (m) => {
+      this.performance('pageview', m.name, Math.round(m.value))
+    }
+    getCLS(sendWebVital)
+    getFID(sendWebVital)
+    getLCP(sendWebVital)
   }
 
   loadScript (src, attributes = {}) {
