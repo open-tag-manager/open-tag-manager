@@ -35,10 +35,31 @@
       </dl>
 
       <v-card-actions>
-        <v-btn>Recounting old data</v-btn>
+        <v-btn @click="recountingModal = true">Recounting old data</v-btn>
         <v-btn color="error" @click="deleteGoal">Delete</v-btn>
       </v-card-actions>
     </v-card-text>
+
+    <v-dialog v-model="recountingModal" max-width="350px">
+      <v-form ref="recountingForm" @submit.prevent="recountingData">
+        <v-card>
+          <v-card-title>Recounting old data</v-card-title>
+          <v-layout justify-center>
+            <v-date-picker v-model="date" no-title scrollable range />
+          </v-layout>
+          <v-card-actions>
+            <v-spacer />
+            <v-btn
+              type="submit"
+              color="primary"
+              :disabled="!date || date.length < 2"
+              >Submit</v-btn
+            >
+          </v-card-actions>
+        </v-card>
+      </v-form>
+    </v-dialog>
+    <v-snackbar v-model="snackbar" right top>{{ snackbarMessage }}</v-snackbar>
   </v-card>
 </template>
 
@@ -55,7 +76,7 @@ import { scaleTime as d3scaleTime, scaleLinear as d3scaleLiner } from 'd3-scale'
 import axios from 'axios'
 import { timeDays as d3timeDays } from 'd3-time'
 import { timeFormat as d3timeFormat } from 'd3-time-format'
-import { subDays } from 'date-fns'
+import { subDays, format as dateFormat, parse as dateParse } from 'date-fns'
 import { axisLeft as d3axisLeft, axisBottom as d3axisBottom } from 'd3-axis'
 import { line as d3line } from 'd3-shape'
 import { IGoal, IGoalResultData } from '~/utils/api/goal'
@@ -65,6 +86,36 @@ import OrgContainer from '~/components/OrgContainer'
 export default class GoalResultCard extends OrgContainer {
   @Prop({ required: true })
   goal!: IGoal
+
+  recountingModal = false
+  date: string[] | null = null
+  snackbar = false
+  snackbarMessage: string = ''
+
+  async recountingData() {
+    this.snackbar = true
+    this.snackbarMessage = 'Submitting..'
+    const date = this.date!.sort()
+    await API.post(
+      'OTMClientAPI',
+      `/orgs/${this.currentOrg}/containers/${this.currentContainer}/goals/${this.goal.id}/update_requests`,
+      {
+        body: {
+          startdate: dateFormat(
+            dateParse(date[0], 'yyyy-MM-dd', new Date()),
+            'yyyyMMdd'
+          ),
+          enddate: dateFormat(
+            dateParse(date[1], 'yyyy-MM-dd', new Date()),
+            'yyyyMMdd'
+          ),
+        },
+      }
+    )
+    this.snackbarMessage = 'Requested'
+    this.recountingModal = false
+    this.date = null
+  }
 
   async mounted() {
     const componentElement = d3select(this.$el)
