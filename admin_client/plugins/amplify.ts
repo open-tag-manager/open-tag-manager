@@ -1,4 +1,5 @@
 import Amplify from '@aws-amplify/core'
+import Auth from '@aws-amplify/auth'
 import '@aws-amplify/ui-vue'
 
 Amplify.configure({
@@ -19,6 +20,13 @@ Amplify.configure({
       {
         name: 'OTMClientAPI',
         endpoint: process.env.apiBaseUrl!.replace(/\/$/, ''),
+        custom_header: async () => {
+          return {
+            Authorization: `Bearer ${(await Auth.currentSession())
+              .getAccessToken()
+              .getJwtToken()}`,
+          }
+        },
       },
     ],
   },
