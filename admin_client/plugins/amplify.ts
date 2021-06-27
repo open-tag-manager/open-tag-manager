@@ -18,7 +18,7 @@ Amplify.configure({
     endpoints: [
       {
         name: 'OTMClientAPI',
-        endpoint: process.env.apiBaseUrl,
+        endpoint: process.env.apiBaseUrl!.replace(/\/$/, ''),
       },
     ],
   },
