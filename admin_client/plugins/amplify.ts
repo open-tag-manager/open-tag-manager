@@ -23,7 +23,7 @@ Amplify.configure({
         custom_header: async () => {
           return {
             Authorization: `Bearer ${(await Auth.currentSession())
-              .getAccessToken()
+              .getIdToken()
               .getJwtToken()}`,
           }
         },
