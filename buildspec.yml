@@ -16,4 +16,8 @@ phases:
       - terraform --version
   build:
     commands:
+      # restore state
+      - aws s3 sync --delete s3://${TERRAFORM_BACKEND_BUCKET}/admin_api/ admin_api/.chalice/deployed/
       - python deploy.py
+      # save state
+      - aws s3 sync --delete admin_api/.chalice/deployed/ s3://${TERRAFORM_BACKEND_BUCKET}/admin_api/
