@@ -7,7 +7,7 @@ from chalicelib.stats_routes import stats_routes
 from chalicelib.usage_routes import usage_routes
 from chalicelib.goal_routes import goal_routes
 from chalicelib.payment_routes import payment_routes
-import importlib
+from chalicelib.container_users_routes import users_routes
 import json
 import os
 import time
@@ -299,3 +299,4 @@ app.register_blueprint(stats_routes, url_prefix='/orgs/{org}/containers/{name}/s
 app.register_blueprint(usage_routes, url_prefix='/orgs/{org}/usages')
 app.register_blueprint(goal_routes, url_prefix='/orgs/{org}/containers/{name}/goals')
 app.register_blueprint(payment_routes, url_prefix='/orgs/{org}/payments')
+app.register_blueprint(users_routes, url_prefix='/orgs/{org}/containers/{name}/users')

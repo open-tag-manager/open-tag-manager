@@ -18,6 +18,7 @@ s3_client = boto3.client('s3')
 
 batch_client = boto3.client('batch')
 
+athena_client = boto3.client('athena')
 
 def get_cognito_user_pool_id():
     return re.search(r"/(.+)$", os.environ.get('OTM_COGNITO_USER_POOL_ARN'))[1]

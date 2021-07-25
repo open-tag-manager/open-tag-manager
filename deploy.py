@@ -182,6 +182,8 @@ def main():
         config['Statement'][1]['Resource'].append('arn:aws:s3:::%s' % script_bucket)
         config['Statement'][1]['Resource'].append('arn:aws:s3:::%s/*' % stat_bucket)
         config['Statement'][1]['Resource'].append('arn:aws:s3:::%s' % stat_bucket)
+        config['Statement'][1]['Resource'].append('arn:aws:s3:::%s/*' % athena_bucket)
+        config['Statement'][1]['Resource'].append('arn:aws:s3:::%s' % athena_bucket)
         config['Statement'][2]['Resource'] = []
         config['Statement'][2]['Resource'].append(dynamo_role_table_arn)
         config['Statement'][2]['Resource'].append(dynamo_role_table_arn + '/*')
