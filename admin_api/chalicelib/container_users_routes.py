@@ -153,6 +153,7 @@ def container_users(org, name, execution_id):
             headers['X-NEXT-KEY'] = result['NextToken']
 
     return Response({
+        'state': state,
         'items': items,
         'next': headers.get('X-NEXT-KEY')
     }, headers=headers)
@@ -210,6 +211,7 @@ def container_users(org, name, cid, execution_id):
             headers['X-NEXT-KEY'] = result['NextToken']
 
     return Response({
+        'state': state,
         'items': items,
         'next': headers.get('X-NEXT-KEY')
     }, headers=headers)

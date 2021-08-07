@@ -31,6 +31,19 @@
           </v-list-item-icon>
           Analytics
         </v-list-item>
+
+        <v-list-item
+          :to="{
+            name: 'orgs-name-containers-container-users',
+            params: { name: currentOrg, container: currentContainer },
+          }"
+        >
+          <v-list-item-icon>
+            <v-icon>mdi-account-group</v-icon>
+          </v-list-item-icon>
+          Users
+        </v-list-item>
+
         <v-list-item
           :to="{
             name: 'orgs-name-containers-container-goals',
