@@ -52,7 +52,7 @@ import {
 } from 'date-fns'
 import { Watch } from 'vue-property-decorator'
 import OrgContainer from '~/components/OrgContainer'
-import { IQueryResult } from '~/utils/api/query'
+import { IQueryExecution, IQueryResult } from '~/utils/api/query'
 import { IContainerUser } from '~/utils/api/container_users'
 import { TableHeader } from '~/utils/api/table_header'
 
@@ -147,7 +147,7 @@ export default class Users extends OrgContainer {
     await this.$router.push({ query: { stime: date[0], etime: date[1] } })
   }
 
-  async clickRow(item) {
+  async clickRow(item: IContainerUser) {
     const date = [...this.date].sort()
     await this.$router.push({
       name: `orgs-name-containers-container-users-cid`,
@@ -170,10 +170,10 @@ export default class Users extends OrgContainer {
 
   async fetch() {
     if (this.$route.query.stime) {
-      this.date[0] = this.$route.query.stime
+      this.date[0] = this.$route.query.stime as string
     }
     if (this.$route.query.etime) {
-      this.date[1] = this.$route.query.etime
+      this.date[1] = this.$route.query.etime as string
     }
 
     await this.load()

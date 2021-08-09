@@ -56,7 +56,8 @@ import {
   IContainerUserState,
 } from '~/utils/api/container_users'
 import OrgContainer from '~/components/OrgContainer'
-import { IQueryResult } from '~/utils/api/query'
+import { IQueryResult, IQueryExecution } from '~/utils/api/query'
+import { TableHeader } from '~/utils/api/table_header'
 
 @Component
 export default class UserDetail extends OrgContainer {
@@ -91,8 +92,8 @@ export default class UserDetail extends OrgContainer {
     })
   }
 
-  async fetchResult(id: string): Promise<IQueryResult<IContainerUser>> {
-    const result: IQueryResult<IContainerUser> = await API.get(
+  async fetchResult(id: string): Promise<IQueryResult<IContainerUserState>> {
+    const result: IQueryResult<IContainerUserState> = await API.get(
       'OTMClientAPI',
       `/orgs/${this.currentOrg}/containers/${this.currentContainer}/users/${this.cid}/query_result/${id}`,
       {}
@@ -175,10 +176,10 @@ export default class UserDetail extends OrgContainer {
 
   async fetch() {
     if (this.$route.query.stime) {
-      this.date[0] = this.$route.query.stime
+      this.date[0] = this.$route.query.stime as string
     }
     if (this.$route.query.etime) {
-      this.date[1] = this.$route.query.etime
+      this.date[1] = this.$route.query.etime as string
     }
 
     await this.load()
