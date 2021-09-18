@@ -1,5 +1,5 @@
 from chalice import Response
-from chalicelib import app, authorizer, get_current_user_name, cognito_idp_client, get_cognito_user_pool_id
+from chalicelib import app, authorizer, get_current_user_name, cognito_idp_client, get_cognito_user_pool_id, athena_client, execute_athena_query
 import chalicelib.decorator as decorator
 import chalicelib.dynamodb as dynamodb
 from chalicelib.container_routes import container_routes
@@ -292,6 +292,24 @@ def org_users(org):
         headers['X-NEXT-KEY'] = json.dumps(table_response['LastEvaluatedKey'])
 
     return Response({'items': results, 'next': headers.get('X-NEXT-KEY')}, headers=headers)
+
+
+@app.route('/start_msck_query', cors=True, methods=['POST'], authorizer=authorizer)
+@decorator.check_org_permission('read')
+def start_msck_query():
+    execution_id = execute_athena_query('MSCK REPAIR TABLE %s;' % os.environ.get('STATS_ATHENA_TABLE'))
+    return {'execution_id': execution_id}
+
+
+@app.route('/msck_query_result/{execution_id}', cors=True, methods=['GET'], authorizer=authorizer)
+@decorator.check_org_permission('read')
+def msck_query_result(execution_id):
+    state_result = athena_client.get_query_execution(
+        QueryExecutionId=execution_id
+    )
+    # QUEUED | RUNNING | SUCCEEDED | FAILED | CANCELLED
+    state = state_result['QueryExecution']['Status']['State']
+    return {'state': state}
 
 
 app.register_blueprint(container_routes, url_prefix='/orgs/{org}/containers')

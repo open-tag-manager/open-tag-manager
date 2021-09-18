@@ -30,3 +30,20 @@ def get_current_user_name():
 
     # local environment
     return os.environ.get('TEST_USER') or 'root'
+
+
+def execute_athena_query(query, token=None):
+    response = athena_client.start_query_execution(
+        QueryString=query,
+        QueryExecutionContext={
+            'Database': os.environ.get('STATS_ATHENA_DATABASE')
+        },
+        ResultConfiguration={
+            'OutputLocation': 's3://%s/' % (os.environ.get('STATS_ATHENA_RESULT_BUCKET')),
+            'EncryptionConfiguration': {
+                'EncryptionOption': 'SSE_S3'
+            }
+        },
+        ClientRequestToken=token
+    )
+    return response['QueryExecutionId']

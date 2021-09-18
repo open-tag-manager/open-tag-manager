@@ -112,10 +112,6 @@ def main():
     dynamo_container_table = dynamo_container_values['id']
     dynamo_container_table_arn = dynamo_container_values['arn']
 
-    dynamo_stat_values = [x for x in common_resources if x['address'] == 'aws_dynamodb_table.otm_stat'][0]['values']
-    dynamo_stat_table = dynamo_stat_values['id']
-    dynamo_stat_table_arn = dynamo_stat_values['arn']
-
     dynamo_usage_values = [x for x in common_resources if x['address'] == 'aws_dynamodb_table.otm_usage'][0]['values']
     dynamo_usage_table = dynamo_usage_values['id']
     dynamo_usage_table_arn = dynamo_usage_values['arn']
@@ -155,7 +151,6 @@ def main():
         env['COLLECT_URL'] = 'https://%s/collect' % collect_domain
         env['OTM_ROLE_DYNAMODB_TABLE'] = dynamo_role_table
         env['OTM_USER_DYNAMODB_TABLE'] = dynamo_user_table
-        env['OTM_STAT_DYNAMODB_TABLE'] = dynamo_stat_table
         env['OTM_ORG_DYNAMODB_TABLE'] = dynamo_org_table
         env['OTM_CONTAINER_DYNAMODB_TABLE'] = dynamo_container_table
         env['OTM_USAGE_DYNAMODB_TABLE'] = dynamo_usage_table
@@ -191,8 +186,6 @@ def main():
         config['Statement'][2]['Resource'].append(dynamo_user_table_arn + '/*')
         config['Statement'][2]['Resource'].append(dynamo_org_table_arn)
         config['Statement'][2]['Resource'].append(dynamo_org_table_arn + '/*')
-        config['Statement'][2]['Resource'].append(dynamo_stat_table_arn)
-        config['Statement'][2]['Resource'].append(dynamo_stat_table_arn + '/*')
         config['Statement'][2]['Resource'].append(dynamo_container_table_arn)
         config['Statement'][2]['Resource'].append(dynamo_container_table_arn + '/*')
         config['Statement'][2]['Resource'].append(dynamo_usage_table_arn)
