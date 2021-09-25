@@ -5,8 +5,9 @@
         <li>
           <nuxt-link
             :to="{
-              name: 'orgs-name-containers-container-analytics-stat-url_table',
+              name: 'orgs-name-containers-container-analytics-url_table',
               params: routePrams,
+              query: $route.query,
             }"
           >
             URL Table
@@ -15,8 +16,9 @@
         <li>
           <nuxt-link
             :to="{
-              name: 'orgs-name-containers-container-analytics-stat-event_table',
+              name: 'orgs-name-containers-container-analytics-event_table',
               params: routePrams,
+              query: $route.query,
             }"
           >
             Event Table
@@ -28,16 +30,16 @@
   </div>
 </template>
 
-<script lang="ts">
-import { Component, Vue } from 'vue-property-decorator'
+<script>
+import { Component } from 'vue-property-decorator'
+import OrgContainer from '~/components/OrgContainer'
 
 @Component
-export default class AnalyticsStat extends Vue {
+export default class StatMenu extends OrgContainer {
   get routePrams() {
     return {
       name: this.$route.params.name,
       container: this.$route.params.container,
-      stat: this.$route.params.stat,
     }
   }
 }
@@ -51,7 +53,6 @@ export default class AnalyticsStat extends Vue {
         list-style-type: none;
         display: inline-block;
         padding: 8px;
-
         .nuxt-link-active {
           font-weight: bold;
         }

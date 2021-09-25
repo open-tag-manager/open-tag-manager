@@ -2,6 +2,7 @@ from chalice import CognitoUserPoolAuthorizer, Chalice
 import os
 import boto3
 import re
+import uuid
 
 from .script_generator import ScriptGenerator
 from .upload import S3Uploader
@@ -44,6 +45,6 @@ def execute_athena_query(query, token=None):
                 'EncryptionOption': 'SSE_S3'
             }
         },
-        ClientRequestToken=token
+        ClientRequestToken=token or str(uuid.uuid4())
     )
     return response['QueryExecutionId']

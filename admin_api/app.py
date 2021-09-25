@@ -295,14 +295,12 @@ def org_users(org):
 
 
 @app.route('/start_msck_query', cors=True, methods=['POST'], authorizer=authorizer)
-@decorator.check_org_permission('read')
 def start_msck_query():
     execution_id = execute_athena_query('MSCK REPAIR TABLE %s;' % os.environ.get('STATS_ATHENA_TABLE'))
     return {'execution_id': execution_id}
 
 
 @app.route('/msck_query_result/{execution_id}', cors=True, methods=['GET'], authorizer=authorizer)
-@decorator.check_org_permission('read')
 def msck_query_result(execution_id):
     state_result = athena_client.get_query_execution(
         QueryExecutionId=execution_id

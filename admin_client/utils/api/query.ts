@@ -17,4 +17,9 @@ export interface IQueryResult<T> {
   next: string | null
 }
 
+export interface IQueryResultFile {
+  state: TQueryResultState
+  file: string | null
+}
+
 /* eslint-enable camelcase */

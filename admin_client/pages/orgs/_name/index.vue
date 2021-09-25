@@ -6,7 +6,7 @@
         v-for="container in containers"
         :key="container.tid"
         :to="{
-          name: 'orgs-name-containers-container-analytics',
+          name: 'orgs-name-containers-container-edit',
           params: { name: currentOrg, container: container.tid },
         }"
       >
