@@ -22,7 +22,19 @@
 
         <v-list-item
           :to="{
-            name: 'orgs-name-containers-container-analytics',
+            name: 'orgs-name-containers-container-edit',
+            params: { name: currentOrg, container: currentContainer },
+          }"
+        >
+          <v-list-item-icon>
+            <v-icon>mdi-pencil</v-icon>
+          </v-list-item-icon>
+          Edit
+        </v-list-item>
+
+        <v-list-item
+          :to="{
+            name: 'orgs-name-containers-container-analytics-url_table',
             params: { name: currentOrg, container: currentContainer },
           }"
         >
@@ -54,17 +66,6 @@
             <v-icon>mdi-flag</v-icon>
           </v-list-item-icon>
           Goal
-        </v-list-item>
-        <v-list-item
-          :to="{
-            name: 'orgs-name-containers-container-edit',
-            params: { name: currentOrg, container: currentContainer },
-          }"
-        >
-          <v-list-item-icon>
-            <v-icon>mdi-pencil</v-icon>
-          </v-list-item-icon>
-          Edit
         </v-list-item>
       </v-list>
     </v-navigation-drawer>

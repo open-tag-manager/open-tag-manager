@@ -17,10 +17,6 @@ def get_org_table():
     return resource.Table(str(os.environ.get('OTM_ORG_DYNAMODB_TABLE')))
 
 
-def get_stat_table():
-    return resource.Table(str(os.environ.get('OTM_STAT_DYNAMODB_TABLE')))
-
-
 def get_container_table():
     return resource.Table(str(os.environ.get('OTM_CONTAINER_DYNAMODB_TABLE')))
 

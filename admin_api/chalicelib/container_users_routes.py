@@ -1,5 +1,5 @@
 from chalice import Blueprint, Response
-from . import app, authorizer, athena_client, s3
+from . import app, authorizer, athena_client, s3, execute_athena_query
 from .decorator import check_org_permission, check_json_body
 import os
 import datetime
@@ -70,22 +70,6 @@ ORDER BY  datetime DESC
         datetime.datetime.utcfromtimestamp(etime / 1000).strftime('%Y-%m-%d %H:%M:%S'),
         cid
     )
-
-
-def execute_athena_query(query):
-    response = athena_client.start_query_execution(
-        QueryString=query,
-        QueryExecutionContext={
-            'Database': os.environ.get('STATS_ATHENA_DATABASE')
-        },
-        ResultConfiguration={
-            'OutputLocation': 's3://%s/' % (os.environ.get('STATS_ATHENA_RESULT_BUCKET')),
-            'EncryptionConfiguration': {
-                'EncryptionOption': 'SSE_S3'
-            }
-        }
-    )
-    return response['QueryExecutionId']
 
 
 def get_next_key():
@@ -209,6 +193,10 @@ def container_users(org, name, cid, execution_id):
 
         if 'NextToken' in result:
             headers['X-NEXT-KEY'] = result['NextToken']
+
+    # TODO: save cache
+
+    # TODO: save usage report
 
     return Response({
         'state': state,

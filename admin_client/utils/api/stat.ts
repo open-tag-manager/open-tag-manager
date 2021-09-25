@@ -51,9 +51,8 @@ export interface IStatDataLink {
   title?: string
 }
 
-export interface IStatData {
+export interface IStatUrlLinkData {
   meta: IStatDataMeta
-  table: IStatDataTable[]
   url_links: IStatDataLink[]
   urls: string[]
 }
@@ -66,8 +65,13 @@ export interface IStatEventTable {
   count: number
 }
 
-export interface IStatEventData {
+export interface IStatUrlTableData {
   meta: IStatDataMeta
-  event_table: IStatEventTable[]
+  table: IStatDataTable[]
+}
+
+export interface IStatEventTableData {
+  meta: IStatDataMeta
+  table: IStatEventTable[]
 }
 /* eslint-enable */

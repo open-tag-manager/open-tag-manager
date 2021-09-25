@@ -373,23 +373,6 @@ resource "aws_dynamodb_table" "otm_container" {
   }
 }
 
-resource "aws_dynamodb_table" "otm_stat" {
-  name = "${terraform.workspace}_otm_stat"
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key = "tid"
-  range_key = "timestamp"
-
-  attribute {
-    name = "tid"
-    type = "S"
-  }
-
-  attribute {
-    name = "timestamp"
-    type = "N"
-  }
-}
-
 resource "aws_dynamodb_table" "otm_usage" {
   name = "${terraform.workspace}_otm_usage"
   billing_mode = "PAY_PER_REQUEST"
@@ -507,7 +490,6 @@ resource "aws_iam_policy" "log_stat_s3_access_policy" {
       ],
       "Resource": [
         "${aws_dynamodb_table.otm_org.arn}",
-        "${aws_dynamodb_table.otm_stat.arn}",
         "${aws_dynamodb_table.otm_container.arn}",
         "${aws_dynamodb_table.otm_usage.arn}"
       ]
@@ -539,7 +521,7 @@ resource "aws_batch_job_definition" "otm_data_retriever" {
   }
   container_properties = <<CONTAINER_PROPERTIES
 {
-  "command": ["python", "app.py"],
+  "command": ["python"],
   "image": "${aws_ecr_repository.otm_data_retriever.repository_url}:latest",
   "jobRoleArn": "${aws_iam_role.ecs_task_role.arn}",
   "memory": 2000,
@@ -555,7 +537,6 @@ resource "aws_batch_job_definition" "otm_data_retriever" {
     {"name": "STATS_ATHENA_DATABASE", "value": "${aws_athena_database.otm.name}"},
     {"name": "STATS_ATHENA_TABLE", "value": "otm_collect"},
     {"name": "USAGE_ATHENA_TABLE", "value": "otm_usage"},
-    {"name": "OTM_STAT_DYNAMODB_TABLE", "value": "${aws_dynamodb_table.otm_stat.name}"},
     {"name": "OTM_USAGE_DYNAMODB_TABLE", "value": "${aws_dynamodb_table.otm_usage.name}"},
     {"name": "OTM_CONTAINER_DYNAMODB_TABLE", "value": "${aws_dynamodb_table.otm_container.name}"}
   ],

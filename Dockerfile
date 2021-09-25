@@ -15,7 +15,7 @@ RUN add-apt-repository \
 
 RUN apt-get update; apt-get -y install docker-ce
 
-RUN pip install chalice==1.12.0 awscli
+RUN pip install chalice==1.25.0 awscli
 
 RUN mkdir /terraform
 WORKDIR /terraform
