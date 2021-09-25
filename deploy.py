@@ -213,6 +213,7 @@ def main():
     print('5. deploy client frontend')
     with open('./admin_api/.chalice/deployed/%s.json' % environment, 'r') as f:
         api_resource = json.load(f)
+        print(api_resource)
 
     subprocess.run(['yarn', 'install'], cwd='./admin_client', check=True)
 
