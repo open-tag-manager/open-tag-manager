@@ -213,7 +213,6 @@ def main():
     print('5. deploy client frontend')
     with open('./admin_api/.chalice/deployed/%s.json' % environment, 'r') as f:
         api_resource = json.load(f)
-        print(api_resource)
 
     subprocess.run(['yarn', 'install'], cwd='./admin_client', check=True)
 
@@ -226,7 +225,7 @@ def main():
     client_build_env = {
         'NODE_ENV': 'production',
         'PATH': os.environ.get('PATH'),
-        'API_BASE_URL': api_resource['resources'][2]['rest_api_url'],
+        'API_BASE_URL': api_resource['resources'][3]['rest_api_url'],
         'COGNITO_IDENTITY_POOL_ID': cognito_identify_pool_id,
         'AWS_DEFAULT_REGION': region,
         'COGNITO_USER_POOL_ID': cognito_user_pool_id,
