@@ -3,6 +3,8 @@ import os
 import boto3
 import re
 import uuid
+import datetime
+import json
 
 from .script_generator import ScriptGenerator
 from .upload import S3Uploader
@@ -20,6 +22,7 @@ s3_client = boto3.client('s3')
 batch_client = boto3.client('batch')
 
 athena_client = boto3.client('athena')
+
 
 def get_cognito_user_pool_id():
     return re.search(r"/(.+)$", os.environ.get('OTM_COGNITO_USER_POOL_ARN'))[1]
@@ -48,3 +51,12 @@ def execute_athena_query(query, token=None):
         ClientRequestToken=token or str(uuid.uuid4())
     )
     return response['QueryExecutionId']
+
+
+def save_athena_usage_report(org, tid, result_athena):
+    scanned = result_athena['QueryExecution']['Statistics']['DataScannedInBytes']
+    usage_key = 'org={0}/tid={1}/{2}/{3}.json'.format(org, tid,
+                                                      datetime.datetime.now().strftime('year=%Y/month=%-m/day=%-d'),
+                                                      result_athena['QueryExecution']['QueryExecutionId'])
+    usage_key = '{0}{1}'.format(os.environ.get('OTM_USAGE_PREFIX'), usage_key)
+    s3.Object(os.environ.get('OTM_STATS_BUCKET'), usage_key).put(Body=json.dumps({'type': 'athena_scan', 'size': scanned}))

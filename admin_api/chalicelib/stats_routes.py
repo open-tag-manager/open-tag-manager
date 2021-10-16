@@ -1,5 +1,5 @@
 from chalice import Blueprint
-from . import app, authorizer, s3, s3_client, athena_client, execute_athena_query
+from . import app, authorizer, s3, s3_client, athena_client, execute_athena_query, save_athena_usage_report
 from .decorator import check_org_permission, check_json_body
 from urllib.parse import urlparse
 import pandas as pd
@@ -80,8 +80,6 @@ def make_container_stats_start_query_url_links(org, name):
     body = request.json_body
     stime = datetime.datetime.utcfromtimestamp(int(body['stime']) / 1000)
     etime = datetime.datetime.utcfromtimestamp(int(body['etime']) / 1000)
-
-    # TODO: check cache
 
     execution_id = execute_athena_query(url_link_query(org, name, stime, etime), token='%s_%s_%s_%s_url_links' % (
         org,
@@ -174,7 +172,7 @@ def make_container_query_result_url_links(org, name):
             'data': result
         }, ensure_ascii=False), ContentType='application/json; charset=utf-8')
         file_url_event_graph = s3_client.generate_presigned_url('get_object', {'Key': target.key, 'Bucket': target.bucket_name})
-        # TODO: save usage
+        save_athena_usage_report(org, name, state_result)
 
     return {
         'state': state,
@@ -298,8 +296,6 @@ def make_container_stats_start_query_url_table(org, name):
     stime = datetime.datetime.utcfromtimestamp(int(body['stime']) / 1000)
     etime = datetime.datetime.utcfromtimestamp(int(body['etime']) / 1000)
 
-    # TODO: check cache
-
     execution_id = execute_athena_query(url_table_query(org, name, stime, etime), token='%s_%s_%s_%s_url_table' % (
         org,
         name,
@@ -398,7 +394,7 @@ def make_container_query_result_url_table(org, name):
             'table': table_result
         }, ensure_ascii=False), ContentType='application/json; charset=utf-8')
         file = s3_client.generate_presigned_url('get_object', {'Key': target.key, 'Bucket': target.bucket_name})
-        # TODO: save usage
+        save_athena_usage_report(org, name, state_result)
 
     return {
         'state': state,
@@ -434,8 +430,6 @@ def make_container_stats_start_query_event_table(org, name):
     body = request.json_body
     stime = datetime.datetime.utcfromtimestamp(int(body['stime']) / 1000)
     etime = datetime.datetime.utcfromtimestamp(int(body['etime']) / 1000)
-
-    # TODO: check cache
 
     execution_id = execute_athena_query(event_table_query(org, name, stime, etime), token='%s_%s_%s_%s_event_table' % (
         org,
@@ -494,7 +488,7 @@ def make_container_query_result_event_table(org, name):
             'table': event_table_result
         }, ensure_ascii=False), ContentType='application/json; charset=utf-8')
         file = s3_client.generate_presigned_url('get_object', {'Key': target.key, 'Bucket': target.bucket_name})
-        # TODO: save usage
+        save_athena_usage_report(org, name, state_result)
 
     return {
         'state': state,

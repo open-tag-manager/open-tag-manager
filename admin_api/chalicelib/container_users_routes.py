@@ -1,21 +1,10 @@
 from chalice import Blueprint, Response
-from . import app, authorizer, athena_client, s3, execute_athena_query
+from . import app, authorizer, athena_client, s3, execute_athena_query, save_athena_usage_report
 from .decorator import check_org_permission, check_json_body
 import os
 import datetime
-import json
 
 users_routes = Blueprint(__name__)
-
-
-def save_usage(org, name, execution_id, state_result):
-    scanned = state_result['QueryExecution']['Statistics']['DataScannedInBytes']
-    usage_key = 'org={0}/tid={1}/{2}/{3}.json'.format(org, name,
-                                                      datetime.datetime.now().strftime('year=%Y/month=%-m/day=%-d'),
-                                                      execution_id)
-    usage_key = '{0}{1}'.format(os.environ.get('OTM_USAGE_PREFIX'), usage_key)
-    s3.Object(os.environ.get('OTM_STATS_BUCKET'), usage_key).put(
-        Body=json.dumps({'type': 'athena_scan', 'size': scanned}))
 
 
 def users_query(org, tid, stime, etime):
@@ -124,7 +113,7 @@ def container_users(org, name, execution_id):
         r = rows
         if not next_key:
             r = rows[1:]
-            save_usage(org, name, execution_id, state_result)
+            save_athena_usage_report(org, name, state_result)
 
         # transform rows
         for row in r:
@@ -178,7 +167,7 @@ def container_users(org, name, cid, execution_id):
         r = rows
         if not next_key:
             r = rows[1:]
-            save_usage(org, name, execution_id, state_result)
+            save_athena_usage_report(org, name, state_result)
 
         # transform rows
         for row in r:
@@ -193,10 +182,6 @@ def container_users(org, name, cid, execution_id):
 
         if 'NextToken' in result:
             headers['X-NEXT-KEY'] = result['NextToken']
-
-    # TODO: save cache
-
-    # TODO: save usage report
 
     return Response({
         'state': state,
