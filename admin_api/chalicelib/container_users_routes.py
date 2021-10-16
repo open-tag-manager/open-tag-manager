@@ -90,7 +90,13 @@ def container_users_start_query(org, name):
     stime = int(body['stime'])
     etime = int(body['etime'])
 
-    execution_id = execute_athena_query(users_query(org, name, stime, etime))
+    execution_id = execute_athena_query(users_query(org, name, stime, etime), token='%s_%s_%s_%s_%s_user' % (
+        org,
+        name,
+        datetime.datetime.utcfromtimestamp(stime / 1000).strftime('%Y%m%d%H%M%S'),
+        datetime.datetime.utcfromtimestamp(etime / 1000).strftime('%Y%m%d%H%M%S'),
+        datetime.datetime.now().strftime('%Y%m%d')
+    ))
     return {'execution_id': execution_id}
 
 
@@ -145,7 +151,14 @@ def container_user_start_query(org, name, cid):
     body = request.json_body
     stime = int(body['stime'])
     etime = int(body['etime'])
-    execution_id = execute_athena_query(user_query(org, name, cid, stime, etime))
+    execution_id = execute_athena_query(user_query(org, name, cid, stime, etime), token='%s_%s_%s_%s_%s_%s_user_detail' % (
+        org,
+        name,
+        cid,
+        datetime.datetime.utcfromtimestamp(stime / 1000).strftime('%Y%m%d%H%M%S'),
+        datetime.datetime.utcfromtimestamp(etime / 1000).strftime('%Y%m%d%H%M%S'),
+        datetime.datetime.now().strftime('%Y%m%d')
+    ))
     return {'execution_id': execution_id}
 
 
