@@ -5,6 +5,7 @@ import re
 import uuid
 import datetime
 import json
+import hashlib
 
 from .script_generator import ScriptGenerator
 from .upload import S3Uploader
@@ -48,7 +49,7 @@ def execute_athena_query(query, token=None):
                 'EncryptionOption': 'SSE_S3'
             }
         },
-        ClientRequestToken=token or str(uuid.uuid4())
+        ClientRequestToken='%s_%s' % (token, hashlib.sha1(query.encode('utf-8')).hexdigest()) or str(uuid.uuid4())
     )
     return response['QueryExecutionId']
 

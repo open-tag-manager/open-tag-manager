@@ -184,7 +184,22 @@ def make_container_query_result_url_links(org, name):
 
 def url_table_query(org, tid, stime, etime):
     return """
-WITH scroll as (
+WITH 
+title as (
+SELECT
+datet, url, FIRST_VALUE(title) OVER (PARTITION BY url ORDER BY datet) as title
+FROM
+(
+SELECT
+format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ') as datet,
+JSON_EXTRACT_SCALAR(qs, '$.dl') as url,
+JSON_EXTRACT_SCALAR(qs, '$.dt') as title
+FROM {0}
+WHERE {1}
+) tmp
+),
+
+scroll as (
 SELECT 
 datet, url, p_url, COUNT(y) as s_count, SUM(CAST(y as decimal)) as sum_scroll_y, MAX(CAST(y as decimal)) as max_scroll_y
 FROM 
@@ -254,6 +269,7 @@ GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), JSON_EXTRACT_SCALAR
 SELECT
 format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ') as datetime,
 JSON_EXTRACT_SCALAR(qs, '$.dl') as url,
+title.title,
 JSON_EXTRACT_SCALAR(qs, '$.o_pl') AS p_url,
 COUNT(qs) as count,
 COUNT(DISTINCT JSON_EXTRACT_SCALAR(qs, '$.o_psid')) as session_count,
@@ -269,6 +285,8 @@ plt.sum_plt,
 plt.max_plt
 FROM 
 {0}
+LEFT OUTER JOIN
+title ON (title.url = JSON_EXTRACT_SCALAR(qs, '$.dl') AND title.datet = format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'))
 LEFT OUTER JOIN 
 scroll ON (scroll.url = JSON_EXTRACT_SCALAR(qs, '$.dl') AND scroll.p_url = JSON_EXTRACT_SCALAR(qs, '$.o_pl') AND scroll.datet = format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'))
 LEFT OUTER JOIN 
@@ -280,7 +298,11 @@ trivial_click ON (trivial_click.url = JSON_EXTRACT_SCALAR(qs, '$.dl') AND trivia
 LEFT OUTER JOIN
 plt ON (plt.url = JSON_EXTRACT_SCALAR(qs, '$.dl') AND plt.p_url = JSON_EXTRACT_SCALAR(qs, '$.o_pl') AND plt.datet = format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'))
 WHERE JSON_EXTRACT_SCALAR(qs, '$.o_s') = 'pageview' AND {1}
-GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), JSON_EXTRACT_SCALAR(qs, '$.dl'), JSON_EXTRACT_SCALAR(qs, '$.o_pl'),s_count, sum_scroll_y, max_scroll_y, event_count, w_click_count, t_click_count, plt_count, sum_plt, max_plt
+GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), 
+JSON_EXTRACT_SCALAR(qs, '$.dl'),
+JSON_EXTRACT_SCALAR(qs, '$.o_pl'),
+title,
+s_count, sum_scroll_y, max_scroll_y, event_count, w_click_count, t_click_count, plt_count, sum_plt, max_plt
 ORDER BY count DESC
 """.format(os.environ.get('STATS_ATHENA_TABLE'), generate_base_criteria(org, tid, stime, etime))
 
@@ -359,6 +381,7 @@ def make_container_query_result_url_table(org, name):
                 # initialize data
                 rj['url'] = url
                 rj['p_url'] = p_url
+                rj['title'] = rj['title']
                 rj['count'] = rj['count'] or 0
                 rj['session_count'] = rj['session_count'] or 0
                 rj['user_count'] = rj['user_count'] or 0

@@ -85,6 +85,11 @@ export default class UrlTable extends OrgContainer {
         sortable: true,
       },
       {
+        text: 'Title',
+        value: 'title',
+        sortable: true,
+      },
+      {
         text: 'Prev URL',
         value: 'p_url',
         sortable: true,
