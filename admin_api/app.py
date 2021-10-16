@@ -294,22 +294,6 @@ def org_users(org):
     return Response({'items': results, 'next': headers.get('X-NEXT-KEY')}, headers=headers)
 
 
-@app.route('/start_msck_query', cors=True, methods=['POST'], authorizer=authorizer)
-def start_msck_query():
-    execution_id = execute_athena_query('MSCK REPAIR TABLE %s;' % os.environ.get('STATS_ATHENA_TABLE'))
-    return {'execution_id': execution_id}
-
-
-@app.route('/msck_query_result/{execution_id}', cors=True, methods=['GET'], authorizer=authorizer)
-def msck_query_result(execution_id):
-    state_result = athena_client.get_query_execution(
-        QueryExecutionId=execution_id
-    )
-    # QUEUED | RUNNING | SUCCEEDED | FAILED | CANCELLED
-    state = state_result['QueryExecution']['Status']['State']
-    return {'state': state}
-
-
 app.register_blueprint(container_routes, url_prefix='/orgs/{org}/containers')
 app.register_blueprint(stats_routes, url_prefix='/orgs/{org}/containers/{name}/stats')
 app.register_blueprint(usage_routes, url_prefix='/orgs/{org}/usages')

@@ -63,7 +63,7 @@ import { TableHeader } from '~/utils/api/table_header'
 import { IContainer } from '~/utils/api/container'
 import { IStatEventTable, IStatEventTableData } from '~/utils/api/stat'
 import OrgContainer from '~/components/OrgContainer'
-import { eventTableQuery, msckQuery } from '~/utils/query'
+import { eventTableQuery } from '~/utils/query'
 
 const statusPatterns: Record<string, RegExp> = {
   pageview: /^pageview$/,
@@ -168,7 +168,6 @@ export default class EventTable extends OrgContainer {
   async load() {
     this.isLoading = true
 
-    await msckQuery()
     const date = [...this.date].sort()
     const result = await eventTableQuery(
       this.currentOrg,

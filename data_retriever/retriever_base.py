@@ -50,7 +50,6 @@ class RetrieverBase:
         usage_key = '{0}{1}'.format(self.options['usage_prefix'], usage_key)
         self.s3.Object(bucket, usage_key).put(Body=json.dumps({'type': 'athena_scan', 'size': scanned}))
 
-
     def make_partition(self):
         result = self._execute_athena_query('MSCK REPAIR TABLE %s.%s;' % (self.options['athena_database'], self.options['athena_table']))
 

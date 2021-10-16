@@ -15,39 +15,6 @@ const delay = (seconds: number): Promise<void> => {
   })
 }
 
-const waitMsckResult = async (id: string): Promise<IQueryResult<any>> => {
-  const result: IQueryResult<any> = await API.get(
-    'OTMClientAPI',
-    `/msck_query_result/${id}`,
-    {}
-  )
-  if (result.state === 'SUCCEEDED') {
-    Cookie.set('msck', '1')
-
-    return result
-  }
-  if (result.state === 'FAILED' || result.state === 'CANCELLED') {
-    throw new Error('Failed to load')
-  }
-  await delay(1000)
-  return waitMsckResult(id)
-}
-
-export const msckQuery = async () => {
-  if (Cookie.get('msck')) {
-    return true
-  }
-
-  const execute: IQueryExecution = await API.post(
-    'OTMClientAPI',
-    `/start_msck_query`,
-    {
-      body: {},
-    }
-  )
-  await waitMsckResult(execute.execution_id)
-}
-
 const waitTableQuery = async (
   path: string,
   id: string,

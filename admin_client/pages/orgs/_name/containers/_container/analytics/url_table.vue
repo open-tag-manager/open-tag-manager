@@ -52,7 +52,7 @@ import { IContainer } from '~/utils/api/container'
 import { IStatDataTable } from '~/utils/api/stat'
 import StatLineChart from '~/components/StatLineChart.vue'
 import OrgContainer from '~/components/OrgContainer'
-import { msckQuery, urlTableQuery } from '~/utils/query'
+import { urlTableQuery } from '~/utils/query'
 @Component({
   components: { StatLineChart },
 })
@@ -139,8 +139,6 @@ export default class UrlTable extends OrgContainer {
 
   async load() {
     this.isLoading = true
-
-    await msckQuery()
 
     const date = [...this.date].sort()
     const result = await urlTableQuery(

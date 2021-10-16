@@ -635,6 +635,94 @@ resource "aws_cloudwatch_event_target" "otm_data_retriever_usage" {
   }
 }
 
+resource "aws_batch_job_definition" "otm_data_retriever_msck" {
+  name = "${terraform.workspace}_otm_data_retriever_msck_job_definition"
+  type = "container"
+  timeout {
+    attempt_duration_seconds = var.aws_batch_timeout
+  }
+  container_properties = <<CONTAINER_PROPERTIES
+{
+  "command": ["python", "make_partition.py"],
+  "image": "${aws_ecr_repository.otm_data_retriever.repository_url}:latest",
+  "jobRoleArn": "${aws_iam_role.ecs_task_role.arn}",
+  "memory": 2000,
+  "vcpus": 2,
+  "volumes": [],
+  "environment": [
+    {"name": "AWS_DEFAULT_REGION", "value": "${var.aws_region}"},
+    {"name": "STATS_ATHENA_RESULT_BUCKET", "value": "${aws_s3_bucket.otm_athena.bucket}"},
+    {"name": "STATS_ATHENA_RESULT_PREFIX", "value": ""},
+    {"name": "STATS_ATHENA_DATABASE", "value": "${aws_athena_database.otm.name}"},
+    {"name": "STATS_ATHENA_TABLE", "value": "otm_collect"}
+  ],
+  "mountPoints": [],
+  "ulimits": []
+}
+CONTAINER_PROPERTIES
+}
+
+resource "aws_iam_role" "data_retriever_msck_role" {
+  name = "${terraform.workspace}_otm_data_retriever_msck_role"
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "events.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_policy" "data_retriever_msck_policy" {
+  name = "${terraform.workspace}_otm_data_retriever_msck_policy"
+  description = "Open Tag Manager, CloudWatch target role"
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+       {
+          "Effect": "Allow",
+          "Action": [
+               "batch:SubmitJob"
+           ],
+           "Resource": "*"
+        }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy_attachment" "data_retriever_msck_policy_attachment" {
+  role = aws_iam_role.data_retriever_msck_role.name
+  policy_arn = aws_iam_policy.data_retriever_msck_policy.arn
+}
+
+resource "aws_cloudwatch_event_rule" "otm_msck_report" {
+  name                = "${terraform.workspace}_otm_msck_report"
+  description         = "[OTM] make partition"
+  schedule_expression = "cron(0 0 * * ? *)"
+  is_enabled          = var.aws_cloudwatch_event_msck_enable
+}
+
+resource "aws_cloudwatch_event_target" "otm_data_retriever_msck" {
+  rule         = aws_cloudwatch_event_rule.otm_msck_report.name
+  target_id    = "${terraform.workspace}_otm_data_retriever_msck"
+  arn          = var.aws_batch_job_queue_arn
+  role_arn     = aws_iam_role.data_retriever_msck_role.arn
+  batch_target {
+    job_definition = aws_batch_job_definition.otm_data_retriever_msck.arn
+    job_name       = "${terraform.workspace}_otm_data_retriever_msck"
+  }
+}
+
 resource "aws_s3_bucket" "otm_athena" {
   bucket = "${terraform.workspace}-${var.aws_s3_bucket_prefix}-otm-athena"
   acl = "private"

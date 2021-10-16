@@ -9,5 +9,7 @@ account.json
 infra/common/plugin_*
 infra/**/*.log
 .terraform/
+.terraform*/
 *-terraform.tfvars
 terraform.tfvars
+*.back
