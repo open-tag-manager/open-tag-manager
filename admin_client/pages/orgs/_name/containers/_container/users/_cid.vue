@@ -1,5 +1,5 @@
 <template>
-  <v-container class="container-users">
+  <v-container class="container-users" fluid>
     <div class="ml-auto datepicker">
       <v-dialog
         ref="datepicker"
@@ -36,9 +36,28 @@
       </v-dialog>
     </div>
 
-    <v-progress-linear v-if="isLoading" indeterminate />
+    <v-skeleton-loader v-if="isLoading" class="mx-auto" type="text@3" />
 
-    <v-data-table :headers="headers" :items="items" />
+    <div v-else>
+      <h3>UUID: {{ cid }}</h3>
+      <div>
+        User Agents:
+
+        <ul>
+          <li v-for="agent in userAgents" :key="agent">{{ agent }}</li>
+        </ul>
+      </div>
+    </div>
+
+    <v-data-table
+      :headers="headers"
+      :items="items"
+      :loading="isLoading"
+      sort-by="datetime"
+      group-by="psid"
+      :items-per-page="-1"
+      :show-group-by="false"
+    />
   </v-container>
 </template>
 
@@ -51,10 +70,7 @@ import {
 } from 'date-fns'
 import { Watch } from 'vue-property-decorator'
 import API from '@aws-amplify/api'
-import {
-  IContainerUser,
-  IContainerUserState,
-} from '~/utils/api/container_users'
+import { IContainerUserState } from '~/utils/api/container_users'
 import OrgContainer from '~/components/OrgContainer'
 import { IQueryResult, IQueryExecution } from '~/utils/api/query'
 import { TableHeader } from '~/utils/api/table_header'
@@ -183,6 +199,12 @@ export default class UserDetail extends OrgContainer {
     }
 
     await this.load()
+  }
+
+  get userAgents() {
+    return [
+      ...new Set(this.items.map((i) => decodeURIComponent(i.cs_user_agent))),
+    ]
   }
 }
 </script>
