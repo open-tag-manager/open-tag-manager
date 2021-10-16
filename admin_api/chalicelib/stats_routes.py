@@ -81,13 +81,7 @@ def make_container_stats_start_query_url_links(org, name):
     stime = datetime.datetime.utcfromtimestamp(int(body['stime']) / 1000)
     etime = datetime.datetime.utcfromtimestamp(int(body['etime']) / 1000)
 
-    execution_id = execute_athena_query(url_link_query(org, name, stime, etime), token='%s_%s_%s_%s_%s_url_links' % (
-        org,
-        name,
-        stime.strftime('%Y%m%d%H%M%S'),
-        etime.strftime('%Y%m%d%H%M%S'),
-        datetime.datetime.now().strftime('%Y%m%d')
-    ))
+    execution_id = execute_athena_query(url_link_query(org, name, stime, etime), token='url_links')
 
     return {'execution_id': execution_id}
 
@@ -319,13 +313,7 @@ def make_container_stats_start_query_url_table(org, name):
     stime = datetime.datetime.utcfromtimestamp(int(body['stime']) / 1000)
     etime = datetime.datetime.utcfromtimestamp(int(body['etime']) / 1000)
 
-    execution_id = execute_athena_query(url_table_query(org, name, stime, etime), token='%s_%s_%s_%s_%s_url_table' % (
-        org,
-        name,
-        stime.strftime('%Y%m%d%H%M%S'),
-        etime.strftime('%Y%m%d%H%M%S'),
-        datetime.datetime.now().strftime('%Y%m%d')
-    ))
+    execution_id = execute_athena_query(url_table_query(org, name, stime, etime), token='url_table')
 
     return {'execution_id': execution_id}
 
@@ -456,13 +444,7 @@ def make_container_stats_start_query_event_table(org, name):
     stime = datetime.datetime.utcfromtimestamp(int(body['stime']) / 1000)
     etime = datetime.datetime.utcfromtimestamp(int(body['etime']) / 1000)
 
-    execution_id = execute_athena_query(event_table_query(org, name, stime, etime), token='%s_%s_%s_%s_%s_event_table' % (
-        org,
-        name,
-        stime.strftime('%Y%m%d%H%M%S'),
-        etime.strftime('%Y%m%d%H%M%S'),
-        datetime.datetime.now().strftime('%Y%m%d')
-    ))
+    execution_id = execute_athena_query(event_table_query(org, name, stime, etime), token='event_table')
 
     return {'execution_id': execution_id}
 

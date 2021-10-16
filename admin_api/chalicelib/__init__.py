@@ -49,7 +49,11 @@ def execute_athena_query(query, token=None):
                 'EncryptionOption': 'SSE_S3'
             }
         },
-        ClientRequestToken='%s_%s' % (token, hashlib.sha1(query.encode('utf-8')).hexdigest()) or str(uuid.uuid4())
+        ClientRequestToken='%s_%s_%s' % (
+            token or uuid.uuid4(),
+            datetime.datetime.now().strftime('%Y%m%d'),
+            hashlib.sha1(query.encode('utf-8')).hexdigest()
+        )
     )
     return response['QueryExecutionId']
 
