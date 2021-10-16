@@ -1,5 +1,12 @@
 import json
 import argparse
+from decimal import Decimal
+
+
+def decimal_default_proc(obj):
+    if isinstance(obj, Decimal):
+        return float(obj)
+    raise TypeError
 
 
 class ScriptGenerator:
@@ -29,7 +36,7 @@ if (document.readyState === 'loading') {
   document.body.appendChild(script);
 }
 })()
-''' % (self._src_url, self._collect_url, json.dumps(self._config, ensure_ascii=False))
+''' % (self._src_url, self._collect_url, json.dumps(self._config, ensure_ascii=False, default=decimal_default_proc))
 
 
 def main():
