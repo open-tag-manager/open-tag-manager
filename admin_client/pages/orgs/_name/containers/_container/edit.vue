@@ -3,6 +3,7 @@
     <div v-if="container">
       <h1 class="mb-4">{{ container.label }}'s configuration</h1>
       <v-text-field v-model="container.script" readonly label="Script URL" />
+      <v-text-field :value="scriptTag" readonly label="Script Tag" />
       <v-form ref="form" lazy-validation @submit.prevent="save">
         <h2 class="mb-4">Basic configuration</h2>
         <v-text-field
@@ -67,6 +68,7 @@
             />
             <v-textarea
               v-if="observer.type === 'html' || observer.type === 'script'"
+              v-model="observer.options.script"
               label="Script"
               :rules="scriptRules"
               aria-required="true"
@@ -267,6 +269,15 @@ export default class ContainerEdit extends OrgContainer {
     ]
 
     return preset
+  }
+
+  get scriptTag() {
+    if (this.container?.script) {
+      // eslint-disable-next-line no-useless-escape
+      return `<script src="${this.container.script}"><\/script>`
+    }
+
+    return ''
   }
 
   async load() {
