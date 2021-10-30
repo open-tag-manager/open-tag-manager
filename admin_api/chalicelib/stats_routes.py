@@ -203,7 +203,7 @@ format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ') as datet,
 JSON_EXTRACT_SCALAR(qs, '$.dl') as url,
 JSON_EXTRACT_SCALAR(qs, '$.o_pl') AS p_url,
 MAX(JSON_EXTRACT_SCALAR(qs, '$.o_e_y')) as y,
-JSON_EXTRACT_SCALAR(qs, '$.cid') as uid
+JSON_EXTRACT_SCALAR(qs, '$.cid') as cid
 FROM {0}
 WHERE JSON_EXTRACT_SCALAR(qs, '$.o_s') LIKE 'scroll_%' AND {1}
 GROUP BY format_datetime(datetime, 'yyyy-MM-dd HH:00:00ZZ'), JSON_EXTRACT_SCALAR(qs, '$.dl'), JSON_EXTRACT_SCALAR(qs, '$.o_pl'), JSON_EXTRACT_SCALAR(qs, '$.cid')

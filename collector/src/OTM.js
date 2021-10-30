@@ -136,6 +136,9 @@ class OTM {
     collectParams.o_ps = this.prevState
     collectParams.o_s = this.state
     collectParams.o_r = uuidV4()
+    if (this.uid) {
+      collectParams.uid = this.uid
+    }
     if (target === 'pageview') {
       this.webCollector.pageview(collectParams)
     } else {
@@ -308,6 +311,7 @@ class OTM {
     this.state = null
     this.name = options.name || options.tid || ''
     this.org = options.org || options.organization || ''
+    this.uid = null
 
     this.webCollector = new WebCollector(this.name)
     this.webCollector.endpoint = endpoint
@@ -540,6 +544,14 @@ class OTM {
       script.setAttribute(name, attributes[name])
     }
     document.body.appendChild(script)
+  }
+
+  setUid (uid) {
+    this.uid = uid
+  }
+
+  unsetUid () {
+    this.uid = null
   }
 }
 

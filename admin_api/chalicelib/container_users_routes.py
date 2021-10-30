@@ -10,6 +10,7 @@ users_routes = Blueprint(__name__)
 def users_query(org, tid, stime, etime):
     return """SELECT
 JSON_EXTRACT_SCALAR(qs, '$.cid') as cid,
+JSON_EXTRACT_SCALAR(qs, '$.uid') as uid,
 COUNT(qs) as c
 FROM {0}
 WHERE org = '{1}'
@@ -19,7 +20,8 @@ AND year * 10000 + month * 100 + day <= {4}
 AND JSON_EXTRACT_SCALAR(qs, '$.o_s') IS NOT NULL
 AND datetime >= timestamp '{5}'
 AND datetime <= timestamp '{6}'
-GROUP BY JSON_EXTRACT_SCALAR(qs, '$.cid')
+GROUP BY JSON_EXTRACT_SCALAR(qs, '$.cid'),
+JSON_EXTRACT_SCALAR(qs, '$.uid')
 ORDER BY c DESC
 """.format(
         os.environ.get('STATS_ATHENA_TABLE'),
@@ -38,6 +40,7 @@ JSON_EXTRACT_SCALAR(qs, '$.o_s') AS state,
 JSON_EXTRACT_SCALAR(qs, '$.dt') AS dt, 
 JSON_EXTRACT_SCALAR(qs, '$.dl') AS dl, 
 JSON_EXTRACT_SCALAR(qs, '$.o_psid') AS psid,
+JSON_EXTRACT_SCALAR(qs, '$.uid') AS uid,
 cs_user_agent
 FROM {0}
 WHERE org = '{1}'
@@ -119,7 +122,8 @@ def container_users(org, name, execution_id):
         for row in r:
             items.append({
                 'cid': row['Data'][0]['VarCharValue'],
-                'c': int(row['Data'][1]['VarCharValue'])
+                'uid': None if not row['Data'][1] else row['Data'][1]['VarCharValue'],
+                'c': int(row['Data'][2]['VarCharValue'])
             })
 
         if 'NextToken' in result:
@@ -177,7 +181,8 @@ def container_users(org, name, cid, execution_id):
                 'dt': row['Data'][2]['VarCharValue'] if row['Data'][2] else None,
                 'dl': row['Data'][3]['VarCharValue'] if row['Data'][3] else None,
                 'psid': row['Data'][4]['VarCharValue'] if row['Data'][4] else None,
-                'cs_user_agent': row['Data'][5]['VarCharValue'] if row['Data'][5] else None
+                'uid': row['Data'][5]['VarCharValue'] if row['Data'][5] else None,
+                'cs_user_agent': row['Data'][6]['VarCharValue'] if row['Data'][6] else None
             })
 
         if 'NextToken' in result:

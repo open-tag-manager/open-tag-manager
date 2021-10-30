@@ -38,7 +38,20 @@
 
     <v-progress-linear v-if="isLoading" indeterminate />
 
-    <v-data-table :headers="headers" :items="items" @click:row="clickRow" />
+    <v-text-field
+      v-model="search"
+      append-icon="mdi-magnify"
+      label="Search"
+      single-line
+      hide-details
+    />
+
+    <v-data-table
+      :headers="headers"
+      :items="items"
+      :search="search"
+      @click:row="clickRow"
+    />
   </v-container>
 </template>
 
@@ -59,6 +72,7 @@ import { TableHeader } from '~/utils/api/table_header'
 @Component
 export default class Users extends OrgContainer {
   isLoading: boolean = false
+  search: string = ''
 
   datepickerModal: boolean = false
   date: string[] = [
@@ -84,8 +98,13 @@ export default class Users extends OrgContainer {
   get headers(): TableHeader[] {
     return [
       {
-        text: 'User ID',
+        text: 'Client ID',
         value: 'cid',
+        sortable: false,
+      },
+      {
+        text: 'User ID',
+        value: 'uid',
         sortable: false,
       },
       {

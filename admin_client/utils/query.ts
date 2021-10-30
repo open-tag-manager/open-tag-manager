@@ -1,11 +1,6 @@
 import API from '@aws-amplify/api'
-import Cookie from 'js-cookie'
-import {
-  IQueryExecution,
-  IQueryResult,
-  IQueryResultFile,
-} from '~/utils/api/query'
-import {IStatEventTableData, IStatUrlTableData} from '~/utils/api/stat'
+import { IQueryExecution, IQueryResultFile } from '~/utils/api/query'
+import { IStatEventTableData, IStatUrlTableData } from '~/utils/api/stat'
 
 const delay = (seconds: number): Promise<void> => {
   return new Promise((resolve) => {

@@ -46,8 +46,18 @@
         <ul>
           <li v-for="agent in userAgents" :key="agent">{{ agent }}</li>
         </ul>
+
+        User ID:
       </div>
     </div>
+
+    <v-text-field
+      v-model="search"
+      append-icon="mdi-magnify"
+      label="Search"
+      single-line
+      hide-details
+    />
 
     <v-data-table
       :headers="headers"
@@ -55,6 +65,7 @@
       :loading="isLoading"
       sort-by="datetime"
       group-by="psid"
+      :search="search"
       :items-per-page="-1"
       :show-group-by="false"
     />
@@ -86,6 +97,7 @@ export default class UserDetail extends OrgContainer {
   ]
 
   items: IContainerUserState[] = []
+  search: string = ''
 
   get cid(): string {
     return this.$route.params.cid
@@ -177,6 +189,11 @@ export default class UserDetail extends OrgContainer {
         value: 'psid',
         sortable: false,
       },
+      {
+        text: 'UserId',
+        value: 'uid',
+        sortable: false,
+      },
     ]
   }
 
@@ -205,6 +222,10 @@ export default class UserDetail extends OrgContainer {
     return [
       ...new Set(this.items.map((i) => decodeURIComponent(i.cs_user_agent))),
     ]
+  }
+
+  get userIds() {
+    return [...new Set(this.items.map((i) => i.uid))]
   }
 }
 </script>

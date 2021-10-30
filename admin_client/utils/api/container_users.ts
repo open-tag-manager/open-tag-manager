@@ -2,6 +2,7 @@
 
 export interface IContainerUser {
   cid: string
+  uid: string
   c: number
 }
 
@@ -11,6 +12,7 @@ export interface IContainerUserState {
   dt: string
   dl: string
   psid: string
+  uid: string
   cs_user_agent: string
 }
 
