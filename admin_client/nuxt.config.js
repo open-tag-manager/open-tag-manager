@@ -1,5 +1,11 @@
 require('dotenv').config()
 
+const headScript = []
+
+if (process.env.OTM_OTM_URL) {
+  headScript.push({ src: process.env.OTM_OTM_URL })
+}
+
 export default {
   // Disable server-side rendering (https://go.nuxtjs.dev/ssr-mode)
   ssr: false,
@@ -29,6 +35,7 @@ export default {
       { hid: 'description', name: 'description', content: '' },
     ],
     link: [{ rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }],
+    script: headScript,
   },
 
   // Global CSS (https://go.nuxtjs.dev/config-css)

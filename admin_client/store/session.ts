@@ -29,6 +29,9 @@ export default class Session extends VuexModule {
       this.context.commit('setUser', user)
       const otmUser: IUser = await API.get('OTMClientAPI', '/user', {})
       this.context.commit('setOtmUser', otmUser)
+      if (window.OTM) {
+        window.OTM.setUid(user.getUsername())
+      }
     } catch (_e) {}
   }
 
@@ -40,6 +43,10 @@ export default class Session extends VuexModule {
 
     this.context.commit('setUser', null)
     this.context.commit('setOtmUser', null)
+
+    if (window.OTM) {
+      window.OTM.unsetUid()
+    }
   }
 
   get hasAdminRole() {

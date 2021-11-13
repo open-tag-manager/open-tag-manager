@@ -233,7 +233,8 @@ def main():
         'COGNITO_USER_POOL_ID': cognito_user_pool_id,
         'COGNITO_USER_POOL_WEB_CLIENT_ID': cognito_user_pool_client_id,
         'COGNITO_COOKIE_STORAGE_DOMAIN': client_domain,
-        'COGNITO_COOKIE_SECURE': '1'
+        'COGNITO_COOKIE_SECURE': '1',
+        'OTM_OTM_URL': os.environ.get('OTM_OTM_URL') or ''
     }
 
     subprocess.run(['yarn', 'run', 'build'], env=client_build_env, cwd='./admin_client', check=True)
