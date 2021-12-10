@@ -1,6 +1,6 @@
 import API from '@aws-amplify/api'
 import { IQueryExecution, IQueryResultFile } from '~/utils/api/query'
-import { IStatEventTableData, IStatUrlTableData } from '~/utils/api/stat'
+import {IStatEventTableData, IStatPageviewTimeSeriesData, IStatUrlTableData} from '~/utils/api/stat'
 
 const delay = (seconds: number): Promise<void> => {
   return new Promise((resolve) => {
@@ -72,6 +72,21 @@ const tableQuery = async <T>(
   }
 
   throw new Error('File not found')
+}
+
+export const pageviewTimeSeriesQuery = async (
+  org: string,
+  container: string,
+  stime: number,
+  etime: number
+) => {
+  return await tableQuery<IStatPageviewTimeSeriesData>(
+    'pageview_time_series',
+    org,
+    container,
+    stime,
+    etime
+  )
 }
 
 export const urlTableQuery = async (

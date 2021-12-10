@@ -14,108 +14,47 @@
 
 <script lang="ts">
 import { Component, Vue, Prop, Watch } from 'vue-property-decorator'
-import { groupBy, sumBy, reduce, maxBy, sortBy } from 'lodash-es'
 import { pointer as d3pointer, select as d3select } from 'd3-selection'
 import { scaleTime, scaleLinear } from 'd3-scale'
 import { bisector as d3bisector, max as d3max, min as d3min } from 'd3-array'
 import { axisBottom, axisLeft } from 'd3-axis'
 import { timeFormat as d3timeFormat, timeFormat } from 'd3-time-format'
 import { line as d3line } from 'd3-shape'
-import { IStatDataTable } from '~/utils/api/stat'
+import { IStatPageviewTimeSeriesTable } from '~/utils/api/stat'
 
-/* eslint-disable camelcase */
-interface LineChartData {
-  datetime: Date
-  count: number
-  session_count: number
-  user_count: number
-  avg_scroll_y: number | null
-  max_scroll_y: number | null
-  event_count: number
-  w_click_count: number
-  t_click_count: number
-}
-/* eslint-enable */
+type LineChartItem = 'pageview_count' | 'session_count' | 'user_count'
 
 interface LineChartOption {
-  value: keyof LineChartData
+  value: LineChartItem
   text: string
+}
+
+interface LineChartData extends IStatPageviewTimeSeriesTable {
+  datetime: Date
 }
 
 @Component
 export default class StatLineChart extends Vue {
   @Prop({ type: Array, required: true })
-  data!: IStatDataTable[]
+  data!: IStatPageviewTimeSeriesTable[]
 
-  formattedData: LineChartData[] | null = null
-
-  yItem: keyof LineChartData = 'count'
+  yItem: LineChartItem = 'pageview_count'
 
   options: LineChartOption[] = [
-    { value: 'count', text: 'PV' },
+    { value: 'pageview_count', text: 'PV' },
     { value: 'session_count', text: 'Session' },
-    { value: 'user_count', text: 'User' },
-    { value: 'event_count', text: 'Event' },
-    { value: 'w_click_count', text: 'Widget Click' },
-    { value: 't_click_count', text: 'Trivial Click' },
-    { value: 'avg_scroll_y', text: 'Scroll(AVG)' },
-    { value: 'max_scroll_y', text: 'Scroll(MAX)' },
+    { value: 'user_count', text: 'User' }
   ]
 
   @Watch('yItem')
   onYItemChanged() {
-    this.formattedData = this.formatData
     this.renderGraph()
   }
 
-  get formatData(): LineChartData[] {
-    const result = []
-    const grouped = groupBy(this.data, 'datetime')
-    for (const datetime in grouped) {
-      const d = grouped[datetime]
-      const scrollCount = sumBy(d, 's_count')
-
-      const data: LineChartData = {
-        datetime: new Date(datetime),
-        count: sumBy(d, 'count'),
-        session_count: sumBy(d, 'session_count'),
-        user_count: sumBy(d, 'user_count'),
-        avg_scroll_y: null,
-        max_scroll_y: null,
-        event_count: sumBy(d, 'event_count'),
-        w_click_count: sumBy(d, 'w_click_count'),
-        t_click_count: sumBy(d, 't_click_count'),
-      }
-
-      if (scrollCount > 0) {
-        data.avg_scroll_y =
-          reduce(
-            d,
-            (r, o) => {
-              if (!o.s_count) {
-                return r
-              }
-
-              r += o.avg_scroll_y! * o.s_count
-              return r
-            },
-            0
-          ) / scrollCount
-        // eslint-disable-next-line camelcase
-        data.max_scroll_y = maxBy(d, 'max_scroll_y')?.max_scroll_y || null
-      }
-      result.push(data)
-    }
-
-    return sortBy(result, 'datetime')
-  }
-
   renderGraph() {
-    if (!this.formattedData) {
-      this.formattedData = this.formatData
-    }
-
-    const data = this.formattedData
+    const data: LineChartData[] = this.data.map((d) => {
+      return { ...d, datetime: new Date(d.date) }
+    })
     const componentElement = d3select(this.$el)
     const cl = componentElement.select('.line-chart')
     const width = (cl.node() as Element).clientWidth

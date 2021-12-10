@@ -301,6 +301,138 @@ ORDER BY count DESC
 """.format(os.environ.get('STATS_ATHENA_TABLE'), generate_base_criteria(org, tid, stime, etime))
 
 
+def pageview_time_series(org, tid, stime, etime):
+    return """
+WITH
+date_range as (SELECT 
+  FORMAT_DATETIME(dt, 'Y-MM-dd') as date
+FROM (SELECT 1)
+CROSS JOIN UNNEST(
+  sequence(
+    CAST('{0}' AS date),
+    CAST('{1}' AS date),
+    INTERVAL '1' DAY
+  )
+) AS t(dt)),
+pageview AS (
+  SELECT FORMAT_DATETIME(datetime, 'Y-MM-dd') as date, JSON_EXTRACT_SCALAR(qs, '$.o_psid') as psid, JSON_EXTRACT_SCALAR(qs, '$.cid') as cid 
+  FROM {2}
+  WHERE JSON_EXTRACT_SCALAR(qs, '$.o_s') = 'pageview' 
+  AND {3}
+),
+
+daily AS (SELECT dr.date as date, 
+COUNT(pageview.date) as pageview_count,
+COUNT(DISTINCT pageview.psid) as session_count,
+COUNT(DISTINCT pageview.cid) as user_count
+FROM 
+date_range dr
+LEFT OUTER JOIN pageview ON (pageview.date = dr.date)
+GROUP BY dr.date
+)
+
+SELECT
+*
+FROM (
+SELECT
+date,
+pageview_count,
+SUM(pageview_count) OVER (ORDER BY date ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) as pageview_count_3days,
+SUM(pageview_count) OVER (ORDER BY date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) as pageview_count_7days,
+SUM(pageview_count) OVER (ORDER BY date ROWS BETWEEN 13 PRECEDING AND CURRENT ROW) as pageview_count_14days,
+SUM(pageview_count) OVER (ORDER BY date ROWS BETWEEN 29 PRECEDING AND CURRENT ROW) as pageview_count_30days,
+session_count,
+SUM(session_count) OVER (ORDER BY date ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) as session_count_3days,
+SUM(session_count) OVER (ORDER BY date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) as session_count_7days,
+SUM(session_count) OVER (ORDER BY date ROWS BETWEEN 13 PRECEDING AND CURRENT ROW) as session_count_14days,
+SUM(session_count) OVER (ORDER BY date ROWS BETWEEN 29 PRECEDING AND CURRENT ROW) as session_count_30days,
+user_count,
+SUM(user_count) OVER (ORDER BY date ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) as user_count_3days,
+SUM(user_count) OVER (ORDER BY date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) as user_count_7days,
+SUM(user_count) OVER (ORDER BY date ROWS BETWEEN 13 PRECEDING AND CURRENT ROW) as user_count_14days,
+SUM(user_count) OVER (ORDER BY date ROWS BETWEEN 29 PRECEDING AND CURRENT ROW) as user_count_30days
+FROM
+daily
+) 
+WHERE date >= '{4}'
+ORDER BY date ASC
+""".format(
+        (stime - datetime.timedelta(days=1)).strftime('%Y-%m-%d'),
+        etime.strftime('%Y-%m-%d'),
+        os.environ.get('STATS_ATHENA_TABLE'),
+        generate_base_criteria(org, tid, stime, etime),
+        stime.strftime('%Y-%m-%d')
+    )
+
+
+@stats_routes.route('/start_query_pageview_time_series', methods=['POST'], cors=True, authorizer=authorizer)
+@check_org_permission('read')
+@check_json_body({
+    'stime': {'type': 'integer', 'required': True},
+    'etime': {'type': 'integer', 'required': True}
+})
+def make_container_stats_start_pageview_time_series(org, name):
+    request = app.current_request
+    body = request.json_body
+    stime = datetime.datetime.utcfromtimestamp(int(body['stime']) / 1000)
+    etime = datetime.datetime.utcfromtimestamp(int(body['etime']) / 1000)
+
+
+    q = pageview_time_series(org, name, stime, etime)
+    execution_id = execute_athena_query(q, token='pageview_time_series')
+
+    return {'execution_id': execution_id}
+
+
+@stats_routes.route('/query_result_pageview_time_series', methods=['POST'], cors=True, authorizer=authorizer)
+@check_org_permission('read')
+@check_json_body({
+    'execution_id': {'type': 'string', 'required': True},
+    'stime': {'type': 'integer', 'required': True},
+    'etime': {'type': 'integer', 'required': True}
+})
+def make_container_query_result_pageview_time_series(org, name):
+    request = app.current_request
+    body = request.json_body
+    execution_id = body['execution_id']
+    stime = datetime.datetime.utcfromtimestamp(int(body['stime']) / 1000)
+    etime = datetime.datetime.utcfromtimestamp(int(body['etime']) / 1000)
+
+    state_result = athena_client.get_query_execution(
+        QueryExecutionId=execution_id,
+    )
+    file = None
+    # QUEUED | RUNNING | SUCCEEDED | FAILED | CANCELLED
+    state = state_result['QueryExecution']['Status']['State']
+    if state == 'SUCCEEDED':
+        result_data = s3.Bucket(os.environ.get('STATS_ATHENA_RESULT_BUCKET')).Object('%s.csv' % (execution_id)).get()
+        pd_data = pd.read_csv(result_data['Body'], encoding='utf-8')
+
+        result = []
+
+        for index, row in pd_data.iterrows():
+            result.append(json.loads(row.to_json()))
+
+        target = s3.Object(os.environ.get('OTM_STATS_BUCKET'), generate_object_name(org, name, stime, etime, 'pageview_time_series'))
+        target.put(Body=json.dumps({
+            'meta': {
+                'stime': int(stime.timestamp() * 1000),
+                'etime': int(etime.timestamp() * 1000),
+                'tid': name,
+                'version': 4,
+                'type': 'pageview_time_series'
+            },
+            'table': result
+        }, ensure_ascii=False), ContentType='application/json; charset=utf-8')
+        file = s3_client.generate_presigned_url('get_object', {'Key': target.key, 'Bucket': target.bucket_name})
+        save_athena_usage_report(org, name, state_result)
+
+    return {
+        'state': state,
+        'file': file
+    }
+
+
 @stats_routes.route('/start_query_url_table', methods=['POST'], cors=True, authorizer=authorizer)
 @check_org_permission('read')
 @check_json_body({

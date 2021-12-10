@@ -44,6 +44,27 @@ export interface IStatDataTable {
   avg_plt?: number
 }
 
+export interface IStatPageviewTimeSeriesTable {
+  date: string
+  pageview_count: number
+  pageview_count_3days: number
+  pageview_count_7days: number
+  pageview_count_15days: number
+  pageview_count_30days: number
+
+  session_count: number
+  session_count_3days: number
+  session_count_7days: number
+  session_count_15days: number
+  session_count_30days: number
+
+  user_count: number
+  user_count_3days: number
+  user_count_7days: number
+  user_count_15days: number
+  user_count_30days: number
+}
+
 export interface IStatDataLink {
   count: number
   url: string
@@ -73,5 +94,10 @@ export interface IStatUrlTableData {
 export interface IStatEventTableData {
   meta: IStatDataMeta
   table: IStatEventTable[]
+}
+
+export interface IStatPageviewTimeSeriesData {
+  meta: IStatDataMeta
+  table: IStatPageviewTimeSeriesTable[]
 }
 /* eslint-enable */

@@ -35,7 +35,7 @@
         </v-date-picker>
       </v-dialog>
     </div>
-    <stat-line-chart v-if="!isLoading" :data="table" />
+    <stat-line-chart v-if="!isLoading" :data="pageviewTimeSeries" />
     <v-data-table :headers="headers" :items="table" :loading="isLoading">
     </v-data-table>
   </v-container>
@@ -49,10 +49,10 @@ import {
   sub as dateSub,
 } from 'date-fns'
 import { IContainer } from '~/utils/api/container'
-import { IStatDataTable } from '~/utils/api/stat'
+import { IStatDataTable, IStatPageviewTimeSeriesTable } from '~/utils/api/stat'
 import StatLineChart from '~/components/StatLineChart.vue'
 import OrgContainer from '~/components/OrgContainer'
-import { urlTableQuery } from '~/utils/query'
+import { pageviewTimeSeriesQuery, urlTableQuery } from '~/utils/query'
 @Component({
   components: { StatLineChart },
 })
@@ -63,6 +63,8 @@ export default class UrlTable extends OrgContainer {
 
   container?: IContainer
   table: IStatDataTable[] = []
+  pageviewTimeSeries: IStatPageviewTimeSeriesTable[] = []
+
   date: string[] = [
     dateFormat(dateSub(new Date(), { weeks: 1 }), 'yyyy-MM-dd'),
     dateFormat(new Date(), 'yyyy-MM-dd'),
@@ -153,6 +155,15 @@ export default class UrlTable extends OrgContainer {
       dateParse(date[1], 'yyyy-MM-dd', new Date()).getTime()
     )
     this.table = result.table
+
+    const pageviewSeries = await pageviewTimeSeriesQuery(
+      this.currentOrg,
+      this.currentContainer,
+      dateParse(date[0], 'yyyy-MM-dd', new Date()).getTime(),
+      dateParse(date[1], 'yyyy-MM-dd', new Date()).getTime()
+    )
+    this.pageviewTimeSeries = pageviewSeries.table
+
     this.isLoading = false
   }
 
