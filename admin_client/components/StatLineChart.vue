@@ -31,6 +31,7 @@ interface LineChartOption {
 
 interface LineChartData extends IStatPageviewTimeSeriesTable {
   datetime: Date
+  [key: string]: any
 }
 
 @Component
@@ -43,7 +44,7 @@ export default class StatLineChart extends Vue {
   options: LineChartOption[] = [
     { value: 'pageview_count', text: 'PV' },
     { value: 'session_count', text: 'Session' },
-    { value: 'user_count', text: 'User' }
+    { value: 'user_count', text: 'User' },
   ]
 
   @Watch('yItem')
@@ -109,13 +110,44 @@ export default class StatLineChart extends Vue {
       .append('path')
       .datum(data)
       .attr('fill', 'none')
+      .attr('stroke', 'red')
+      .attr('stroke-width', 1.5)
+      .attr(
+        'd',
+        d3line<LineChartData>()
+          .x((d) => xScale(d.datetime))
+          .y((d) => yScale(d[this.yItem]))
+      )
+
+    svg
+      .append('path')
+      .datum(data)
+      .attr('fill', 'none')
       .attr('stroke', 'steelblue')
       .attr('stroke-width', 1.5)
       .attr(
         'd',
         d3line<LineChartData>()
           .x((d) => xScale(d.datetime))
-          .y((d) => yScale(d[this.yItem] as number))
+          .y((d) => {
+            return yScale((d[`${this.yItem}_30days`] as number) / 30)
+          })
+      )
+
+    svg
+      .append('path')
+      .datum(data)
+      .attr('fill', 'none')
+      .attr('stroke', 'pink')
+      .attr('stroke-width', 1.5)
+      .attr(
+        'd',
+        d3line<LineChartData>()
+          .x((d) => xScale(d.datetime))
+          .y((d) => {
+            console.log(d.pageview_count_14days)
+            return yScale((d[`${this.yItem}_14days`] as number) / 14)
+          })
       )
 
     const focus = svg

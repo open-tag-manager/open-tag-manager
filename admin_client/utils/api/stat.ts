@@ -49,19 +49,19 @@ export interface IStatPageviewTimeSeriesTable {
   pageview_count: number
   pageview_count_3days: number
   pageview_count_7days: number
-  pageview_count_15days: number
+  pageview_count_14days: number
   pageview_count_30days: number
 
   session_count: number
   session_count_3days: number
   session_count_7days: number
-  session_count_15days: number
+  session_count_14days: number
   session_count_30days: number
 
   user_count: number
   user_count_3days: number
   user_count_7days: number
-  user_count_15days: number
+  user_count_14days: number
   user_count_30days: number
 }
 

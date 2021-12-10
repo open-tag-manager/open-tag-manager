@@ -357,10 +357,10 @@ daily
 WHERE date >= '{4}'
 ORDER BY date ASC
 """.format(
-        (stime - datetime.timedelta(days=1)).strftime('%Y-%m-%d'),
+        (stime - datetime.timedelta(days=30)).strftime('%Y-%m-%d'),
         etime.strftime('%Y-%m-%d'),
         os.environ.get('STATS_ATHENA_TABLE'),
-        generate_base_criteria(org, tid, stime, etime),
+        generate_base_criteria(org, tid, (stime - datetime.timedelta(days=30)), etime),
         stime.strftime('%Y-%m-%d')
     )
 
