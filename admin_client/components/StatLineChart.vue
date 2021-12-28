@@ -1,5 +1,23 @@
 <template>
   <div class="stat-line-chart">
+    <div class="guide d-flex">
+      <div class="mr-4">Date: {{ selectedDate }}</div>
+      <div class="data mr-4">
+        <span class="mark">●</span>
+        <span class="label mr-1">{{ selectedLabel }}:</span>
+        <span class="number">{{ dataNum }}</span>
+      </div>
+      <div class="data-ma-14 mr-4">
+        <span class="mark">●</span>
+        <span class="label mr-1">MA(14):</span>
+        <span class="number">{{ dataNumMa14 }}</span>
+      </div>
+      <div class="data-ma-30">
+        <span class="mark">●</span>
+        <span class="label mr-1">MA(30):</span>
+        <span class="number">{{ dataNumMa30 }}</span>
+      </div>
+    </div>
     <div class="line-chart" />
     <v-radio-group v-model="yItem" row>
       <v-radio
@@ -18,7 +36,8 @@ import { pointer as d3pointer, select as d3select } from 'd3-selection'
 import { scaleTime, scaleLinear } from 'd3-scale'
 import { bisector as d3bisector, max as d3max, min as d3min } from 'd3-array'
 import { axisBottom, axisLeft } from 'd3-axis'
-import { timeFormat as d3timeFormat, timeFormat } from 'd3-time-format'
+import { timeFormat } from 'd3-time-format'
+import { format as numberFormat } from 'd3-format'
 import { line as d3line } from 'd3-shape'
 import { IStatPageviewTimeSeriesTable } from '~/utils/api/stat'
 
@@ -47,9 +66,47 @@ export default class StatLineChart extends Vue {
     { value: 'user_count', text: 'User' },
   ]
 
+  selected: LineChartData | null = null
+
   @Watch('yItem')
   onYItemChanged() {
     this.renderGraph()
+  }
+
+  get selectedDate() {
+    if (this.selected) {
+      return timeFormat('%Y-%m-%d')(this.selected.datetime)
+    }
+
+    return '-'
+  }
+
+  get selectedLabel() {
+    return this.options.find((o) => o.value === this.yItem)?.text
+  }
+
+  get dataNum() {
+    if (this.selected) {
+      return numberFormat(',')(this.selected[this.yItem])
+    }
+
+    return '-'
+  }
+
+  get dataNumMa14() {
+    if (this.selected) {
+      return numberFormat(',.2r')(this.selected[`${this.yItem}_14days`] / 14)
+    }
+
+    return '-'
+  }
+
+  get dataNumMa30() {
+    if (this.selected) {
+      return numberFormat(',.2r')(this.selected[`${this.yItem}_30days`] / 30)
+    }
+
+    return '-'
   }
 
   renderGraph() {
@@ -110,7 +167,7 @@ export default class StatLineChart extends Vue {
       .append('path')
       .datum(data)
       .attr('fill', 'none')
-      .attr('stroke', 'red')
+      .attr('class', 'data')
       .attr('stroke-width', 1.5)
       .attr(
         'd',
@@ -123,7 +180,7 @@ export default class StatLineChart extends Vue {
       .append('path')
       .datum(data)
       .attr('fill', 'none')
-      .attr('stroke', 'steelblue')
+      .attr('class', 'data-ma-30')
       .attr('stroke-width', 1.5)
       .attr(
         'd',
@@ -138,14 +195,13 @@ export default class StatLineChart extends Vue {
       .append('path')
       .datum(data)
       .attr('fill', 'none')
-      .attr('stroke', 'pink')
+      .attr('class', 'data-ma-14')
       .attr('stroke-width', 1.5)
       .attr(
         'd',
         d3line<LineChartData>()
           .x((d) => xScale(d.datetime))
           .y((d) => {
-            console.log(d.pageview_count_14days)
             return yScale((d[`${this.yItem}_14days`] as number) / 14)
           })
       )
@@ -157,13 +213,6 @@ export default class StatLineChart extends Vue {
       .style('stroke', 'black')
       .style('r', 3)
       .style('opacity', 0)
-    const focusText = cl
-      .append('div')
-      .attr('class', 'focus-text')
-      .style('opacity', 0)
-      .style('text-align', 'center')
-      .style('position', 'absolute')
-      .style('z-index', 255)
 
     const bisect = d3bisector((d: LineChartData) => {
       return d.datetime
@@ -177,11 +226,9 @@ export default class StatLineChart extends Vue {
       .attr('height', height)
       .on('mouseover', () => {
         focus.style('opacity', 1)
-        focusText.style('opacity', 0.5)
       })
       .on('mouseout', () => {
         focus.style('opacity', 0)
-        focusText.style('opacity', 0)
       })
       .on('mousemove', (event) => {
         let d = null
@@ -203,20 +250,10 @@ export default class StatLineChart extends Vue {
           d = data[0]
         }
         if (d) {
-          const formatTime = d3timeFormat('%Y-%m-%d')
           focus
             .attr('cx', xScale(d.datetime))
             .attr('cy', yScale(d[this.yItem] as number))
-          focusText
-            .html(formatTime(d.datetime) + ': ' + d[this.yItem])
-            .style('top', yScale(d[this.yItem] as number) - 60 + 'px')
-
-          const x = xScale(d.datetime)
-          if (x > width - width / 6) {
-            focusText.style('left', `${x - 150}px`)
-          } else {
-            focusText.style('left', `${x}px`)
-          }
+          this.selected = d
         }
       })
   }
@@ -227,15 +264,53 @@ export default class StatLineChart extends Vue {
 }
 </script>
 
-<style lang="scss">
+<style lang="scss" scoped>
+$data-color: red;
+$data-ma-14-color: pink;
+$data-ma-30-color: steelblue;
+
 .stat-line-chart {
-  .line-chart {
+  ::v-deep .line-chart {
     position: relative;
-    .focus-text {
-      background-color: white;
-      border: 1px solid #333333;
-      padding: 8px;
-      white-space: nowrap;
+
+    .data {
+      stroke: $data-color;
+    }
+
+    .data-ma-14 {
+      stroke: $data-ma-14-color;
+    }
+
+    .data-ma-30 {
+      stroke: $data-ma-30-color;
+    }
+  }
+
+  .guide {
+    padding: 0.5rem 0 0.5rem 80px;
+
+    .number {
+      display: inline-block;
+      text-align: right;
+      min-width: 30px;
+    }
+
+    .data {
+      .mark {
+        color: $data-color;
+      }
+    }
+
+    .data-ma-14 {
+      .mark {
+        color: $data-ma-14-color;
+      }
+    }
+
+    .data-ma-30 {
+      .mark {
+        color: $data-ma-30-color;
+      }
     }
   }
 }
