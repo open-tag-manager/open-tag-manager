@@ -64,9 +64,10 @@ Hello<br>
 Hello<br>
 Hello<br>
 Hello
-<script src="otm.js"></script>
+<script src="otm.js" defer></script>
 <script>
-  OTM.init('https://s3-REGION-1.amazonaws.com/BUCKET/index.html', {
+  window.otmLayer = window.otmLayer || []
+  otmLayer.push({event: 'otm.init', collect: 'https://s3-REGION-1.amazonaws.com/BUCKET/index.html', config: {
     observers: [
       {
         name: 'pv',
@@ -164,7 +165,7 @@ Hello
         }
       }
     ]
-  });
+  }});
 </script>
 <script>
   // sample test script

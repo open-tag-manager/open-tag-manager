@@ -274,7 +274,7 @@ export default class ContainerEdit extends OrgContainer {
   get scriptTag() {
     if (this.container?.script) {
       // eslint-disable-next-line no-useless-escape
-      return `<script src="${this.container.script}"><\/script>`
+      return `<script src="${this.container.script}" async><\/script>`
     }
 
     return ''

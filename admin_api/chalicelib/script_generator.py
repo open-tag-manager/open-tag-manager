@@ -22,21 +22,7 @@ class ScriptGenerator:
         self._config = config
 
     def generate(self):
-        return '''(function() {
-var script = document.createElement('script');
-script.src = "%s";
-script.onload = function() {
-  OTM.init("%s", %s)
-}
-if (document.readyState === 'loading') {
-  window.addEventListener('DOMContentLoaded', function() {
-    document.body.appendChild(script);
-  });
-} else {
-  document.body.appendChild(script);
-}
-})()
-''' % (self._src_url, self._collect_url, json.dumps(self._config, ensure_ascii=False, default=decimal_default_proc))
+        return '''(function(w,d,s,l,u,c,n){w[l]=w[l] || [];w[l].push({event:'otm.init',collect:c,config:n});var f=d.getElementsByTagName(s)[0],j=d.createElement(s);j.async=true;j.src=u;f.parentNode.insertBefore(j,f)})(window,document,'script','otmLayer','%s','%s',%s)''' % (self._src_url, self._collect_url, json.dumps(self._config, ensure_ascii=False, default=decimal_default_proc))
 
 
 def main():
