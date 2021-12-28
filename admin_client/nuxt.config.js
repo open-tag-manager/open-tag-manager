@@ -55,6 +55,7 @@ export default {
     link: [{ rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }],
     script: headScript,
     noscript: headNoScript,
+    __dangerouslyDisableSanitizers: ['script'],
   },
 
   // Global CSS (https://go.nuxtjs.dev/config-css)
