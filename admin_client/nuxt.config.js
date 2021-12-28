@@ -1,9 +1,27 @@
 require('dotenv').config()
 
 const headScript = []
+const headNoScript = []
 
+if (process.env.OTM_OTM_SCRIPTS) {
+  process.env.OTM_OTM_SCRIPTS.split(/ /).forEach((s) => {
+    headScript.push({ src: s })
+  })
+}
 if (process.env.OTM_OTM_URL) {
   headScript.push({ src: process.env.OTM_OTM_URL })
+}
+if (process.env.OTM_HEAD_SCRIPT) {
+  headScript.push({
+    hid: 'otm_head',
+    innerHTML: process.env.OTM_HEAD_SCRIPT,
+  })
+}
+if (process.env.OTM_HEAD_NOSCRIPT) {
+  headNoScript.push({
+    hid: 'otm_no_script',
+    innerHTML: process.env.OTM_HEAD_NOSCRIPT,
+  })
 }
 
 export default {
@@ -36,6 +54,7 @@ export default {
     ],
     link: [{ rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }],
     script: headScript,
+    noscript: headNoScript,
   },
 
   // Global CSS (https://go.nuxtjs.dev/config-css)
