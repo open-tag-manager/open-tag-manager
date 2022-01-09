@@ -13,7 +13,7 @@ const processLayer = (data) => {
         otm.init(data['collect'], data['config'])
         break
       case 'otm.setuid':
-        otm.setUid(data['uid'])
+        otm.setUid(data['uid'], data['uhash'] || null)
         break
       case 'otm.unsetuid':
         otm.unsetUid()

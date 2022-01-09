@@ -138,6 +138,7 @@ class OTM {
     collectParams.o_r = uuidV4()
     if (this.uid) {
       collectParams.uid = this.uid
+      collectParams.uhash = this.uhash
     }
     if (target === 'pageview') {
       this.webCollector.pageview(collectParams)
@@ -546,12 +547,14 @@ class OTM {
     document.body.appendChild(script)
   }
 
-  setUid (uid) {
+  setUid (uid, uhash = null) {
     this.uid = uid
+    this.uhash = uhash
   }
 
   unsetUid () {
     this.uid = null
+    this.uhash = null
   }
 }
 

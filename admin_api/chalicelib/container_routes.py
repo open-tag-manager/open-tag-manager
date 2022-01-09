@@ -8,6 +8,7 @@ import random
 import time
 import os
 import json
+import uuid
 from boto3.dynamodb.conditions import Key
 from decimal import Decimal
 
@@ -72,7 +73,8 @@ def create_container(org):
         'observers': [],
         'triggers': [],
         'domains': [],
-        'swagger_doc': {}
+        'swagger_doc': {},
+        'hash_key': str(uuid.uuid4())
     }
 
     get_container_table().put_item(Item=new_container)
@@ -133,7 +135,7 @@ def put_container(org, name):
         prefix = org + '/'
 
     generator = ScriptGenerator(os.environ.get('OTM_URL'), os.environ.get('COLLECT_URL'))
-    generator.import_config(current_container)
+    generator.import_config({k: v for k, v in current_container.items() if not k == 'hash_key'})
     script = generator.generate()
     uploader = S3Uploader(None, script_bucket=os.environ.get('OTM_BUCKET'), otm_path=os.environ.get('OTM_URL'))
     uploader.upload_script(prefix + name + '.js', script)
@@ -141,6 +143,10 @@ def put_container(org, name):
     current_container['script'] = uploader.script_url()
     if os.environ.get('OTM_SCRIPT_CDN'):
         current_container['script'] = uploader.script_url_cdn(os.environ.get('OTM_SCRIPT_CDN'))
+
+    # Set hash_key to container data
+    if 'hash_key' not in current_container:
+        current_container['hash_key'] = str(uuid.uuid4())
 
     get_container_table().put_item(Item=current_container)
 
@@ -151,7 +157,7 @@ def put_container(org, name):
 @check_org_permission('write')
 def delete_container(org, name):
     container_info = get_container_table().get_item(Key={'tid': name})
-    if not 'Item' in container_info:
+    if 'Item' not in container_info:
         return Response(body={'error': 'not found'}, status_code=404)
 
     prefix = ''

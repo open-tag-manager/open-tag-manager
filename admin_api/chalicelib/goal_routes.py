@@ -7,6 +7,7 @@ import uuid
 
 goal_routes = Blueprint(__name__)
 
+
 @goal_routes.route('/', methods=['GET'], cors=True, authorizer=authorizer)
 @check_org_permission('read')
 def get_container_goals(org, name):
