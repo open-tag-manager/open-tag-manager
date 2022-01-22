@@ -4,6 +4,14 @@
       <h1 class="mb-4">{{ container.label }}'s configuration</h1>
       <v-text-field v-model="container.script" readonly label="Script URL" />
       <v-text-field :value="scriptTag" readonly label="Script Tag" />
+      <v-text-field
+        :value="container.hash_key"
+        :type="showHashKey ? 'text' : 'password'"
+        readonly
+        label="Hash Key (Keep secret)"
+        :append-icon="showHashKey ? 'mdi-eye' : 'mdi-eye-off'"
+        @click:append="() => (showHashKey = !showHashKey)"
+      />
       <v-form ref="form" lazy-validation @submit.prevent="save">
         <h2 class="mb-4">Basic configuration</h2>
         <v-text-field
@@ -187,6 +195,8 @@ export default class ContainerEdit extends OrgContainer {
 
   snackbarMessage: string = ''
   snackbar: boolean = false
+
+  showHashKey: boolean = false
 
   actionDataParamRule(p: any) {
     if (p && p.required) {

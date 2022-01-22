@@ -13,6 +13,8 @@ export interface IContainerUserState {
   dl: string
   psid: string
   uid: string
+  uhash: string
+  is_verified: boolean
   cs_user_agent: string
 }
 

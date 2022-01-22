@@ -48,6 +48,9 @@
         </ul>
 
         User ID:
+        <ul>
+          <li v-for="id in userIds" :key="id">{{ id }}</li>
+        </ul>
       </div>
     </div>
 
@@ -225,7 +228,17 @@ export default class UserDetail extends OrgContainer {
   }
 
   get userIds() {
-    return [...new Set(this.items.map((i) => i.uid))]
+    return [
+      ...new Set(
+        this.items.map((i) => {
+          if (i.uid) {
+            return `${i.uid} (verified=${i.is_verified})`
+          }
+
+          return null
+        })
+      ),
+    ].filter((d) => d)
   }
 }
 </script>

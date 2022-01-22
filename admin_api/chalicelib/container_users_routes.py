@@ -1,5 +1,6 @@
 from chalice import Blueprint, Response
-from . import app, authorizer, athena_client, s3, execute_athena_query, save_athena_usage_report
+from . import app, authorizer, athena_client, execute_athena_query, save_athena_usage_report
+from .dynamodb import get_container_table
 from .decorator import check_org_permission, check_json_body
 import os
 import datetime
@@ -34,25 +35,28 @@ ORDER BY c DESC
     )
 
 
-def user_query(org, tid, cid, stime, etime):
+def user_query(org, tid, cid, stime, etime, hash_key):
     return """SELECT datetime,
 JSON_EXTRACT_SCALAR(qs, '$.o_s') AS state,
 JSON_EXTRACT_SCALAR(qs, '$.dt') AS dt, 
 JSON_EXTRACT_SCALAR(qs, '$.dl') AS dl, 
 JSON_EXTRACT_SCALAR(qs, '$.o_psid') AS psid,
 JSON_EXTRACT_SCALAR(qs, '$.uid') AS uid,
+JSON_EXTRACT_SCALAR(qs, '$.uhash') AS uhash,
+TO_HEX(hmac_sha256(TO_UTF8(JSON_EXTRACT_SCALAR(qs, '$.uid')), TO_UTF8('{0}'))) = upper(JSON_EXTRACT_SCALAR(qs, '$.uhash')) as is_verified,
 cs_user_agent
-FROM {0}
-WHERE org = '{1}'
-AND tid = '{2}'
-AND year * 10000 + month * 100 + day >= {3}
-AND year * 10000 + month * 100 + day <= {4}
+FROM {1}
+WHERE org = '{2}'
+AND tid = '{3}'
+AND year * 10000 + month * 100 + day >= {4}
+AND year * 10000 + month * 100 + day <= {5}
 AND JSON_EXTRACT_SCALAR(qs, '$.o_s') IS NOT NULL
-AND datetime >= timestamp '{5}'
-AND datetime <= timestamp '{6}'
-AND JSON_EXTRACT_SCALAR(qs, '$.cid') = '{7}'
+AND datetime >= timestamp '{6}'
+AND datetime <= timestamp '{7}'
+AND JSON_EXTRACT_SCALAR(qs, '$.cid') = '{8}'
 ORDER BY  datetime DESC 
 """.format(
+        hash_key or '',
         os.environ.get('STATS_ATHENA_TABLE'),
         org,
         tid,
@@ -147,9 +151,17 @@ def container_users(org, name, execution_id):
 def container_user_start_query(org, name, cid):
     request = app.current_request
     body = request.json_body
+    container_info = get_container_table().get_item(Key={'tid': name})
+    if not 'Item' in container_info:
+        return Response(body={'error': 'not found'}, status_code=404)
+
+    hash_key = None
+    if 'hash_key' in container_info:
+        hash_key = container_info['hash_key']
+
     stime = int(body['stime'])
     etime = int(body['etime'])
-    execution_id = execute_athena_query(user_query(org, name, cid, stime, etime), token='user_detail')
+    execution_id = execute_athena_query(user_query(org, name, cid, stime, etime, hash_key), token='user_detail')
     return {'execution_id': execution_id}
 
 
@@ -182,7 +194,9 @@ def container_users(org, name, cid, execution_id):
                 'dl': row['Data'][3]['VarCharValue'] if row['Data'][3] else None,
                 'psid': row['Data'][4]['VarCharValue'] if row['Data'][4] else None,
                 'uid': row['Data'][5]['VarCharValue'] if row['Data'][5] else None,
-                'cs_user_agent': row['Data'][6]['VarCharValue'] if row['Data'][6] else None
+                'uhash': row['Data'][6]['VarCharValue'] if row['Data'][6] else None,
+                'is_verified': row['Data'][7]['VarCharValue'] if row['Data'][7] else False,
+                'cs_user_agent': row['Data'][8]['VarCharValue'] if row['Data'][8] else None,
             })
 
         if 'NextToken' in result:
