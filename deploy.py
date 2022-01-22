@@ -123,7 +123,7 @@ def main():
 
     sns_topic = [x for x in common_resources if x['address'] == 'aws_sns_topic.otm_collect_log_topic'][0]['values']['name']
 
-    athena_database = [x for x in common_resources if x['address'] == 'aws_glue_catalog_database.otm'][0]['values']['id']
+    athena_database = [x for x in common_resources if x['address'] == 'aws_glue_catalog_database.otm'][0]['values']['name']
 
     cognito_identify_pool_values = [x for x in common_resources if x['address'] == 'aws_cognito_identity_pool.otm'][0]['values']
     cognito_identify_pool_id = cognito_identify_pool_values['id']
