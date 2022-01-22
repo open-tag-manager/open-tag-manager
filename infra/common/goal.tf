@@ -18,7 +18,7 @@ resource "aws_batch_job_definition" "otm_data_retriever_goal" {
     {"name": "OTM_STATS_PREFIX", "value": "stats/"},
     {"name": "OTM_USAGE_PREFIX", "value": "usage/"},
     {"name": "STATS_ATHENA_RESULT_BUCKET", "value": "${aws_s3_bucket.otm_athena.bucket}"},
-    {"name": "STATS_ATHENA_DATABASE", "value": "${aws_athena_database.otm.name}"},
+    {"name": "STATS_ATHENA_DATABASE", "value": "${aws_glue_catalog_database.otm.name}"},
     {"name": "STATS_ATHENA_TABLE", "value": "otm_collect"},
     {"name": "OTM_CONTAINER_DYNAMODB_TABLE", "value": "${aws_dynamodb_table.otm_container.name}"}
   ],

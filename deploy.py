@@ -120,7 +120,7 @@ def main():
 
     sns_topic = [x for x in common_resources if x['address'] == 'aws_sns_topic.otm_collect_log_topic'][0]['values']['name']
 
-    athena_database = [x for x in common_resources if x['address'] == 'aws_athena_database.otm'][0]['values']['id']
+    athena_database = [x for x in common_resources if x['address'] == 'aws_glue_catalog_database.otm'][0]['values']['id']
 
     cognito_identify_pool_values = [x for x in common_resources if x['address'] == 'aws_cognito_identity_pool.otm'][0]['values']
     cognito_identify_pool_id = cognito_identify_pool_values['id']
@@ -279,98 +279,9 @@ def main():
     subprocess.run(['chalice', 'deploy', '--no-autogen-policy', '--stage=%s' % environment], cwd='./log_formatter',
                    env=local_env, check=True)
 
-    print('8. make athena table')
-    print('8.1. collect table')
-    athena_query = '''
-CREATE EXTERNAL TABLE IF NOT EXISTS %s.otm_collect(
-  `datetime` timestamp,
-  `x_edge_location` string,
-  `sc_bytes` string,
-  `c_ip` string,
-  `cs_method` string,
-  `cs_host` string,
-  `cs_uri_stem` string,
-  `cs_status` string,
-  `cs_referer` string,
-  `cs_user_agent` string,
-  `cs_uri_query` string,
-  `cs_cookie` string,
-  `cs_x_edge_result_type` string,
-  `cs_x_edge_request_id` string,
-  `x_host_header` string,
-  `cs_protocol` string,
-  `cs_bytes` string,
-  `time_taken` string,
-  `x_forwarded_for` string,
-  `ssl_protocol` string,
-  `ssl_cipher` string,
-  `x_edge_response_result_type` string,
-  `cs_protocol_version` string,
-  `fle_status` string,
-  `fle_encrypted_fields` string,
-  `qs` string
-)
-PARTITIONED BY (
-  `org` string,
-  `tid` string,
-  `year` int,
-  `month` int,
-  `day` int)
-ROW FORMAT SERDE
-  'org.openx.data.jsonserde.JsonSerDe'
-STORED AS INPUTFORMAT
-  'org.apache.hadoop.mapred.TextInputFormat'
-OUTPUTFORMAT
-  'org.apache.hadoop.hive.ql.io.IgnoreKeyTextOutputFormat'
-LOCATION
-  's3://%s/formatted'
-TBLPROPERTIES ('has_encrypted_data'='false')
-''' % (athena_database, collect_log_bucket)
-    subprocess.run([
-        'aws',
-        'athena',
-        'start-query-execution',
-        '--query-string',
-        athena_query,
-        '--result-configuration',
-        'OutputLocation=s3://%s/deploy' % athena_bucket
-    ], check=True)
-
-    print('8.2. usage table')
-    athena_query = '''
-CREATE EXTERNAL TABLE IF NOT EXISTS %s.otm_usage(
-  `type` string,
-  `size` bigint
-)
-PARTITIONED BY (
-  `org` string,
-  `tid` string,
-  `year` int,
-  `month` int,
-  `day` int)
-ROW FORMAT SERDE
-  'org.openx.data.jsonserde.JsonSerDe'
-STORED AS INPUTFORMAT
-  'org.apache.hadoop.mapred.TextInputFormat'
-OUTPUTFORMAT
-  'org.apache.hadoop.hive.ql.io.IgnoreKeyTextOutputFormat'
-LOCATION
-  's3://%s/usage'
-TBLPROPERTIES ('has_encrypted_data'='false')
-''' % (athena_database, stat_bucket)
-    subprocess.run([
-        'aws',
-        'athena',
-        'start-query-execution',
-        '--query-string',
-        athena_query,
-        '--result-configuration',
-        'OutputLocation=s3://%s/deploy' % athena_bucket
-    ], check=True)
-
-    print('9. add seed data')
+    print('8. add seed data')
     ts = str(int(time.time()))
-    print('9.1. org data')
+    print('8.1. org data')
     subprocess.run([
         'aws',
         'dynamodb',
@@ -385,7 +296,7 @@ TBLPROPERTIES ('has_encrypted_data'='false')
         json.dumps({':c': {'N': ts}, ':u': {'N': ts}})
     ], check=True)
 
-    print('9.2. user data')
+    print('8.2. user data')
     if os.environ.get('ROOT_EMAIL'):
         idp_result = subprocess.run([
             'aws',

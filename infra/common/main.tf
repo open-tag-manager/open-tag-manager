@@ -5,7 +5,6 @@ terraform {
   }
 }
 
-
 resource "aws_s3_bucket" "otm_collect" {
   bucket = "${terraform.workspace}-${var.aws_s3_bucket_prefix}-otm-collect"
   acl = "public-read"
@@ -534,7 +533,7 @@ resource "aws_batch_job_definition" "otm_data_retriever" {
     {"name": "OTM_USAGE_PREFIX", "value": "usage/"},
     {"name": "STATS_ATHENA_RESULT_BUCKET", "value": "${aws_s3_bucket.otm_athena.bucket}"},
     {"name": "STATS_ATHENA_RESULT_PREFIX", "value": ""},
-    {"name": "STATS_ATHENA_DATABASE", "value": "${aws_athena_database.otm.name}"},
+    {"name": "STATS_ATHENA_DATABASE", "value": "${aws_glue_catalog_database.otm.name}"},
     {"name": "STATS_ATHENA_TABLE", "value": "otm_collect"},
     {"name": "USAGE_ATHENA_TABLE", "value": "otm_usage"},
     {"name": "OTM_USAGE_DYNAMODB_TABLE", "value": "${aws_dynamodb_table.otm_usage.name}"},
@@ -564,7 +563,7 @@ resource "aws_batch_job_definition" "otm_data_retriever_usage" {
     {"name": "AWS_DEFAULT_REGION", "value": "${var.aws_region}"},
     {"name": "STATS_ATHENA_RESULT_BUCKET", "value": "${aws_s3_bucket.otm_athena.bucket}"},
     {"name": "STATS_ATHENA_RESULT_PREFIX", "value": ""},
-    {"name": "STATS_ATHENA_DATABASE", "value": "${aws_athena_database.otm.name}"},
+    {"name": "STATS_ATHENA_DATABASE", "value": "${aws_glue_catalog_database.otm.name}"},
     {"name": "USAGE_ATHENA_TABLE", "value": "otm_usage"},
     {"name": "OTM_USAGE_DYNAMODB_TABLE", "value": "${aws_dynamodb_table.otm_usage.name}"}
   ],
@@ -653,7 +652,7 @@ resource "aws_batch_job_definition" "otm_data_retriever_msck" {
     {"name": "AWS_DEFAULT_REGION", "value": "${var.aws_region}"},
     {"name": "STATS_ATHENA_RESULT_BUCKET", "value": "${aws_s3_bucket.otm_athena.bucket}"},
     {"name": "STATS_ATHENA_RESULT_PREFIX", "value": ""},
-    {"name": "STATS_ATHENA_DATABASE", "value": "${aws_athena_database.otm.name}"},
+    {"name": "STATS_ATHENA_DATABASE", "value": "${aws_glue_catalog_database.otm.name}"},
     {"name": "STATS_ATHENA_TABLE", "value": "otm_collect"}
   ],
   "mountPoints": [],
@@ -729,9 +728,250 @@ resource "aws_s3_bucket" "otm_athena" {
   tags = var.aws_resource_tags
 }
 
-resource "aws_athena_database" "otm" {
+resource "aws_glue_catalog_database" "otm" {
   name = "${terraform.workspace}_otm"
-  bucket = aws_s3_bucket.otm_athena.bucket
+}
+
+resource "aws_glue_catalog_table" "otm_collect" {
+  name = "otm_collect"
+  database_name = aws_glue_catalog_database.otm.name
+
+  table_type = "EXTERNAL_TABLE"
+
+  parameters = {
+    EXTERNAL = "TRUE"
+  }
+
+  storage_descriptor {
+    location = "s3://${aws_s3_bucket.otm_collect_log.bucket}/formatted"
+    input_format = "org.apache.hadoop.mapred.TextInputFormat"
+    output_format = "org.apache.hadoop.hive.ql.io.IgnoreKeyTextOutputFormat"
+
+    ser_de_info {
+      name = "stream"
+      serialization_library = "org.openx.data.jsonserde.JsonSerDe"
+
+      parameters = {
+        "serialization.format" = 1
+      }
+    }
+
+    columns {
+      name = "datetime"
+      type = "timestamp"
+    }
+
+    columns {
+      name = "x_edge_location"
+      type = "string"
+    }
+
+    columns {
+      name = "sc_bytes"
+      type = "string"
+    }
+
+    columns {
+      name = "c_ip"
+      type = "string"
+    }
+
+    columns {
+      name = "cs_method"
+      type = "string"
+    }
+
+    columns {
+      name = "cs_host"
+      type = "string"
+    }
+
+    columns {
+      name = "cs_uri_stem"
+      type = "string"
+    }
+
+    columns {
+      name = "cs_status"
+      type = "string"
+    }
+
+    columns {
+      name = "cs_referer"
+      type = "string"
+    }
+
+    columns {
+      name = "cs_user_agent"
+      type = "string"
+    }
+
+    columns {
+      name = "cs_uri_query"
+      type = "string"
+    }
+
+    columns {
+      name = "cs_cookie"
+      type = "string"
+    }
+
+    columns {
+      name = "cs_x_edge_result_type"
+      type = "string"
+    }
+
+    columns {
+      name = "cs_x_edge_request_id"
+      type = "string"
+    }
+
+    columns {
+      name = "x_host_header"
+      type = "string"
+    }
+
+    columns {
+      name = "cs_protocol"
+      type = "string"
+    }
+
+    columns {
+      name = "cs_bytes"
+      type = "string"
+    }
+
+    columns {
+      name = "time_taken"
+      type = "string"
+    }
+
+    columns {
+      name = "x_forwarded_for"
+      type = "string"
+    }
+
+    columns {
+      name = "ssl_protocol"
+      type = "string"
+    }
+
+    columns {
+      name = "ssl_cipher"
+      type = "string"
+    }
+
+    columns {
+      name = "x_edge_response_result_type"
+      type = "string"
+    }
+
+    columns {
+      name = "cs_protocol_version"
+      type = "string"
+    }
+
+    columns {
+      name = "fle_status"
+      type = "string"
+    }
+
+    columns {
+      name = "fle_encrypted_fields"
+      type = "string"
+    }
+
+    columns {
+      name = "qs"
+      type = "string"
+    }
+  }
+
+  partition_keys {
+    name = "org"
+    type = "string"
+  }
+
+  partition_keys {
+    name = "tid"
+    type = "string"
+  }
+
+  partition_keys {
+    name = "year"
+    type = "int"
+  }
+
+  partition_keys {
+    name = "month"
+    type = "int"
+  }
+
+  partition_keys {
+    name = "day"
+    type = "int"
+  }
+}
+
+resource "aws_glue_catalog_table" "otm_usage" {
+  name = "otm_usage"
+  database_name = aws_glue_catalog_database.otm.name
+
+  table_type = "EXTERNAL_TABLE"
+
+  parameters = {
+    EXTERNAL = "TRUE"
+  }
+
+  storage_descriptor {
+    location = "s3://${aws_s3_bucket.otm_stats.bucket}/usage"
+    input_format = "org.apache.hadoop.mapred.TextInputFormat"
+    output_format = "org.apache.hadoop.hive.ql.io.IgnoreKeyTextOutputFormat"
+
+    ser_de_info {
+      name = "stream"
+      serialization_library = "org.openx.data.jsonserde.JsonSerDe"
+
+      parameters = {
+        "serialization.format" = 1
+      }
+    }
+
+    columns {
+      name = "type"
+      type = "string"
+    }
+
+    columns {
+      name = "size"
+      type = "bigint"
+    }
+  }
+
+  partition_keys {
+    name = "org"
+    type = "string"
+  }
+
+  partition_keys {
+    name = "tid"
+    type = "string"
+  }
+
+  partition_keys {
+    name = "year"
+    type = "int"
+  }
+
+  partition_keys {
+    name = "month"
+    type = "int"
+  }
+
+  partition_keys {
+    name = "day"
+    type = "int"
+  }
 }
 
 resource "aws_route53_record" "collect" {
