@@ -13,6 +13,9 @@ def main():
     region = os.environ.get('AWS_DEFAULT_REGION')
     backend_bucket = os.environ.get('TERRAFORM_BACKEND_BUCKET')
     backend_region = os.environ.get('TERRAFORM_BACKEND_REGION') or region
+    dockerhub_user = os.environ.get('DOCKERHUB_USER')
+    dockerhub_pass = os.environ.get('DOCKERHUB_PASS')
+
 
     print('1. deploy infra')
 
@@ -204,12 +207,15 @@ def main():
 
     print('4. deploy data_retriever')
 
-    p = subprocess.Popen(['aws', 'ecr', 'get-login', '--no-include-email'], stdout=subprocess.PIPE)
-    p.wait()
-    subprocess.run(p.stdout.readlines()[0].decode('utf-8').split(), check=True)
+    if dockerhub_user and dockerhub_pass:
+        # sign in to dockerhub
+        subprocess.run(['docker', 'login', '-u', dockerhub_user, '-p', dockerhub_pass], check=True)
     subprocess.run(['docker', 'build', '-t', 'otm-data-retriever', '.'], cwd='./data_retriever', check=True)
     subprocess.run(['docker', 'tag', 'otm-data-retriever:latest', '%s:latest' % repository_url], cwd='./data_retriever',
                    check=True)
+    p = subprocess.Popen(['aws', 'ecr', 'get-login', '--no-include-email'], stdout=subprocess.PIPE)
+    p.wait()
+    subprocess.run(p.stdout.readlines()[0].decode('utf-8').split(), check=True)
     subprocess.run(['docker', 'push', '%s:latest' % repository_url], cwd='./data_retriever', check=True)
 
     print('5. deploy client frontend')
